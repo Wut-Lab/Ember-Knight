@@ -26,12 +26,13 @@ const FACE_INFO := {
 ## drawing for each kind live in scripts/game/defense.gd.
 const DEFENSES := {}
 
-## Char by kindle level 0..3.
+## Char by kindle level 0..3. Kept weak on purpose: with no defenses or
+## upgrades, a run should usually fail by night 4 or 5.
 const CHAR_STATS := [
-	{"range": 175.0, "damage": 8.0, "rate": 1.1},
-	{"range": 190.0, "damage": 11.0, "rate": 1.25},
-	{"range": 200.0, "damage": 13.0, "rate": 1.4},
-	{"range": 215.0, "damage": 18.0, "rate": 1.55},
+	{"range": 175.0, "damage": 6.0, "rate": 1.1},
+	{"range": 190.0, "damage": 8.0, "rate": 1.25},
+	{"range": 200.0, "damage": 10.0, "rate": 1.4},
+	{"range": 215.0, "damage": 12.0, "rate": 1.55},
 ]
 const KINDLE_HEAL := 8.0
 
