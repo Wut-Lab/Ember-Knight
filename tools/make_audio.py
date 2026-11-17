@@ -318,7 +318,132 @@ def make_music():
     return normalize(mix, -1.5)
 
 
+# ---------------------------------------------------------------- sound effects
+def _env(n, attack, decay):
+    t = np.arange(n) / SR
+    return np.minimum(1, t / max(attack, 1e-4)) * np.exp(-t / decay)
+
+
+def _noise(n, lo=None, hi=None):
+    return fft_filter(rng.standard_normal(n), lo=lo, hi=hi)
+
+
+def _tone(f0, f1, dur, decay):
+    n = int(dur * SR)
+    t = np.arange(n) / SR
+    f = np.geomspace(f0, f1, n)
+    return np.sin(2 * np.pi * np.cumsum(f) / SR) * _env(n, 0.002, decay)
+
+
+def _place(out, sig, at):
+    s = int(at * SR)
+    out[s:s + len(sig)] += sig[:max(0, len(out) - s)]
+
+
+def sfx_dice_roll():
+    out = np.zeros(int(0.6 * SR))
+    t = 0.0
+    amp = 1.0
+    for k in range(7):
+        n = int(0.05 * SR)
+        click = _noise(n, 1800, 6000) * _env(n, 0.0005, 0.008)
+        knock = _tone(420 * rng.uniform(0.85, 1.2), 300, 0.05, 0.02) * 0.6
+        _place(out, amp * (click / np.abs(click).max() + knock), t)
+        t += rng.uniform(0.045, 0.09)
+        amp *= 0.8
+    return out
+
+
+def sfx_place():
+    out = np.zeros(int(0.45 * SR))
+    _place(out, _tone(190, 110, 0.3, 0.07), 0)
+    n = int(0.02 * SR)
+    _place(out, 0.4 * _noise(n, 800, 4000) * _env(n, 0.0005, 0.004) * 8, 0)
+    _place(out, 0.18 * _tone(1760, 1760, 0.4, 0.12), 0.03)
+    _place(out, 0.12 * _tone(2637, 2637, 0.4, 0.1), 0.07)
+    return out
+
+
+def sfx_bolt():
+    n = int(0.22 * SR)
+    t = np.arange(n) / SR
+    w = np.zeros(n)
+    noise = rng.standard_normal(n)
+    # Sweep a band upward by filtering short overlapping chunks.
+    seg = 512
+    for i in range(0, n, seg // 2):
+        f = 1200 + 3500 * (i / n)
+        chunk = fft_filter(noise[i:i + seg], lo=f * 0.7, hi=f * 1.4) if len(noise[i:i + seg]) > 32 else 0
+        w[i:i + seg] += chunk * np.hanning(len(noise[i:i + seg]))
+    env = np.sin(np.pi * np.clip(t / 0.22, 0, 1)) ** 1.5
+    return w * env
+
+
+def sfx_flare():
+    n = int(0.55 * SR)
+    body = _noise(n, 60, 900) * _env(n, 0.01, 0.14)
+    body /= np.abs(body).max()
+    return body + 0.5 * _tone(110, 70, 0.55, 0.12) + 0.15 * _noise(n, 2000, 7000) * _env(n, 0.002, 0.05) / 3
+
+
+def sfx_pop():
+    out = np.zeros(int(0.5 * SR))
+    _place(out, _tone(950, 280, 0.16, 0.06), 0)
+    n = int(0.25 * SR)
+    air = _noise(n, 2500, 9000) * _env(n, 0.003, 0.05)
+    _place(out, 0.4 * air / np.abs(air).max(), 0)
+    _place(out, 0.2 * _tone(2349, 2349, 0.35, 0.09), 0.05)
+    return out
+
+
+def sfx_hurt():
+    n = int(0.6 * SR)
+    thump = _tone(80, 45, 0.6, 0.16)
+    hiss = _noise(n, 300, 3000) * _env(n, 0.005, 0.18)
+    hiss /= np.abs(hiss).max()
+    return np.tanh(1.6 * (thump + 0.45 * hiss))
+
+
+def sfx_tap():
+    out = np.zeros(int(0.12 * SR))
+    _place(out, _tone(1300, 1100, 0.1, 0.018), 0)
+    return out
+
+
+def sfx_chime():
+    out = np.zeros(int(2.2 * SR))
+    for k, m in enumerate([74, 78, 81, 86]):
+        _place(out, bell(m, 0.6), k * 0.11)
+    return out
+
+
+def sfx_wave():
+    n = int(1.4 * SR)
+    t = np.arange(n) / SR
+    s = np.zeros(n)
+    for m, a in [(50, 1.0), (57, 0.7), (62, 0.4)]:
+        f = mtof(m)
+        for h in range(1, 6):
+            s += a * np.sin(2 * np.pi * f * h * t) / h ** 1.3
+    env = np.clip(t / 0.35, 0, 1) * np.clip((1.4 - t) / 0.7, 0, 1)
+    return s * env
+
+
+def write_sfx():
+    global OUT
+    base = OUT
+    OUT = os.path.join(base, "sfx")
+    for name, fn in [("dice_roll", sfx_dice_roll), ("place", sfx_place), ("bolt", sfx_bolt),
+                     ("flare", sfx_flare), ("pop", sfx_pop), ("hurt", sfx_hurt), ("tap", sfx_tap),
+                     ("chime", sfx_chime), ("wave", sfx_wave)]:
+        mono = fn()
+        mono[-int(0.01 * SR):] *= np.linspace(1, 0, int(0.01 * SR))
+        write_ogg(name, normalize(np.stack([mono, mono]), -1.0), q=4)
+    OUT = base
+
+
 if __name__ == "__main__":
     write_ogg("fire_crackle", make_fire())
     write_ogg("crickets", make_crickets(), q=5)
     write_ogg("campfire_lullaby", make_music())
+    write_sfx()

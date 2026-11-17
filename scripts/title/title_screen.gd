@@ -35,6 +35,9 @@ var _prompt: Label
 var _menu: Control
 var _vignette: TextureRect
 var _intro: Tween
+var _fade: ColorRect
+
+const RUN_SCENE := "res://scenes/run.tscn"
 
 
 func _ready() -> void:
@@ -53,9 +56,18 @@ func _ready() -> void:
 	_menu = MainMenu.new()
 	add_child(_menu)
 
+	_fade = ColorRect.new()
+	_fade.color = Color(0, 0, 0, 0)
+	_fade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_fade)
+
 	resized.connect(_layout)
 	AudioDirector.swell_changed.connect(func(v): _fire.swell = v)
+	_menu.play_requested.connect(_start_game)
 	_layout.call_deferred()
+	if AudioDirector.is_music_playing():
+		_return_to_menu()  # back from a run: skip the intro
+		return
 	_run_intro()
 	if "--demo" in OS.get_cmdline_user_args():
 		_run_demo()
@@ -94,6 +106,8 @@ func _layout() -> void:
 	_prompt.reset_size()
 	_prompt.position = Vector2((s.x - _prompt.size.x) / 2, s.y * 0.89)
 	_vignette.size = s
+	if _fade:
+		_fade.size = s
 
 
 # ------------------------------------------------------------ input
@@ -133,6 +147,26 @@ func _open_menu() -> void:
 	t.tween_method(_set_menu_t, 0.0, 1.0, 1.1).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
 	_menu.appear(0.55)
 	AudioDirector.set_swells_enabled(true)
+
+
+func _return_to_menu() -> void:
+	_fire.modulate.a = 1.0
+	_title.modulate.a = 1.0
+	_stage = Stage.MENU
+	_set_menu_t(1.0)
+	_fade.color.a = 1.0
+	create_tween().tween_property(_fade, "color:a", 0.0, 0.5)
+	_menu.appear(0.2)
+	AudioDirector.set_swells_enabled(true)
+
+
+## Play: fade to black, then into the run.
+func _start_game() -> void:
+	AudioDirector.set_swells_enabled(false)
+	var t := create_tween()
+	t.tween_property(_fade, "color:a", 1.0, 0.6)
+	await t.finished
+	get_tree().change_scene_to_file(RUN_SCENE)
 
 
 func _set_menu_t(v: float) -> void:

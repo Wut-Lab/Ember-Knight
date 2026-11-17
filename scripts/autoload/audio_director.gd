@@ -34,6 +34,12 @@ var _swells_on := false
 var _swell_timer := Timer.new()
 var _swell_tween: Tween
 var _tweens := {}
+var _sfx := {}
+var _sfx_pool: Array[AudioStreamPlayer] = []
+var _sfx_next := 0
+
+const SFX_NAMES := ["dice_roll", "place", "bolt", "flare", "pop", "hurt", "tap", "chime", "wave"]
+const SFX_VOICES := 12
 
 
 func _ready() -> void:
@@ -50,6 +56,14 @@ func _ready() -> void:
 	_crickets = _make_player(CRICKETS, "Master")
 	_fire = _make_player(FIRE, "Fire")
 	_fire_layer = _make_player(FIRE, "Fire")
+
+	for n in SFX_NAMES:
+		_sfx[n] = load("res://assets/audio/sfx/%s.ogg" % n)
+	for i in SFX_VOICES:
+		var p := AudioStreamPlayer.new()
+		p.bus = "Master"
+		add_child(p)
+		_sfx_pool.append(p)
 
 	_swell_timer.one_shot = true
 	_swell_timer.timeout.connect(swell)
@@ -132,6 +146,19 @@ func _set_swell(v: float) -> void:
 	# Perceptually even sweep of the filter.
 	_lowpass.cutoff_hz = CUTOFF_CALM * pow(CUTOFF_PEAK / CUTOFF_CALM, v)
 	swell_changed.emit(v)
+
+
+# ------------------------------------------------------------ sound effects
+## Plays a short effect with a little pitch variety so repeats don't grate.
+func play_sfx(sfx_name: String, db := 0.0, pitch_jitter := 0.06) -> void:
+	if not _sfx.has(sfx_name) or _sfx[sfx_name] == null:
+		return
+	var p := _sfx_pool[_sfx_next]
+	_sfx_next = (_sfx_next + 1) % _sfx_pool.size()
+	p.stream = _sfx[sfx_name]
+	p.volume_db = db
+	p.pitch_scale = 1.0 + randf_range(-pitch_jitter, pitch_jitter)
+	p.play()
 
 
 # ------------------------------------------------------------ helpers

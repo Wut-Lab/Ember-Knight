@@ -1,17 +1,18 @@
 extends Control
 ## Main menu: Play, Unlocks, Options, Credits in one centred column.
-## Unlocks, Options (and Play, until the first night is built) open an
-## "Under Construction" card; Credits lists who made the game. Every card has
+## Play starts a run; Unlocks and Options open an "Under Construction" card;
+## Credits lists who made the game. Every card has
 ## a Back button, and Esc / gamepad B also goes back.
 
 const Style := preload("res://scripts/ui/ui_style.gd")
+
+signal play_requested
 
 const ITEMS := ["Play", "Unlocks", "Options", "Credits"]
 const BUTTON_SIZE := Vector2(320, 60)
 
 ## Title of the card + one line under "Under Construction".
 const PLACEHOLDERS := {
-	"Play": ["The First Night", "The caravan's first night is the next thing we build."],
 	"Unlocks": ["Unlocks", "Caravan unlockables will live here."],
 	"Options": ["Options", "Sound, controls and display settings will live here."],
 }
@@ -91,7 +92,10 @@ func _on_pick(item: String) -> void:
 	if _busy or _card:
 		return
 	_last_pick = item
-	if item == "Credits":
+	if item == "Play":
+		_busy = true
+		play_requested.emit()
+	elif item == "Credits":
 		_open_card(_credits_card())
 	else:
 		_open_card(_placeholder_card(PLACEHOLDERS[item][0], PLACEHOLDERS[item][1]))

@@ -10,6 +10,7 @@ boot_splash/show_image=false
 
 [autoload]
 AudioDirector="*res://scripts/autoload/audio_director.gd"
+Run="*res://scripts/autoload/run_state.gd"
 
 [display]
 window/size/viewport_width=1280
