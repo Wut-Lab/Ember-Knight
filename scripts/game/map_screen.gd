@@ -3,6 +3,7 @@ extends Control
 ## each. Past choices stay marked; future columns are visible but locked.
 
 signal stop_chosen(stop_id: String)
+signal save_and_quit
 
 const Defs := preload("res://scripts/game/defs.gd")
 const Style := preload("res://scripts/ui/ui_style.gd")
@@ -79,6 +80,13 @@ func _ready() -> void:
 	status.add_theme_color_override("font_color", Style.MUTE)
 	status.add_theme_font_size_override("font_size", 20)
 	_root.add_child(status)
+
+	var save := Button.new()
+	save.text = "Save and Quit"
+	save.custom_minimum_size = Vector2(280, 58)
+	save.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	save.pressed.connect(func(): save_and_quit.emit())
+	_root.add_child(save)
 	if first_open:
 		first_open.grab_focus.call_deferred()
 		if Run.autoplay:

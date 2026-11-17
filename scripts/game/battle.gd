@@ -10,10 +10,11 @@ extends Control
 ##   drag a die           place it directly on a tile (★ dice go on the fire)
 ##   Roll / Space         reroll every die that isn't held
 ##   Fight! / Enter       start the wave (also starts once every die is placed)
-##   1-4                  same as tapping die 1-4;  Esc  pause
+##   1-4                  same as tapping die 1-4;  Esc  pause / back
 
 signal night_over(survived: bool)
-signal quit_to_menu
+signal save_and_quit
+signal abandoned
 
 const Defs := preload("res://scripts/game/defs.gd")
 const Style := preload("res://scripts/ui/ui_style.gd")
@@ -450,7 +451,8 @@ func _any_rolling() -> bool:
 
 # ------------------------------------------------------------ autoplay
 ## A simple stand-in player: ★ on the fire, otherwise upgrade a matching
-## defense or build on the nearest empty tile.
+## defense or build on the nearest empty tile. With `--idle` it places
+## nothing and just starts each wave.
 func _autoplay_step(delta: float) -> void:
 	if _any_rolling():
 		return
@@ -458,6 +460,9 @@ func _autoplay_step(delta: float) -> void:
 	if _ap_timer > 0.0:
 		return
 	_ap_timer = 0.7
+	if "--idle" in OS.get_cmdline_user_args():   # do nothing, just start waves
+		begin_wave()
+		return
 	for d in _dice:
 		if d.placed:
 			continue
@@ -639,6 +644,9 @@ func _toggle_speed() -> void:
 func _toggle_pause() -> void:
 	if phase == Phase.DONE:
 		return
+	if _pause_card and _pause_card.has_meta("sub"):
+		_show_pause_menu()   # Esc in Options goes back to the pause menu
+		return
 	if _pause_card:
 		_close_pause()
 		return
@@ -647,27 +655,73 @@ func _toggle_pause() -> void:
 	_dim.color = Color(0, 0, 0, 0.55)
 	_dim.process_mode = Node.PROCESS_MODE_ALWAYS
 	add_child(_dim)
+	_layout()
+	_show_pause_menu()
+
+
+## Pause menu: Back, Options, Abandon Run, Save and Quit.
+func _show_pause_menu() -> void:
+	var box := _pause_panel("Paused")
+	for item in [["Back", _close_pause], ["Options", _show_pause_options],
+			["Abandon Run", _abandon], ["Save and Quit", _save_quit]]:
+		box.add_child(_pause_button(item[0], item[1]))
+	(box.get_child(1) as Button).grab_focus()
+
+
+## Same "Under Construction" card as the main menu's Options.
+func _show_pause_options() -> void:
+	var box := _pause_panel("Options")
+	_pause_card.set_meta("sub", true)
+	var sign := Label.new()
+	sign.text = "Under Construction"
+	sign.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	sign.add_theme_font_override("font", Style.BODY_MEDIUM)
+	sign.add_theme_font_size_override("font_size", 30)
+	box.add_child(sign)
+	var sub := Label.new()
+	sub.text = "Sound, controls and display settings will live here."
+	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	sub.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	sub.custom_minimum_size = Vector2(440, 0)
+	sub.add_theme_color_override("font_color", Style.MUTE)
+	sub.add_theme_font_size_override("font_size", 22)
+	box.add_child(sub)
+	var back := _pause_button("Back", _show_pause_menu)
+	box.add_child(back)
+	back.grab_focus()
+
+
+## Replaces whatever pause card is showing with a fresh one; returns its column.
+func _pause_panel(heading: String) -> VBoxContainer:
+	if _pause_card:
+		_pause_card.queue_free()
 	_pause_card = PanelContainer.new()
 	_pause_card.process_mode = Node.PROCESS_MODE_ALWAYS
+	_pause_card.custom_minimum_size = Vector2(520, 0)
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 14)
 	var h := Label.new()
-	h.text = "Paused"
+	h.text = heading
 	h.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	h.add_theme_font_override("font", Style.display_font())
 	h.add_theme_font_size_override("font_size", 52)
 	h.add_theme_color_override("font_color", Style.ACCENT)
 	box.add_child(h)
-	for item in [["Resume", _close_pause], ["Main Menu", _quit]]:
-		var b := Button.new()
-		b.text = item[0]
-		b.custom_minimum_size = Vector2(280, 58)
-		b.pressed.connect(item[1])
-		box.add_child(b)
 	_pause_card.add_child(box)
 	add_child(_pause_card)
-	_layout()
-	(box.get_child(1) as Button).grab_focus()
+	_layout.call_deferred()
+	return box
+
+
+func _pause_button(text: String, cb: Callable) -> Button:
+	var b := Button.new()
+	b.text = text
+	b.custom_minimum_size = Vector2(320, 60)
+	b.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	b.focus_mode = Control.FOCUS_ALL
+	b.mouse_entered.connect(b.grab_focus)
+	b.pressed.connect(cb)
+	return b
 
 
 func _close_pause() -> void:
@@ -678,6 +732,13 @@ func _close_pause() -> void:
 		_pause_card = null
 
 
-func _quit() -> void:
+func _abandon() -> void:
 	_close_pause()
-	quit_to_menu.emit()
+	phase = Phase.DONE
+	abandoned.emit()
+
+
+func _save_quit() -> void:
+	_close_pause()
+	phase = Phase.DONE
+	save_and_quit.emit()

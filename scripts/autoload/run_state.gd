@@ -32,3 +32,60 @@ func new_run() -> void:
 
 func current_stop() -> String:
 	return chosen_stops[night] if night < chosen_stops.size() else "road"
+
+
+# ------------------------------------------------------------ saving
+## A run is saved as it stood at the camp choice of the current night, so
+## Save and Quit mid-battle resumes at that night's camp choice.
+const SAVE_PATH := "user://run.save"
+const SAVE_KEYS := ["night", "flame", "max_flame", "stop_options", "chosen_stops",
+	"spirits_banished", "nights_survived"]
+
+var resume := false   ## set by the menu's Continue; read by the run screen
+var _checkpoint := {}
+
+
+## Called when the camp choice for a night is shown.
+func checkpoint() -> void:
+	_checkpoint = {}
+	for k in SAVE_KEYS:
+		_checkpoint[k] = get(k).duplicate() if get(k) is Array else get(k)
+
+
+func save_run() -> void:
+	if _checkpoint.is_empty():
+		checkpoint()
+	var f := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
+	if f:
+		f.store_string(JSON.stringify(_checkpoint))
+
+
+func has_save() -> bool:
+	return FileAccess.file_exists(SAVE_PATH)
+
+
+func load_run() -> bool:
+	var f := FileAccess.open(SAVE_PATH, FileAccess.READ)
+	if not f:
+		return false
+	var d = JSON.parse_string(f.get_as_text())
+	if not d is Dictionary:
+		return false
+	for k in SAVE_KEYS:
+		if not d.has(k):
+			return false
+	night = int(d["night"])
+	flame = float(d["flame"])
+	max_flame = float(d["max_flame"])
+	stop_options = d["stop_options"]
+	chosen_stops.assign(d["chosen_stops"])
+	spirits_banished = int(d["spirits_banished"])
+	nights_survived = int(d["nights_survived"])
+	checkpoint()
+	return true
+
+
+func clear_save() -> void:
+	_checkpoint = {}
+	if has_save():
+		DirAccess.remove_absolute(SAVE_PATH)

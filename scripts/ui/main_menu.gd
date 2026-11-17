@@ -1,5 +1,6 @@
 extends Control
-## Main menu: Play, Unlocks, Options, Credits in one centred column.
+## Main menu: Play, Unlocks, Options, Credits in one centred column,
+## with Continue on top when a saved run exists.
 ## Play starts a run; Unlocks and Options open an "Under Construction" card;
 ## Credits lists who made the game. Every card has
 ## a Back button, and Esc / gamepad B also goes back.
@@ -25,6 +26,7 @@ const CREDITS := [
 	["Engine", "Godot Engine (MIT License)"],
 ]
 
+var _items: Array = ITEMS.duplicate()
 var _column: VBoxContainer
 var _buttons := {}
 var _card: PanelContainer
@@ -41,7 +43,10 @@ func _ready() -> void:
 	_column = VBoxContainer.new()
 	_column.add_theme_constant_override("separation", 16)
 	_column.alignment = BoxContainer.ALIGNMENT_CENTER
-	for item in ITEMS:
+	if Run.has_save():
+		_items.push_front("Continue")
+		_last_pick = "Continue"
+	for item in _items:
 		var b := Button.new()
 		b.text = item
 		b.custom_minimum_size = BUTTON_SIZE
@@ -72,14 +77,14 @@ func appear(delay := 0.0) -> void:
 	_layout()
 	_column.modulate.a = 1.0
 	var i := 0
-	for item in ITEMS:
+	for item in _items:
 		var b: Button = _buttons[item]
 		b.modulate.a = 0.0
 		var t := create_tween()
 		t.tween_interval(delay + i * 0.09)
 		t.tween_property(b, "modulate:a", 1.0, 0.45)
 		i += 1
-	get_tree().create_timer(delay + 0.1).timeout.connect(func(): _buttons["Play"].grab_focus())
+	get_tree().create_timer(delay + 0.1).timeout.connect(func(): _buttons[_items[0]].grab_focus())
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -92,8 +97,9 @@ func _on_pick(item: String) -> void:
 	if _busy or _card:
 		return
 	_last_pick = item
-	if item == "Play":
+	if item == "Play" or item == "Continue":
 		_busy = true
+		Run.resume = item == "Continue"
 		play_requested.emit()
 	elif item == "Credits":
 		_open_card(_credits_card())

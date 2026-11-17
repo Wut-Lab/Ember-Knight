@@ -30,7 +30,10 @@ func _ready() -> void:
 	AudioDirector.start_fire(0.5)
 	AudioDirector.start_crickets(1.0)
 	AudioDirector.start_music(1.0)
-	Run.new_run()
+	if not (Run.resume and Run.load_run()):
+		Run.clear_save()
+		Run.new_run()
+	Run.resume = false
 	_show(_make_map(), false)
 
 
@@ -50,8 +53,10 @@ func _show(screen: Control, fade := true) -> void:
 
 
 func _make_map() -> Control:
+	Run.checkpoint()
 	var m := MapScreen.new()
 	m.stop_chosen.connect(_on_stop_chosen)
+	m.save_and_quit.connect(_save_and_quit)
 	return m
 
 
@@ -59,7 +64,8 @@ func _on_stop_chosen(id: String) -> void:
 	Run.chosen_stops.append(id)
 	var b := Battle.new()
 	b.night_over.connect(_on_night_over)
-	b.quit_to_menu.connect(_to_title)
+	b.save_and_quit.connect(_save_and_quit)
+	b.abandoned.connect(_abandon)
 	_show(b)
 
 
@@ -81,11 +87,23 @@ func _on_dawn_done() -> void:
 	_show(_make_map())
 
 
+func _save_and_quit() -> void:
+	Run.save_run()
+	_to_title()
+
+
+func _abandon() -> void:
+	Run.clear_save()
+	_to_title()
+
+
 func _end(won: bool) -> void:
+	Run.clear_save()
 	var e := EndScreen.new()
 	e.won = won
 	e.play_again.connect(func():
 		Run.new_run()
+		Run.clear_save()
 		_show(_make_map()))
 	e.main_menu.connect(_to_title)
 	_show(e)
