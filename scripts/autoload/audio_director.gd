@@ -28,7 +28,7 @@ var _music: AudioStreamPlayer
 var _fire: AudioStreamPlayer
 var _fire_layer: AudioStreamPlayer  ## same loop, other offset: thickens swells
 var _crickets: AudioStreamPlayer
-var _lowpass := AudioEffectLowPassFilter.new()
+var _lowpass: AudioEffectLowPassFilter
 var _fire_base_db := SILENT_DB
 var _swells_on := false
 var _swell_timer := Timer.new()
@@ -44,13 +44,10 @@ const SFX_VOICES := 12
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
-	var bus := AudioServer.bus_count
-	AudioServer.add_bus(bus)
-	AudioServer.set_bus_name(bus, "Fire")
-	AudioServer.set_bus_send(bus, "Master")
-	_lowpass.cutoff_hz = CUTOFF_CALM
-	_lowpass.resonance = 0.6
-	AudioServer.add_bus_effect(bus, _lowpass)
+	# The Fire bus (with its low-pass) lives in default_bus_layout.tres. Adding
+	# a bus at runtime silences ALL audio in Godot 4.3's web build.
+	var bus := AudioServer.get_bus_index("Fire")
+	_lowpass = AudioServer.get_bus_effect(bus, 0)
 
 	_music = _make_player(MUSIC, "Master")
 	_crickets = _make_player(CRICKETS, "Master")
