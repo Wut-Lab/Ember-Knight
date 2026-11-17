@@ -25,6 +25,7 @@ const Projectile := preload("res://scripts/game/projectile.gd")
 const Fx := preload("res://scripts/game/fx.gd")
 const DieView := preload("res://scripts/game/die_view.gd")
 const Campfire := preload("res://scripts/title/campfire.gd")
+const CampProp := preload("res://scripts/game/camp_prop.gd")
 const FlameBar := preload("res://scripts/game/flame_bar.gd")
 const DrawProxy := preload("res://scripts/ui/draw_proxy.gd")
 
@@ -42,6 +43,7 @@ var _world := Node2D.new()
 var _entities := Node2D.new()
 var _fx := Node2D.new()
 var _campfire
+var _props: Array = []   ## the wagon and horse Char is guarding
 var _spawn_queue: Array = []
 var _spawn_timer := 0.0
 var _dice: Array = []
@@ -82,6 +84,11 @@ func _ready() -> void:
 
 	_campfire = Campfire.new()
 	_entities.add_child(_campfire)
+	for p in [["wagon", Vector2(10, -94)], ["horse", Vector2(86, 22)]]:
+		var prop := CampProp.new()
+		prop.setup(p[0], p[1], board)
+		_entities.add_child(prop)
+		_props.append(prop)
 	char_unit = CharUnit.new()
 	_entities.add_child(char_unit)
 	char_unit.setup(self, board)
@@ -108,6 +115,8 @@ func _layout() -> void:
 	_campfire.scale = Vector2.ONE * 0.36 * board.view_scale
 	_campfire.position = board.proj(Vector2.ZERO)
 	char_unit.position = board.proj(char_unit.world)
+	for p in _props:
+		p.position = board.proj(p.world)
 	for d in defenses:
 		d.position = board.proj(d.world)
 	if _tray:
