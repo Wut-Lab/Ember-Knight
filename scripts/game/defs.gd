@@ -36,10 +36,9 @@ const CHAR_STATS := [
 const KINDLE_HEAL := 8.0
 
 # ------------------------------------------------------------ spirits
+## The base spirit. Most normal spirits will be built off the Wisp's numbers.
 const SPIRITS := {
-	"wisp": {"hp": 21.0, "speed": 52.0, "damage": 7.0, "size": 1.0, "color": Color("#5a6bd8")},
-	"flit": {"hp": 12.0, "speed": 90.0, "damage": 4.0, "size": 0.75, "color": Color("#a46be0")},
-	"shade": {"hp": 64.0, "speed": 34.0, "damage": 12.0, "size": 1.35, "color": Color("#3c3a78")},
+	"wisp": {"hp": 16.0, "speed": 48.0, "damage": 6.0, "size": 1.0, "color": Color("#d6ecff")},
 }
 
 const NIGHTS := 3
@@ -60,30 +59,22 @@ const STOPS := {
 	"glade": {"name": "Quiet Glade", "desc": "Fewer spirits."},
 	"road": {"name": "Old Road", "desc": "A plain night on the road."},
 	"hollow": {"name": "Haunted Hollow", "desc": "More spirits. Choose from 3 passives at dawn."},
-	"mill": {"name": "Mill Ruins", "desc": "More shades. +1 reroll each wave."},
+	"mill": {"name": "Mill Ruins", "desc": "A busier night. +1 reroll each wave."},
 }
 
 
 ## Spawn list for one wave: Array of spirit kinds. night/wave are 0-based.
-static func wave_spirits(night: int, wave: int, stop: String, rng: RandomNumberGenerator) -> Array:
+static func wave_spirits(night: int, wave: int, stop: String, _rng: RandomNumberGenerator) -> Array:
 	var count := 3 + night * 2 + wave * 2
 	if stop == "glade":
 		count -= 2
 	elif stop == "hollow":
 		count += 2
-	var shade_chance := 0.0 if night == 0 else 0.12 + 0.06 * night
-	if stop == "mill":
-		shade_chance += 0.15
-	var flit_chance := 0.0 if (night == 0 and wave == 0) else 0.25
+	elif stop == "mill":
+		count += 1
 	var out := []
 	for i in count:
-		var r := rng.randf()
-		if r < shade_chance:
-			out.append("shade")
-		elif r < shade_chance + flit_chance:
-			out.append("flit")
-		else:
-			out.append("wisp")
+		out.append("wisp")
 	return out
 
 
