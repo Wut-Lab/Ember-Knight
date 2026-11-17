@@ -1,5 +1,5 @@
 extends RefCounted
-## A big tappable card (title + description) used for map stops and passives.
+## A big tappable card (title + description) used for map stops and the dawn screen.
 
 const Style := preload("res://scripts/ui/ui_style.gd")
 

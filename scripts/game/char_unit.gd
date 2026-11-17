@@ -39,8 +39,6 @@ func _ready() -> void:
 
 func stats() -> Dictionary:
 	var s: Dictionary = Defs.CHAR_STATS[kindle].duplicate()
-	if Run.has("blue_flame"):
-		s["damage"] *= 1.6
 	return s
 
 
@@ -69,8 +67,6 @@ func _process(delta: float) -> void:
 	_sprite.scale = Vector2.ONE * size_k / ART_SCALE * Vector2(1.0 + 0.02 * sin(_t * 2.4), 1.0)
 	_sprite.position = Vector2(-80.0 * size_k, -246.0 * size_k + bob)
 	var hue := Color(1, 1, 1)
-	if Run.has("blue_flame"):
-		hue = Color(0.85, 0.95, 1.15)
 	if _hurt > 0.0:
 		hue = hue.lerp(Color(1.4, 0.6, 0.6), _hurt)
 	_sprite.modulate = hue

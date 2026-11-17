@@ -49,8 +49,6 @@ func _draw() -> void:
 	var v: float = board.view_scale
 	var core := Color("#fff3c4")
 	var outer := Color("#ff8a3a") if style == "bolt" else Color("#ffb238")
-	if style == "char" and Run.has("blue_flame"):
-		outer = Color("#5ab8ff")
 	for i in _trail.size():
 		var p := _trail[i] - position
 		var f := 1.0 - float(i) / _trail.size()

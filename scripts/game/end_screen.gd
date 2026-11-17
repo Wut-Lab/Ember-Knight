@@ -1,5 +1,5 @@
 extends Control
-## End of a run: victory after 3 nights, or the flame went out.
+## End of a run: victory after every night, or the flame went out.
 
 signal play_again
 signal main_menu

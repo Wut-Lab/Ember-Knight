@@ -1,6 +1,6 @@
 extends Control
 ## Runs one game from Play to the end screen:
-##   map (choose camp) -> night battle (3 waves) -> dawn (pick passive) -> map ...
+##   map (choose camp) -> night battle (3 waves) -> dawn (rest) -> map ...
 ##   -> after night 3, or if the flame goes out: end screen (Play again / Main Menu).
 
 const Defs := preload("res://scripts/game/defs.gd")
@@ -72,12 +72,11 @@ func _on_night_over(survived: bool) -> void:
 		return
 	Run.flame = minf(Run.max_flame, Run.flame + Defs.DAWN_HEAL)
 	var d := DawnScreen.new()
-	d.passive_chosen.connect(_on_passive)
+	d.continued.connect(_on_dawn_done)
 	_show(d)
 
 
-func _on_passive(id: String) -> void:
-	Run.add_passive(id)
+func _on_dawn_done() -> void:
 	Run.night += 1
 	_show(_make_map())
 
@@ -91,8 +90,8 @@ func _end(won: bool) -> void:
 	e.main_menu.connect(_to_title)
 	_show(e)
 	if Run.autoplay:
-		print("RESULT won=%s nights=%d flame=%d/%d banished=%d stops=%s passives=%s" % [won, Run.nights_survived,
-			roundi(Run.flame), roundi(Run.max_flame), Run.spirits_banished, Run.chosen_stops, Run.passives])
+		print("RESULT won=%s nights=%d flame=%d/%d banished=%d stops=%s" % [won, Run.nights_survived,
+			roundi(Run.flame), roundi(Run.max_flame), Run.spirits_banished, Run.chosen_stops])
 		if "--quit-at-end" in OS.get_cmdline_user_args():
 			get_tree().quit()
 

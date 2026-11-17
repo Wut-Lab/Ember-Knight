@@ -1,5 +1,5 @@
 extends RefCounted
-## Game data for the First Playable: dice faces, defenses, spirits, passives,
+## Game data for the First Playable: dice faces, defenses, spirits,
 ## map stops and wave sizes. Tune numbers here.
 
 # ------------------------------------------------------------ dice
@@ -41,37 +41,20 @@ const SPIRITS := {
 	"wisp": {"hp": 16.0, "speed": 48.0, "damage": 6.0, "size": 1.0, "color": Color("#d6ecff")},
 }
 
-const NIGHTS := 3
+const NIGHTS := 5
 const WAVES_PER_NIGHT := 3
 const MAX_FLAME := 100.0
 const DAWN_HEAL := 20.0
 
-# ------------------------------------------------------------ passives
-const PASSIVES := {
-	"blue_flame": {"name": "Blue Flame", "desc": "Char's bolts deal +60% damage."},
-	"copper_plating": {"name": "Copper Plating", "desc": "+30 max flame, and refill the flame now."},
-	"lucky_hand": {"name": "Lucky Hand", "desc": "+1 reroll every wave."},
-	"fourth_die": {"name": "Fourth Die", "desc": "Roll 4 dice every wave."},
-}
-
 # ------------------------------------------------------------ map stops
 const STOPS := {
-	"glade": {"name": "Quiet Glade", "desc": "Fewer spirits."},
 	"road": {"name": "Old Road", "desc": "A plain night on the road."},
-	"hollow": {"name": "Haunted Hollow", "desc": "More spirits. Choose from 3 passives at dawn."},
-	"mill": {"name": "Mill Ruins", "desc": "A busier night. +1 reroll each wave."},
 }
 
 
 ## Spawn list for one wave: Array of spirit kinds. night/wave are 0-based.
 static func wave_spirits(night: int, wave: int, stop: String, _rng: RandomNumberGenerator) -> Array:
 	var count := 3 + night * 2 + wave * 2
-	if stop == "glade":
-		count -= 2
-	elif stop == "hollow":
-		count += 2
-	elif stop == "mill":
-		count += 1
 	var out := []
 	for i in count:
 		out.append("wisp")

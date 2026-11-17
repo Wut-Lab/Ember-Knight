@@ -129,11 +129,7 @@ func _start_prep() -> void:
 	fighting = false
 	char_unit.set_mood("open")
 	_rerolls = Defs.REROLLS_PER_WAVE
-	if Run.has("lucky_hand"):
-		_rerolls += 1
-	if Run.current_stop() == "mill":
-		_rerolls += 1
-	var n := Defs.DICE_PER_WAVE + (1 if Run.has("fourth_die") else 0)
+	var n := Defs.DICE_PER_WAVE
 	for d in _dice:
 		d.queue_free()
 	_dice.clear()

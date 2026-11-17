@@ -1,5 +1,5 @@
 extends Control
-## The caravan's route: one column per night, two camps to choose from in
+## The caravan's route: one column per night, the camps to choose from in
 ## each. Past choices stay marked; future columns are visible but locked.
 
 signal stop_chosen(stop_id: String)
@@ -9,7 +9,7 @@ const Style := preload("res://scripts/ui/ui_style.gd")
 const ChoiceCard := preload("res://scripts/ui/choice_card.gd")
 const DrawProxy := preload("res://scripts/ui/draw_proxy.gd")
 
-var _cards := []      ## per night: [Button, Button]
+var _cards := []      ## per night: one Button per camp
 var _lines: Control
 var _root := VBoxContainer.new()
 
@@ -40,7 +40,7 @@ func _ready() -> void:
 
 	var cols := HBoxContainer.new()
 	cols.alignment = BoxContainer.ALIGNMENT_CENTER
-	cols.add_theme_constant_override("separation", 56)
+	cols.add_theme_constant_override("separation", 34)
 	cols.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_root.add_child(cols)
 	var first_open: Button = null
@@ -57,7 +57,7 @@ func _ready() -> void:
 		var pair := []
 		for id in Run.stop_options[n]:
 			var info: Dictionary = Defs.STOPS[id]
-			var card := ChoiceCard.make(info["name"], info["desc"], 250.0)
+			var card := ChoiceCard.make(info["name"], info["desc"], 200.0)
 			if n < Run.night:
 				card.disabled = true
 				card.modulate.a = 1.0 if Run.chosen_stops[n] == id else 0.3
@@ -74,11 +74,7 @@ func _ready() -> void:
 		cols.add_child(col)
 
 	var status := Label.new()
-	var names := []
-	for p in Run.passives:
-		names.append(Defs.PASSIVES[p]["name"])
-	status.text = "Flame %d / %d      Passives: %s" % [roundi(Run.flame), roundi(Run.max_flame),
-		", ".join(names) if not names.is_empty() else "none yet"]
+	status.text = "Flame %d / %d" % [roundi(Run.flame), roundi(Run.max_flame)]
 	status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	status.add_theme_color_override("font_color", Style.MUTE)
 	status.add_theme_font_size_override("font_size", 20)
