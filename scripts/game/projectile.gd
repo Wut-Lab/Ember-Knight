@@ -34,10 +34,6 @@ func _process(delta: float) -> void:
 	if to.length() <= step:
 		if is_instance_valid(target) and not target.dead:
 			target.hit(damage)
-			if style == "bolt" and Run.has("ember_sparks"):
-				for sp in battle.spirits_in_range(_aim, 70.0):
-					if sp != target:
-						sp.hit(damage * 0.5)
 		battle.spark_fx(_aim, style)
 		queue_free()
 		return

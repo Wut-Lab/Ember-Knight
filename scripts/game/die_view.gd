@@ -13,14 +13,14 @@ const Icons := preload("res://scripts/game/icons.gd")
 const SIZE := 92.0
 const DRAG_THRESHOLD := 14.0
 
-var face := "bolt"
+var face := "kindle"
 var held := false
 var selected := false
 var placed := false
 var index := 0
 
 var _rolling := 0.0
-var _shown_face := "bolt"
+var _shown_face := "kindle"
 var _press_pos := Vector2.ZERO
 var _pressing := false
 var _dragging := false

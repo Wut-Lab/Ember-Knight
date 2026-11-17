@@ -90,9 +90,6 @@ func _ready() -> void:
 	resized.connect(_layout)
 	_layout()
 
-	if Run.current_stop() == "ford":
-		var free_tile := randi() % 3 * 3
-		_build_defense("bolt", free_tile)
 	_start_prep.call_deferred()
 
 
@@ -253,14 +250,13 @@ func _process(delta: float) -> void:
 		if _spawn_timer <= 0.0:
 			_spawn(_spawn_queue.pop_front())
 			_spawn_timer = maxf(0.55, 1.15 - 0.12 * Run.night) * randf_range(0.8, 1.2)
-	# Rune Stones slow spirits inside their reach (strongest one wins).
+	# Defenses with a "slow" stat slow spirits inside their reach (strongest wins).
 	for sp in spirits:
 		var slow := 0.0
 		for d in defenses:
-			if d.kind == "ward":
-				var st: Dictionary = d.stats()
-				if d.world.distance_to(sp.world) <= st["range"]:
-					slow = maxf(slow, st["slow"])
+			var st: Dictionary = d.stats()
+			if st.get("slow", 0.0) > 0.0 and d.world.distance_to(sp.world) <= st["range"]:
+				slow = maxf(slow, st["slow"])
 		sp.slow = slow
 	if _spawn_queue.is_empty() and spirits.is_empty():
 		_wave_cleared()

@@ -18,7 +18,7 @@ var base_color := Color.WHITE
 var path_idx := 0
 var dist := 0.0
 var world := Vector2.ZERO
-var slow := 0.0            ## 0..1, set by the battle from nearby Rune Stones
+var slow := 0.0            ## 0..1, set by the battle from nearby slowing defenses
 var dead := false
 
 var board

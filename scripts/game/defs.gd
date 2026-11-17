@@ -3,42 +3,28 @@ extends RefCounted
 ## map stops and wave sizes. Tune numbers here.
 
 # ------------------------------------------------------------ dice
-## A standard die. "kindle" (★) goes on the fire to power up Char.
-const DIE_FACES := ["bolt", "bolt", "flare", "flare", "ward", "kindle"]
+## Faces on a standard die. "kindle" (star) goes on the fire to power up Char.
+## Every other face must be a key in DEFENSES. No defenses exist yet, so for
+## now every die rolls Kindle. Add defense faces here as they are designed.
+const DIE_FACES := ["kindle"]
 const DICE_PER_WAVE := 3
 const REROLLS_PER_WAVE := 2
 const MAX_LEVEL := 3
 
+## Name, colour and tooltip for each die face.
 const FACE_INFO := {
-	"bolt": {"name": "Ember Lantern", "color": Color("#ffb238"),
-		"desc": "Shoots ember bolts at one spirit."},
-	"flare": {"name": "Brazier", "color": Color("#ff6a2a"),
-		"desc": "Bursts flame at every spirit close by."},
-	"ward": {"name": "Rune Stone", "color": Color("#7fd3ff"),
-		"desc": "Slows spirits that drift near it."},
 	"kindle": {"name": "Kindle Char", "color": Color("#fff0b0"),
 		"desc": "Place on the fire: Char hits harder and heals a little."},
 }
 
 # ------------------------------------------------------------ defenses
-## Per level 1..3. range in world units, rate = attacks per second.
-const DEFENSES := {
-	"bolt": [
-		{"range": 235.0, "damage": 10.0, "rate": 1.0},
-		{"range": 250.0, "damage": 14.0, "rate": 1.25},
-		{"range": 275.0, "damage": 22.0, "rate": 1.5},
-	],
-	"flare": [
-		{"range": 125.0, "damage": 11.0, "rate": 0.62},
-		{"range": 140.0, "damage": 17.0, "rate": 0.72},
-		{"range": 155.0, "damage": 26.0, "rate": 0.85},
-	],
-	"ward": [
-		{"range": 165.0, "slow": 0.35, "damage": 0.0},
-		{"range": 185.0, "slow": 0.45, "damage": 0.0},
-		{"range": 205.0, "slow": 0.55, "damage": 3.0},  # damage per second
-	],
-}
+## A defense is built by dropping a die on a tile; another die with the same
+## face on it levels it up (max MAX_LEVEL). One entry per face, with stats for
+## levels 1..3, e.g.
+##   "lantern": [{"range": 235.0, "damage": 10.0, "rate": 1.0}, {...}, {...}],
+## range is in world units, rate is attacks per second. The behaviour and
+## drawing for each kind live in scripts/game/defense.gd.
+const DEFENSES := {}
 
 ## Char by kindle level 0..3.
 const CHAR_STATS := [
@@ -64,11 +50,8 @@ const DAWN_HEAL := 20.0
 # ------------------------------------------------------------ passives
 const PASSIVES := {
 	"blue_flame": {"name": "Blue Flame", "desc": "Char's bolts deal +60% damage."},
-	"ember_sparks": {"name": "Ember Sparks", "desc": "Lantern bolts splash half damage onto nearby spirits."},
 	"copper_plating": {"name": "Copper Plating", "desc": "+30 max flame, and refill the flame now."},
 	"lucky_hand": {"name": "Lucky Hand", "desc": "+1 reroll every wave."},
-	"kindling": {"name": "Kindling", "desc": "Braziers burst 30% faster."},
-	"old_runes": {"name": "Old Runes", "desc": "Rune Stones slow 15% more and reach further."},
 	"fourth_die": {"name": "Fourth Die", "desc": "Roll 4 dice every wave."},
 }
 
@@ -78,7 +61,6 @@ const STOPS := {
 	"road": {"name": "Old Road", "desc": "A plain night on the road."},
 	"hollow": {"name": "Haunted Hollow", "desc": "More spirits. Choose from 3 passives at dawn."},
 	"mill": {"name": "Mill Ruins", "desc": "More shades. +1 reroll each wave."},
-	"ford": {"name": "Lantern Ford", "desc": "Start with a free Ember Lantern."},
 }
 
 

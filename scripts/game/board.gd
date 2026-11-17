@@ -105,7 +105,7 @@ func is_fire_at(local: Vector2) -> bool:
 
 ## Can a die with this face go on tile i?
 func can_place(face: String, i: int) -> bool:
-	if face == "kindle" or i < 0:
+	if not Defs.DEFENSES.has(face) or i < 0:
 		return false
 	var d = tile_defense[i]
 	if d == null:
