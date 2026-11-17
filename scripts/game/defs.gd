@@ -62,6 +62,18 @@ static func wave_spirits(night: int, wave: int, stop: String, _rng: RandomNumber
 	return out
 
 
+## Seconds between spawns (before the battle's ±20% jitter). It shrinks each
+## night AND each wave, so wave 1 is gentle and wave 3 tends to overrun Char.
+## Night 1: 1.15 / 0.95 / 0.75.
+const SPAWN_GAP := 1.15
+const SPAWN_GAP_PER_NIGHT := 0.12
+const SPAWN_GAP_PER_WAVE := 0.2
+const SPAWN_GAP_MIN := 0.55
+
+static func spawn_gap(night: int, wave: int) -> float:
+	return maxf(SPAWN_GAP_MIN, SPAWN_GAP - SPAWN_GAP_PER_NIGHT * night - SPAWN_GAP_PER_WAVE * wave)
+
+
 static func spirit_hp_scale(night: int, stop: String) -> float:
 	var s := 1.0 + 0.25 * night
 	return s
