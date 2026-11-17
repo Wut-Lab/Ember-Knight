@@ -43,7 +43,7 @@ var _world := Node2D.new()
 var _entities := Node2D.new()
 var _fx := Node2D.new()
 var _campfire
-var _props: Array = []   ## the wagon and horse Char is guarding
+var _props: Array = []   ## the stagecoach and horse Char is guarding
 var _spawn_queue: Array = []
 var _spawn_timer := 0.0
 var _dice: Array = []
@@ -84,7 +84,7 @@ func _ready() -> void:
 
 	_campfire = Campfire.new()
 	_entities.add_child(_campfire)
-	for p in [["wagon", Vector2(10, -94)], ["horse", Vector2(86, 22)]]:
+	for p in [["stagecoach", Vector2(10, -66)], ["horse", Vector2(94, 26)]]:
 		var prop := CampProp.new()
 		prop.setup(p[0], p[1], board)
 		_entities.add_child(prop)
