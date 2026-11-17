@@ -2,3 +2,4 @@
 *.ogg binary
 *.ttf binary
 *.png binary
+*.svg text

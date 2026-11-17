@@ -213,9 +213,3 @@ func _credits_card() -> PanelContainer:
 	box.add_child(grid)
 	_add_back(box)
 	return parts[0]
-
-
-func _gap(h: float) -> Control:
-	var c := Control.new()
-	c.custom_minimum_size = Vector2(0, h)
-	return c
