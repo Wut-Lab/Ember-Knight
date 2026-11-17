@@ -18,6 +18,8 @@ var _sky: Control
 
 
 func _ready() -> void:
+	# Clicks on the battle board must reach Battle._unhandled_input.
+	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_sky = NightSky.new()
 	add_child(_sky)
 	_fade.color = Color.BLACK

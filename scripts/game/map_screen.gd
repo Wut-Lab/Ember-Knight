@@ -16,6 +16,7 @@ var _root := VBoxContainer.new()
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	theme = Style.make_theme()
 	_lines = DrawProxy.new()
 	_lines.draw_fn = _draw_lines

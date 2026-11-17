@@ -41,6 +41,9 @@ const RUN_SCENE := "res://scenes/run.tscn"
 
 
 func _ready() -> void:
+	# Let taps/clicks fall through to _unhandled_input (the full-screen root
+	# would otherwise swallow them).
+	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_sky = NightSky.new()
 	add_child(_sky)
 	_fire = Campfire.new()

@@ -155,7 +155,7 @@ func _start_prep() -> void:
 	_update_hud()
 	_show_banner("Wave %d of %d" % [wave + 1, Defs.WAVES_PER_NIGHT])
 	if Run.night == 0 and wave == 0:
-		_hint.text = "Tap a die to hold it, then tap a glowing tile.  Or drag it there.  ★ goes on the fire."
+		_hint.text = "Tap a die to hold it, then tap a glowing tile.  Or drag it there.  Star dice go on the fire."
 	else:
 		_hint.text = "Place your dice, then Fight!"
 	_layout.call_deferred()
