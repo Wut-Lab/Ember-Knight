@@ -23,7 +23,7 @@ const FIRE_FADE := 3.5   ## seconds for the campfire to fade in
 const TITLE_FADE := 3.5  ## seconds for the title to fade in
 const PROMPT_FADE := 2.0
 
-enum Stage { INTRO, TITLE, MENU }
+enum Stage { GATE, INTRO, TITLE, MENU }
 
 var _stage := Stage.INTRO
 var _menu_t := 0.0  ## 0 = title layout, 1 = menu layout (animated)
@@ -68,9 +68,19 @@ func _ready() -> void:
 	if AudioDirector.is_music_playing():
 		_return_to_menu()  # back from a run: skip the intro
 		return
+	if OS.has_feature("web"):
+		_show_gate()  # browsers only allow sound after a tap
+		return
 	_run_intro()
 	if "--demo" in OS.get_cmdline_user_args():
 		_run_demo()
+
+
+## Web only: a quiet "Tap to begin" so the opening fire crackle can be heard.
+func _show_gate() -> void:
+	_stage = Stage.GATE
+	_prompt.text = "Tap or Click to Begin"
+	_prompt.modulate.a = 0.85
 
 
 func _run_intro() -> void:
@@ -121,7 +131,13 @@ func _unhandled_input(event: InputEvent) -> void:
 	if not pressed:
 		return
 	get_viewport().set_input_as_handled()
-	if _stage == Stage.INTRO:
+	if _stage == Stage.GATE:
+		_stage = Stage.INTRO
+		var t := create_tween()
+		t.tween_property(_prompt, "modulate:a", 0.0, 0.3)
+		t.tween_callback(func(): _prompt.text = "Tap or Click Anywhere to Play")
+		_run_intro()
+	elif _stage == Stage.INTRO:
 		_skip_intro()
 	else:
 		_open_menu()
