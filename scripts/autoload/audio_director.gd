@@ -1,0 +1,149 @@
+extends Node
+## Owns the title/menu soundscape: the looping music, crickets and campfire,
+## plus the menu's occasional fire swells. Autoloaded, so it survives scene
+## changes and the music never restarts between the title and the menu.
+
+signal swell_changed(level: float)  ## 0 = calm fire, 1 = peak of a swell
+
+const MUSIC := preload("res://assets/audio/campfire_lullaby.ogg")
+const FIRE := preload("res://assets/audio/fire_crackle.ogg")
+const CRICKETS := preload("res://assets/audio/crickets.ogg")
+
+const SILENT_DB := -60.0
+const MUSIC_DB := -5.0
+const CRICKETS_DB := -11.0
+const FIRE_SOLO_DB := -1.0   ## the opening seconds, fire on its own
+const FIRE_BED_DB := -10.0   ## tucked under the music
+const FIRE_PEAK_DB := -4.0   ## top of a swell
+const CUTOFF_CALM := 3600.0  ## fire low-pass while calm (soft, distant)
+const CUTOFF_PEAK := 12000.0 ## opens up as it flares: crisper crackles
+
+const SWELL_RISE := 3.2
+const SWELL_HOLD := 1.4
+const SWELL_FALL := 5.0
+const SWELL_GAP := Vector2(16.0, 30.0)  ## random seconds between swells
+
+var swell_level := 0.0
+var _music: AudioStreamPlayer
+var _fire: AudioStreamPlayer
+var _fire_layer: AudioStreamPlayer  ## same loop, other offset: thickens swells
+var _crickets: AudioStreamPlayer
+var _lowpass := AudioEffectLowPassFilter.new()
+var _fire_base_db := SILENT_DB
+var _swells_on := false
+var _swell_timer := Timer.new()
+var _swell_tween: Tween
+var _tweens := {}
+
+
+func _ready() -> void:
+	process_mode = Node.PROCESS_MODE_ALWAYS
+	var bus := AudioServer.bus_count
+	AudioServer.add_bus(bus)
+	AudioServer.set_bus_name(bus, "Fire")
+	AudioServer.set_bus_send(bus, "Master")
+	_lowpass.cutoff_hz = CUTOFF_CALM
+	_lowpass.resonance = 0.6
+	AudioServer.add_bus_effect(bus, _lowpass)
+
+	_music = _make_player(MUSIC, "Master")
+	_crickets = _make_player(CRICKETS, "Master")
+	_fire = _make_player(FIRE, "Fire")
+	_fire_layer = _make_player(FIRE, "Fire")
+
+	_swell_timer.one_shot = true
+	_swell_timer.timeout.connect(swell)
+	add_child(_swell_timer)
+
+
+func _make_player(stream: AudioStream, bus: StringName) -> AudioStreamPlayer:
+	if stream is AudioStreamOggVorbis:
+		stream.loop = true
+	var p := AudioStreamPlayer.new()
+	p.stream = stream
+	p.bus = bus
+	p.volume_db = SILENT_DB
+	add_child(p)
+	return p
+
+
+# ------------------------------------------------------------ title sequence
+func start_fire(fade := 0.35) -> void:
+	if _fire.playing:
+		return
+	_fire.play()
+	_fire_layer.play(16.0)
+	_fire_base_db = FIRE_SOLO_DB
+	_fade(_fire, FIRE_SOLO_DB, fade)
+
+
+func start_crickets(fade := 2.5) -> void:
+	if _crickets.playing:
+		return
+	_crickets.play(randf() * 20.0)
+	_fade(_crickets, CRICKETS_DB, fade)
+
+
+func start_music(fade := 1.0) -> void:
+	if _music.playing:
+		return
+	_music.play()
+	_fade(_music, MUSIC_DB, fade)
+	# The fire steps back so the music can lead.
+	_fire_base_db = FIRE_BED_DB
+	_fade(_fire, FIRE_BED_DB, 3.0)
+
+
+func is_music_playing() -> bool:
+	return _music.playing
+
+
+# ------------------------------------------------------------ menu swells
+## Turns the occasional fire swell on (main menu) or off.
+func set_swells_enabled(on: bool, first_delay := 7.0) -> void:
+	_swells_on = on
+	if on:
+		_swell_timer.start(first_delay)
+	else:
+		_swell_timer.stop()
+
+
+## One swell: the fire breathes up, crackles brighten, then settles back.
+func swell() -> void:
+	if _swell_tween and _swell_tween.is_running():
+		return
+	_swell_tween = create_tween()
+	_swell_tween.tween_method(_set_swell, 0.0, 1.0, SWELL_RISE) \
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	_swell_tween.tween_interval(SWELL_HOLD)
+	_swell_tween.tween_method(_set_swell, 1.0, 0.0, SWELL_FALL) \
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	_swell_tween.finished.connect(func():
+		if _swells_on:
+			_swell_timer.start(randf_range(SWELL_GAP.x, SWELL_GAP.y)))
+
+
+func _set_swell(v: float) -> void:
+	swell_level = v
+	_kill_fade(_fire)
+	_fire.volume_db = lerpf(_fire_base_db, FIRE_PEAK_DB, v)
+	# The second layer only joins near the top, adding extra pops.
+	_fire_layer.volume_db = linear_to_db(maxf(v * v, 0.0001)) + FIRE_PEAK_DB - 3.0
+	# Perceptually even sweep of the filter.
+	_lowpass.cutoff_hz = CUTOFF_CALM * pow(CUTOFF_PEAK / CUTOFF_CALM, v)
+	swell_changed.emit(v)
+
+
+# ------------------------------------------------------------ helpers
+func _fade(p: AudioStreamPlayer, to_db: float, seconds: float) -> void:
+	_kill_fade(p)
+	var t := create_tween()
+	t.tween_property(p, "volume_db", to_db, seconds) \
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	_tweens[p] = t
+
+
+func _kill_fade(p: AudioStreamPlayer) -> void:
+	if _tweens.has(p) and _tweens[p].is_valid():
+		_tweens[p].kill()
+	_tweens.erase(p)

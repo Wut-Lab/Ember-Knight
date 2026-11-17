@@ -1,0 +1,8 @@
+# Godot 4
+.godot/
+/android/
+# Builds and local files
+/build/
+*.zip
+*.tmp
+__pycache__/
