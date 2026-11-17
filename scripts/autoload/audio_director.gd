@@ -38,7 +38,7 @@ var _sfx := {}
 var _sfx_pool: Array[AudioStreamPlayer] = []
 var _sfx_next := 0
 
-const SFX_NAMES := ["dice_roll", "place", "bolt", "flare", "pop", "hurt", "tap", "chime", "wave"]
+const SFX_NAMES := ["dice_roll", "place", "bolt", "flare", "pop", "hurt", "tap", "chime", "wave", "button"]
 const SFX_VOICES := 12
 
 

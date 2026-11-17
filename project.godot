@@ -11,6 +11,7 @@ boot_splash/show_image=false
 [autoload]
 AudioDirector="*res://scripts/autoload/audio_director.gd"
 Run="*res://scripts/autoload/run_state.gd"
+ButtonFx="*res://scripts/autoload/button_fx.gd"
 
 [display]
 window/size/viewport_width=1280

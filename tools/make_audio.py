@@ -2,7 +2,12 @@
 2-minute "Campfire Lullaby" music loop. All three loops are rendered circularly
 (notes, reverb tails and noise wrap around the end), so they loop seamlessly.
 
-Run:  python3 tools/make_audio.py   (needs numpy and ffmpeg with libvorbis)
+Also renders the short sound effects in assets/audio/sfx/ (dice, defenses,
+UI button tap...).
+
+Run:  python3 tools/make_audio.py           (everything)
+      python3 tools/make_audio.py button    (just the named sound effects)
+Needs numpy and ffmpeg with libvorbis.
 """
 import os
 import subprocess
@@ -410,6 +415,18 @@ def sfx_tap():
     return out
 
 
+def sfx_button():
+    """Standard UI button tap: a soft wooden "tok" with a tiny bright tick on top."""
+    out = np.zeros(int(0.16 * SR))
+    n = int(0.012 * SR)
+    tick = _noise(n, 2500, 7000) * _env(n, 0.0003, 0.0025)
+    _place(out, 0.35 * tick / np.abs(tick).max(), 0)
+    _place(out, _tone(720, 560, 0.12, 0.022), 0)          # wooden body
+    _place(out, 0.45 * _tone(360, 300, 0.14, 0.035), 0)   # warmth underneath
+    _place(out, 0.08 * _tone(1440, 1400, 0.1, 0.02), 0.004)
+    return out
+
+
 def sfx_chime():
     out = np.zeros(int(2.2 * SR))
     for k, m in enumerate([74, 78, 81, 86]):
@@ -429,13 +446,15 @@ def sfx_wave():
     return s * env
 
 
-def write_sfx():
+def write_sfx(only=None):
     global OUT
     base = OUT
     OUT = os.path.join(base, "sfx")
     for name, fn in [("dice_roll", sfx_dice_roll), ("place", sfx_place), ("bolt", sfx_bolt),
                      ("flare", sfx_flare), ("pop", sfx_pop), ("hurt", sfx_hurt), ("tap", sfx_tap),
-                     ("chime", sfx_chime), ("wave", sfx_wave)]:
+                     ("chime", sfx_chime), ("wave", sfx_wave), ("button", sfx_button)]:
+        if only and name not in only:
+            continue
         mono = fn()
         mono[-int(0.01 * SR):] *= np.linspace(1, 0, int(0.01 * SR))
         write_ogg(name, normalize(np.stack([mono, mono]), -1.0), q=4)
@@ -443,6 +462,10 @@ def write_sfx():
 
 
 if __name__ == "__main__":
+    import sys
+    if len(sys.argv) > 1:  # e.g. `make_audio.py button` rebuilds just that effect
+        write_sfx(sys.argv[1:])
+        sys.exit()
     write_ogg("fire_crackle", make_fire())
     write_ogg("crickets", make_crickets(), q=5)
     write_ogg("campfire_lullaby", make_music())

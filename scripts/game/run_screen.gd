@@ -56,7 +56,6 @@ func _make_map() -> Control:
 
 
 func _on_stop_chosen(id: String) -> void:
-	AudioDirector.play_sfx("tap", -6.0)
 	Run.chosen_stops.append(id)
 	var b := Battle.new()
 	b.night_over.connect(_on_night_over)
