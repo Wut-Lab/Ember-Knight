@@ -39,7 +39,7 @@ const KINDLE_HEAL := 8.0
 # ------------------------------------------------------------ spirits
 ## The base spirit. Most normal spirits will be built off the Wisp's numbers.
 const SPIRITS := {
-	"wisp": {"hp": 16.0, "speed": 48.0, "damage": 6.0, "size": 1.0, "color": Color("#d6ecff")},
+	"wisp": {"hp": 16.0, "speed": 48.0, "damage": 7.0, "size": 1.0, "color": Color("#d6ecff")},
 }
 
 const NIGHTS := 5
