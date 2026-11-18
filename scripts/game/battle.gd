@@ -140,13 +140,14 @@ func _start_prep() -> void:
 	fighting = false
 	char_unit.set_mood("open")
 	_rerolls = Defs.REROLLS_PER_WAVE
-	var n := Defs.DICE_PER_WAVE
+	var n: int = Run.dice.size()
 	for d in _dice:
 		d.queue_free()
 	_dice.clear()
 	for i in n:
 		var d := DieView.new()
 		d.index = i
+		d.faces = Run.dice[i]
 		d.tapped.connect(_on_die_tapped)
 		d.drag_started.connect(_on_drag_started)
 		d.drag_moved.connect(_on_drag_moved)
@@ -170,8 +171,7 @@ func _roll(first := false) -> void:
 	for d in _dice:
 		if d.placed or (d.held and not first):
 			continue
-		var faces := Run.die_faces()
-		d.roll(faces[Run.rng.randi() % faces.size()], 0.45 + 0.12 * d.index)
+		d.roll(Run.rng.randi() % d.faces.size(), 0.45 + 0.12 * d.index)
 		any = true
 	if any:
 		AudioDirector.play_sfx("dice_roll", -3.0)
@@ -624,7 +624,7 @@ func _small_button(text: String, cb: Callable) -> Button:
 
 func _draw_ghost(ci: CanvasItem) -> void:
 	if _drag_die:
-		DieView.draw_die(ci, _drag_pos - ci.get_global_transform().origin, 80.0, _drag_die.face, true, false, 0.0)
+		DieView.draw_die(ci, _drag_pos - ci.get_global_transform().origin, 80.0, _drag_die.faces, _drag_die.side, true, false, 0.0)
 
 
 func _update_hud() -> void:

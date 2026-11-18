@@ -4,12 +4,12 @@ extends RefCounted
 
 # ------------------------------------------------------------ dice
 ## Every face that exists. "kindle" (star) goes on the fire to power up Char.
-## Every other face must be a key in DEFENSES. Dice only roll Kindle plus the
-## defenses the player owns this run (Run.die_faces()).
+## Every other face must be a key in DEFENSES.
 const DIE_FACES := ["kindle", "torch", "vent"]
-## Defenses the player owns at the start of every run, without unlocking them.
-const STARTING_DEFENSES := ["torch", "vent"]
-const DICE_PER_WAVE := 3
+## A die is a D6: a list of 6 faces. Opposite sides are i and 5 - i.
+## The player starts every run with STARTING_DICE copies of the starter die.
+const STARTER_DIE := ["torch", "vent", "kindle", "kindle", "vent", "torch"]
+const STARTING_DICE := 3
 const REROLLS_PER_WAVE := 2
 const MAX_LEVEL := 3
 

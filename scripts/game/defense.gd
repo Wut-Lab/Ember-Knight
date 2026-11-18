@@ -3,8 +3,8 @@ extends Node2D
 ## face on it raises its level (max Defs.MAX_LEVEL).
 ##
 ## To add a defense kind:
-##   1. Add its stats to Defs.DEFENSES and its face to Defs.DIE_FACES / FACE_INFO
-##      (and to Defs.STARTING_DEFENSES if the player owns it from the start).
+##   1. Add its stats to Defs.DEFENSES and its face to Defs.DIE_FACES / FACE_INFO,
+##      then put the face on a die (Defs.STARTER_DIE or a new die).
 ##   2. Add its behaviour to _act() and its look to _draw_kind() below.
 ## Helpers on the battle: pick_target(world, range), shoot(...),
 ## spirits_in_range(world, range), ring_fx(...). A "slow" stat is applied by the

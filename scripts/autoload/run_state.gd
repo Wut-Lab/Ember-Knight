@@ -7,7 +7,7 @@ const Defs := preload("res://scripts/game/defs.gd")
 var night := 0                 ## 0-based; Defs.NIGHTS nights per run
 var flame := Defs.MAX_FLAME
 var max_flame := Defs.MAX_FLAME
-var defenses: Array[String] = []  ## defense kinds owned this run
+var dice: Array = []           ## dice owned this run; each is a list of 6 faces
 var stop_options: Array = []   ## per night: the stop_ids on offer
 var chosen_stops: Array[String] = []
 var spirits_banished := 0
@@ -23,7 +23,9 @@ func new_run() -> void:
 	night = 0
 	max_flame = Defs.MAX_FLAME
 	flame = max_flame
-	defenses.assign(Defs.STARTING_DEFENSES)
+	dice.clear()
+	for i in Defs.STARTING_DICE:
+		dice.append(Defs.STARTER_DIE.duplicate())
 	chosen_stops.clear()
 	spirits_banished = 0
 	nights_survived = 0
@@ -32,9 +34,6 @@ func new_run() -> void:
 		stop_options.append(Defs.STOPS.keys())
 
 
-## Faces the dice can roll: Kindle plus every owned defense.
-func die_faces() -> Array:
-	return ["kindle"] + defenses
 
 
 func current_stop() -> String:
@@ -57,7 +56,7 @@ func checkpoint() -> void:
 	_checkpoint = {}
 	for k in SAVE_KEYS:
 		_checkpoint[k] = get(k).duplicate() if get(k) is Array else get(k)
-	_checkpoint["defenses"] = defenses.duplicate()
+	_checkpoint["dice"] = dice.duplicate(true)
 
 
 func save_run() -> void:
@@ -89,7 +88,12 @@ func load_run() -> bool:
 	chosen_stops.assign(d["chosen_stops"])
 	spirits_banished = int(d["spirits_banished"])
 	nights_survived = int(d["nights_survived"])
-	defenses.assign(d.get("defenses", Defs.STARTING_DEFENSES))  # older saves lack it
+	dice.clear()
+	for die in d.get("dice", []):  # older saves have no dice: use the starter set
+		dice.append(Array(die))
+	if dice.is_empty():
+		for i in Defs.STARTING_DICE:
+			dice.append(Defs.STARTER_DIE.duplicate())
 	checkpoint()
 	return true
 

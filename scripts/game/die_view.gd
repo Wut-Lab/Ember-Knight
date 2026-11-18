@@ -2,6 +2,8 @@ extends Control
 ## One die in the tray. Tap/click to hold it (held dice are kept when you
 ## reroll, and a held die can then be placed by tapping a glowing tile);
 ## or drag it straight onto a tile. Works the same with touch and mouse.
+## Each die is a D6 (a list of 6 faces), drawn as a cube: the rolled face on
+## top and two neighbouring faces on the sides.
 
 signal tapped(die)
 signal drag_started(die)
@@ -13,14 +15,16 @@ const Icons := preload("res://scripts/game/icons.gd")
 const SIZE := 92.0
 const DRAG_THRESHOLD := 14.0
 
-var face := "kindle"
+var faces: Array = Defs.STARTER_DIE
+var side := 0          ## index into faces of the rolled (top) face
+var face := "kindle"   ## faces[side]
 var held := false
 var selected := false
 var placed := false
 var index := 0
 
 var _rolling := 0.0
-var _shown_face := "kindle"
+var _shown := 0        ## side shown while tumbling
 var _press_pos := Vector2.ZERO
 var _pressing := false
 var _dragging := false
@@ -34,8 +38,9 @@ func _ready() -> void:
 	focus_mode = Control.FOCUS_NONE
 
 
-func roll(new_face: String, duration: float) -> void:
-	face = new_face
+func roll(new_side: int, duration: float) -> void:
+	side = new_side
+	face = faces[side]
 	_rolling = duration
 
 
@@ -48,11 +53,11 @@ func _process(delta: float) -> void:
 	if _rolling > 0.0:
 		_rolling -= delta
 		if int(_t * 18.0) % 2 == 0:
-			_shown_face = Run.die_faces().pick_random()
+			_shown = randi() % faces.size()
 		if _rolling <= 0.0:
-			_shown_face = face
+			_shown = side
 	else:
-		_shown_face = face
+		_shown = side
 	var want := 1.0 if (held or selected) else 0.0
 	_lift = move_toward(_lift, want, delta * 6.0)
 	queue_redraw()
@@ -92,7 +97,7 @@ func _draw() -> void:
 		return
 	if _dragging:
 		return
-	draw_die(self, Vector2(SIZE / 2, SIZE / 2 + 18 - _lift * 14.0), SIZE - 8, _shown_face, held or selected, _rolling > 0.0, _t)
+	draw_die(self, Vector2(SIZE / 2, SIZE / 2 + 18 - _lift * 14.0), SIZE - 8, faces, _shown, held or selected, _rolling > 0.0, _t)
 	if held:
 		_draw_lock(Vector2(SIZE - 14, 14 - _lift * 14.0 + 10))
 	# Key hint for keyboard players.
@@ -100,24 +105,62 @@ func _draw() -> void:
 	draw_string(font, Vector2(6, SIZE + 14), str(index + 1), HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(1, 1, 1, 0.35))
 
 
-## Shared die drawing (also used for the drag ghost).
-static func draw_die(ci: CanvasItem, c: Vector2, s: float, f: String, lit: bool, rolling: bool, t: float) -> void:
-	var col: Color = Defs.FACE_INFO[f]["color"]
+## Shared die drawing (also used for the drag ghost): a 2.5D cube with the
+## top face (faces[top]) big, and two neighbouring faces on the front and
+## right sides, squashed for depth.
+static func draw_die(ci: CanvasItem, c: Vector2, s: float, faces: Array, top: int, lit: bool, rolling: bool, t: float) -> void:
 	var wob := sin(t * 40.0) * 0.08 if rolling else 0.0
-	ci.draw_set_transform(c, wob, Vector2.ONE)
+	var base := Transform2D(wob, c)
+	ci.draw_set_transform_matrix(base)
 	var h := s / 2
-	# Shadow, side (depth) and top face: a chunky bone-white die.
-	ci.draw_rect(Rect2(-h + 3, -h + 10, s, s), Color(0, 0, 0, 0.35))
-	_round_rect(ci, Rect2(-h, -h + 6, s, s), 14, Color("#b9ab98"))
-	_round_rect(ci, Rect2(-h, -h, s, s - 4), 14, Color("#f3e9dc"))
-	_round_rect(ci, Rect2(-h + 5, -h + 4, s - 10, s * 0.3), 10, Color(1, 1, 1, 0.35))
+	var d := s * 0.24            # depth of the side faces
+	var e := s - d               # edge of the top face
+	var o := Vector2(-h, -h)     # top-left of the top face
+	var near := neighbours(top)
+	# Shadow.
+	ci.draw_colored_polygon(_quad(o + Vector2(6, 10), e, d), Color(0, 0, 0, 0.35))
+	# Front side (below the top face) and right side, slightly shaded.
+	var front := PackedVector2Array([o + Vector2(0, e), o + Vector2(e, e), o + Vector2(e + d, e + d), o + Vector2(d, e + d)])
+	var right := PackedVector2Array([o + Vector2(e, 0), o + Vector2(e + d, d), o + Vector2(e + d, e + d), o + Vector2(e, e)])
+	ci.draw_colored_polygon(front, Color("#cbbca8"))
+	ci.draw_colored_polygon(right, Color("#a89a87"))
+	_side_icon(ci, base, faces[near[0]], o + Vector2(e * 0.5 + d * 0.5, e + d * 0.5), s * 0.34, Vector2(1.0, 0.42))
+	_side_icon(ci, base, faces[near[1]], o + Vector2(e + d * 0.5, e * 0.5 + d * 0.5), s * 0.34, Vector2(0.42, 1.0))
+	ci.draw_polyline(front + PackedVector2Array([front[0]]), Color(0, 0, 0, 0.25), 1.5, true)
+	ci.draw_polyline(right + PackedVector2Array([right[0]]), Color(0, 0, 0, 0.25), 1.5, true)
+	# Top face.
+	_round_rect(ci, Rect2(o, Vector2(e, e)), 10, Color("#f3e9dc"))
+	_round_rect(ci, Rect2(o + Vector2(4, 3), Vector2(e - 8, e * 0.28)), 8, Color(1, 1, 1, 0.35))
 	if lit:
-		_round_outline(ci, Rect2(-h - 3, -h - 3, s + 6, s + 8), 16, Color("#ffb238"), 4.0)
-	# Face badge.
-	var badge := col.darkened(0.55) if f != "kindle" else Color("#8a5a10")
-	ci.draw_circle(Vector2(0, -2), s * 0.3, badge)
-	Icons.draw(ci, f, Vector2(0, -2), s * 0.5, col if f != "kindle" else Color("#ffe27a"))
+		_round_outline(ci, Rect2(o - Vector2(3, 3), Vector2(e + d + 6, e + d + 6)), 12, Color("#ffb238"), 4.0)
+	var f: String = faces[top]
+	var col: Color = Defs.FACE_INFO[f]["color"]
+	var mid := o + Vector2(e, e) * 0.5
+	ci.draw_circle(mid, e * 0.36, col.darkened(0.55) if f != "kindle" else Color("#8a5a10"))
+	Icons.draw(ci, f, mid, e * 0.6, col if f != "kindle" else Color("#ffe27a"))
 	ci.draw_set_transform(Vector2.ZERO)
+
+
+## Two sides next to `top` (not top itself and not its opposite, 5 - top).
+static func neighbours(top: int) -> Array:
+	var out := []
+	for i in 6:
+		if i != top and i != 5 - top:
+			out.append(i)
+	return [out[0], out[1]]
+
+
+static func _quad(o: Vector2, e: float, d: float) -> PackedVector2Array:
+	return PackedVector2Array([o, o + Vector2(e, 0), o + Vector2(e + d, d), o + Vector2(e + d, e + d), o + Vector2(d, e + d), o + Vector2(0, e)])
+
+
+## A face icon drawn squashed onto a side of the cube.
+static func _side_icon(ci: CanvasItem, base: Transform2D, f: String, at: Vector2, s: float, squash: Vector2) -> void:
+	var col: Color = Defs.FACE_INFO[f]["color"]
+	ci.draw_set_transform_matrix(base * Transform2D(0.0, squash, 0.0, at))
+	ci.draw_circle(Vector2.ZERO, s * 0.5, col.darkened(0.6) if f != "kindle" else Color("#7a5010"))
+	Icons.draw(ci, f, Vector2.ZERO, s * 0.8, (col if f != "kindle" else Color("#ffe27a")).darkened(0.15))
+	ci.draw_set_transform_matrix(base)
 
 
 static func _round_rect(ci: CanvasItem, r: Rect2, rad: float, col: Color) -> void:
