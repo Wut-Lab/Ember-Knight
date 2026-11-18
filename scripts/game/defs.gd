@@ -40,6 +40,9 @@ const KINDLE_HEAL := 8.0
 ## The base spirit. Most normal spirits will be built off the Wisp's numbers.
 const SPIRITS := {
 	"wisp": {"hp": 16.0, "speed": 48.0, "damage": 8.0, "size": 1.0, "color": Color("#d6ecff")},
+	## Techy flanker: a hazy blue Wisp whose chill slows Char's attacks while it is near.
+	"mist_wisp": {"hp": 16.0, "speed": 56.0, "damage": 7.0, "size": 0.85, "color": Color("#8fb8ff"),
+		"chill_range": 120.0, "chill": 0.3},
 }
 
 const NIGHTS := 5
@@ -54,11 +57,17 @@ const STOPS := {
 
 
 ## Spawn list for one wave: Array of spirit kinds. night/wave are 0-based.
-static func wave_spirits(night: int, wave: int, stop: String, _rng: RandomNumberGenerator) -> Array:
+static func wave_spirits(night: int, wave: int, stop: String, rng: RandomNumberGenerator) -> Array:
 	var count := 3 + night * 2 + wave * 2
+	# Mist Wisps first slip into night 1's last wave, then drift thicker in the hollow.
+	var mist_chance := 0.15 + 0.05 * night
+	if night == 0:
+		mist_chance = 0.1 if wave == 2 else 0.0
+	if stop == "hollow" and night > 0:
+		mist_chance += 0.15
 	var out := []
 	for i in count:
-		out.append("wisp")
+		out.append("mist_wisp" if rng.randf() < mist_chance else "wisp")
 	return out
 
 

@@ -16,6 +16,7 @@ var _tex := {}
 var _sprite := Sprite2D.new()
 var _t := 0.0
 var _cool := 0.6
+var chill := 0.0          ## 0..1, attack slow from nearby Mist Wisps
 var _hurt := 0.0
 var _kick := 0.0
 var _mood := "open"
@@ -67,6 +68,8 @@ func _process(delta: float) -> void:
 	_sprite.scale = Vector2.ONE * size_k / ART_SCALE * Vector2(1.0 + 0.02 * sin(_t * 2.4), 1.0)
 	_sprite.position = Vector2(-80.0 * size_k, -246.0 * size_k + bob)
 	var hue := Color(1, 1, 1)
+	if chill > 0.0:
+		hue = hue.lerp(Color(0.7, 0.85, 1.25), 0.6)
 	if _hurt > 0.0:
 		hue = hue.lerp(Color(1.4, 0.6, 0.6), _hurt)
 	_sprite.modulate = hue
@@ -80,7 +83,7 @@ func _process(delta: float) -> void:
 		if target:
 			var muzzle := Vector2(0, -150.0 * size_k)
 			battle.shoot(world, muzzle, target, st["damage"], "char")
-			_cool = 1.0 / st["rate"]
+			_cool = 1.0 / (st["rate"] * (1.0 - chill))
 
 
 func _draw() -> void:

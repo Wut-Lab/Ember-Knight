@@ -2,6 +2,7 @@ extends Node2D
 ## A spirit drifting out of the dark along a trail toward the fire.
 ## A little ball of light with a faded glow and two grumpy black eyes.
 ## It makes its own light, so it shows up even far out in the dark.
+## The Mist Wisp is a smaller, hazy blue version wrapped in drifting puffs.
 
 signal banished(spirit)
 signal reached_fire(spirit)
@@ -94,10 +95,18 @@ func _draw() -> void:
 	if _flash > 0.0:
 		col = col.lerp(Color.WHITE, 0.8)
 	# Faded glow: a soft radial falloff around the ball.
-	var gr: float = s * 2.8 * pulse
-	draw_texture_rect(_glow_tex(), Rect2(-gr, -gr, gr * 2.0, gr * 2.0), false, Color(col, 0.55 * alpha))
-	# The ball of light, brighter at its heart.
-	draw_circle(Vector2.ZERO, s, Color(col, 0.95 * alpha))
+	var mist := kind == "mist_wisp"
+	var gr: float = s * (3.4 if mist else 2.8) * pulse
+	draw_texture_rect(_glow_tex(), Rect2(-gr, -gr, gr * 2.0, gr * 2.0), false, Color(col, (0.4 if mist else 0.55) * alpha))
+	if mist:
+		# Haze: soft puffs drifting slowly around the ball.
+		for i in 5:
+			var a := _t * 0.7 + TAU * i / 5.0
+			var off := Vector2(cos(a), sin(a) * 0.6) * s * (0.9 + 0.25 * sin(_t * 1.3 + i))
+			var pr := s * (0.9 + 0.2 * sin(_t * 2.0 + i * 1.7))
+			draw_texture_rect(_glow_tex(), Rect2(off.x - pr, off.y - pr, pr * 2.0, pr * 2.0), false, Color(col, 0.45 * alpha))
+	# The ball of light, brighter at its heart (fainter and see-through for mist).
+	draw_circle(Vector2.ZERO, s, Color(col, (0.7 if mist else 0.95) * alpha))
 	draw_circle(Vector2(-s * 0.05, -s * 0.05), s * 0.78, Color(1, 1, 1, 0.25 * alpha))
 	draw_circle(Vector2(-s * 0.42, -s * 0.48), s * 0.2, Color(1, 1, 1, 0.7 * alpha))
 	# Two grumpy black eyes, glancing toward the fire: ovals with the top

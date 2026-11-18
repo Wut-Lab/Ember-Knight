@@ -268,6 +268,13 @@ func _process(delta: float) -> void:
 			if st.get("slow", 0.0) > 0.0 and d.world.distance_to(sp.world) <= st["range"]:
 				slow = maxf(slow, st["slow"])
 		sp.slow = slow
+	# Mist Wisps near Char slow its attacks (strongest wins, no stacking).
+	var chill := 0.0
+	for sp in spirits:
+		var r: float = Defs.SPIRITS[sp.kind].get("chill_range", 0.0)
+		if r > 0.0 and not sp.dead and sp.world.distance_to(char_unit.world) <= r:
+			chill = maxf(chill, Defs.SPIRITS[sp.kind]["chill"])
+	char_unit.chill = chill
 	if _spawn_queue.is_empty() and spirits.is_empty():
 		_wave_cleared()
 
