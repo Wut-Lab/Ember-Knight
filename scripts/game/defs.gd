@@ -5,7 +5,7 @@ extends RefCounted
 # ------------------------------------------------------------ dice
 ## Every face that exists. "kindle" (star) goes on the fire to power up Char.
 ## Every other face must be a key in DEFENSES.
-const DIE_FACES := ["kindle", "torch", "vent"]
+const DIE_FACES := ["kindle", "torch", "vent", "mortar", "guide", "ashes"]
 ## A die is a D6: a list of 6 faces. Opposite sides are i and 5 - i.
 ## The player starts every run with STARTING_DICE copies of the starter die.
 const STARTER_DIE := ["torch", "vent", "kindle", "kindle", "vent", "torch"]
@@ -17,6 +17,9 @@ const DICE := {
 	"ember": {"name": "Ember Die", "faces": STARTER_DIE},
 	"torch": {"name": "Torchbearer Die", "faces": ["torch", "kindle", "torch", "vent", "kindle", "torch"]},
 	"steam": {"name": "Boiler Die", "faces": ["vent", "kindle", "vent", "torch", "kindle", "vent"]},
+	## Long-range themed die: 3 Mortar, 2 Guide Light, 1 Ashes (a blank that
+	## pays for the strong faces).
+	"artillery": {"name": "Artillery Die", "faces": ["mortar", "guide", "mortar", "ashes", "guide", "mortar"]},
 }
 
 ## Oaths: passives sworn for the rest of the run.
@@ -69,6 +72,12 @@ const FACE_INFO := {
 		"desc": "A small flame on a post. Shoots embers like a weak Char."},
 	"vent": {"name": "Steam Vent", "color": Color("#9fd6d0"),
 		"desc": "A brass boiler that puffs steam: slows nearby spirits and scalds them a little."},
+	"mortar": {"name": "Cinder Mortar", "color": Color("#e0603a"),
+		"desc": "Lobs a cinder at the spirit farthest back on its trail. Slow, splashes, can't hit up close."},
+	"guide": {"name": "Guide Light", "color": Color("#ffe9a8"),
+		"desc": "A lantern on a pole. Neighbouring defenses reach a little farther and closer."},
+	"ashes": {"name": "Ashes", "color": Color("#8a8078"),
+		"desc": "Cold ashes. Does nothing: reroll it or leave it."},
 }
 
 # ------------------------------------------------------------ defenses
@@ -94,7 +103,24 @@ const DEFENSES := {
 		{"range": 195.0, "damage": 3.0, "rate": 0.55, "slow": 0.27},
 		{"range": 205.0, "damage": 4.0, "rate": 0.6, "slow": 0.33},
 	],
+	## Slow artillery: aims at the spirit farthest back on its trail between
+	## "min" and "range", and splashes everything within "splash" of the hit.
+	"mortar": [
+		{"range": 380.0, "min": 200.0, "damage": 5.0, "rate": 0.36, "splash": 45.0},
+		{"range": 400.0, "min": 200.0, "damage": 7.0, "rate": 0.4, "splash": 50.0},
+		{"range": 420.0, "min": 200.0, "damage": 10.0, "rate": 0.44, "splash": 55.0},
+	],
+	## No attack. Defenses on neighbouring tiles (within GUIDE_REACH) get their
+	## range multiplied by "boost" and any "min" range by "min_mult". Several
+	## Guide Lights don't stack: the best one counts.
+	"guide": [
+		{"range": 0.0, "boost": 1.15, "min_mult": 0.75},
+		{"range": 0.0, "boost": 1.2, "min_mult": 0.7},
+		{"range": 0.0, "boost": 1.25, "min_mult": 0.65},
+	],
 }
+## Tiles closer than this count as neighbours (each tile group's three tiles).
+const GUIDE_REACH := 250.0
 
 ## Char by kindle level 0..3. Kept weak on purpose: with no defenses or
 ## upgrades, a run should usually fail by night 4 or 5.

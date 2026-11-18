@@ -51,7 +51,28 @@ func level_up() -> void:
 
 ## This defense's stats at its current level (passives can adjust them here).
 func stats() -> Dictionary:
-	return Defs.DEFENSES[kind][level - 1].duplicate()
+	var st: Dictionary = Defs.DEFENSES[kind][level - 1].duplicate()
+	var g := guide_bonus()
+	if not g.is_empty():
+		st["range"] *= g["boost"]
+		if st.has("min"):
+			st["min"] *= g["min_mult"]
+	return st
+
+
+## The best Guide Light on a neighbouring tile ({} if none). Guides don't
+## boost each other.
+func guide_bonus() -> Dictionary:
+	if kind == "guide":
+		return {}
+	var best := {}
+	for o in battle.defenses:
+		if o == self or o.kind != "guide" or o.world.distance_to(world) > Defs.GUIDE_REACH:
+			continue
+		var g: Dictionary = Defs.DEFENSES["guide"][o.level - 1]
+		if best.is_empty() or g["boost"] > best["boost"]:
+			best = g
+	return best
 
 
 func _process(delta: float) -> void:
@@ -81,6 +102,14 @@ func _act(delta: float, st: Dictionary) -> void:
 					for sp in near:
 						sp.hit(st["damage"])
 					battle.ring_fx(world, st["range"], Color("#cfeee9"))
+					_puff = 1.0
+					_cool = 1.0 / st["rate"]
+		"mortar":
+			_cool -= delta
+			if _cool <= 0.0:
+				var target = battle.pick_rear_target(world, st["min"], st["range"])
+				if target:
+					battle.shoot(world, Vector2(0, -30.0 * board.view_scale * _scale()), target, st["damage"], "mortar", st["splash"])
 					_puff = 1.0
 					_cool = 1.0 / st["rate"]
 
@@ -126,5 +155,24 @@ func _draw_kind(v: float, lit: float) -> void:
 				var alpha := 0.15 + 0.55 * _puff
 				var r := (3.0 + 6.0 * age + 2.0 * level) * v
 				draw_circle(Vector2(6 * v + 4 * v * sin(_t * 2.0 + k), -44 * v - 22 * v * age), r, Color(0.92, 0.96, 0.95, alpha * (1.0 - age)))
+		"mortar":
+			# Squat iron mortar on a stone base, recoiling after a shot.
+			var iron := Color("#2e2a28").lerp(Color("#6a625c"), lit)
+			draw_rect(Rect2(-13 * v, -8 * v, 26 * v, 10 * v), Color("#4a4038"))
+			var kick := 3.0 * v * _puff
+			var mouth := Vector2(4 * v, -32 * v + kick)
+			draw_colored_polygon(PackedVector2Array([Vector2(-10 * v, -6 * v), Vector2(-7 * v, -26 * v + kick),
+				mouth + Vector2(4 * v, 0), Vector2(11 * v, -6 * v)]), iron)
+			draw_circle(mouth + Vector2(-2 * v, 0), (5.5 + level) * v, iron.darkened(0.3))
+			draw_circle(mouth + Vector2(-2 * v, 0), (3.5 + level * 0.6) * v, Color("#ff7a1e").lerp(Color("#3a1a0a"), 1.0 - _puff))
+		"guide":
+			# Tall pole with a hanging lantern and a soft halo.
+			draw_rect(Rect2(-2.5 * v, -54 * v, 5 * v, 56 * v), wood)
+			draw_line(Vector2(0, -54 * v), Vector2(9 * v, -54 * v), wood, 3 * v)
+			var lp := Vector2(9 * v, -44 * v)
+			var f := 1.0 + 0.06 * sin(_t * 4.0)
+			draw_circle(lp, (16.0 + 4.0 * level) * v * f, Color(1.0, 0.92, 0.6, 0.12))
+			draw_rect(Rect2(lp + Vector2(-5 * v, -7 * v), Vector2(10 * v, 13 * v)), Color("#4a4038"))
+			draw_rect(Rect2(lp + Vector2(-3.5 * v, -5 * v), Vector2(7 * v, 9 * v)), Color("#ffe9a8"))
 		_:
 			draw_rect(Rect2(-4 * v, -40 * v, 8 * v, 42 * v), wood)

@@ -29,6 +29,42 @@ static func draw(ci: CanvasItem, kind: String, c: Vector2, s: float, col: Color,
 			_shift(ci, c, s, col)
 		"hearth":
 			_hearth(ci, c, s, col)
+		"mortar":
+			_mortar(ci, c, s, col)
+		"guide":
+			_guide(ci, c, s, col)
+		"ashes":
+			_ashes(ci, c, s, col)
+
+
+## Cinder Mortar: a stubby barrel tilted up with a cinder arcing out.
+static func _mortar(ci: CanvasItem, c: Vector2, s: float, col: Color) -> void:
+	ci.draw_rect(Rect2(c + Vector2(-s * 0.38, s * 0.22), Vector2(s * 0.62, s * 0.14)), col)
+	ci.draw_colored_polygon(PackedVector2Array([c + Vector2(-s * 0.3, s * 0.24), c + Vector2(-s * 0.2, -s * 0.06),
+		c + Vector2(s * 0.08, -s * 0.06), c + Vector2(s * 0.14, s * 0.24)]), col)
+	ci.draw_arc(c + Vector2(s * 0.12, s * 0.1), s * 0.3, -PI * 0.95, -PI * 0.35, 10, col, s * 0.06, true)
+	ci.draw_circle(c + Vector2(s * 0.32, -s * 0.2), s * 0.1, col)
+
+
+## Guide Light: a lantern hanging from a hook, with light rays.
+static func _guide(ci: CanvasItem, c: Vector2, s: float, col: Color) -> void:
+	ci.draw_line(c + Vector2(0, -s * 0.42), c + Vector2(0, -s * 0.24), col, s * 0.06, true)
+	ci.draw_rect(Rect2(c + Vector2(-s * 0.15, -s * 0.24), Vector2(s * 0.3, s * 0.4)), col, false, s * 0.07)
+	ci.draw_circle(c + Vector2(0, -s * 0.04), s * 0.08, col)
+	for a in [-0.35, 0.0, 0.35]:
+		var d := Vector2.from_angle(PI * 0.5 + a * PI)
+		ci.draw_line(c + Vector2(0, -s * 0.04) + d * s * 0.3, c + Vector2(0, -s * 0.04) + d * s * 0.44, col, s * 0.05, true)
+
+
+## Ashes: a small grey heap with a wisp of smoke.
+static func _ashes(ci: CanvasItem, c: Vector2, s: float, col: Color) -> void:
+	ci.draw_colored_polygon(PackedVector2Array([c + Vector2(-s * 0.4, s * 0.3), c + Vector2(-s * 0.15, s * 0.02),
+		c + Vector2(s * 0.12, s * 0.06), c + Vector2(s * 0.4, s * 0.3)]), col)
+	var pts := PackedVector2Array()
+	for i in 7:
+		var t := float(i) / 6.0
+		pts.append(c + Vector2(sin(t * TAU) * s * 0.07, -t * s * 0.4))
+	ci.draw_polyline(pts, col, s * 0.05, true)
 
 
 static func _bolt(ci: CanvasItem, c: Vector2, s: float, col: Color) -> void:

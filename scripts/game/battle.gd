@@ -390,6 +390,20 @@ func pick_target(from: Vector2, rng: float):
 	return best
 
 
+## Cinder Mortar: the spirit farthest back on its trail between lo and hi.
+func pick_rear_target(from: Vector2, lo: float, hi: float):
+	var best = null
+	var best_p := 2.0
+	for sp in spirits:
+		if sp.dead:
+			continue
+		var d: float = sp.world.distance_to(from)
+		if d >= lo and d <= hi and sp.progress() < best_p:
+			best_p = sp.progress()
+			best = sp
+	return best
+
+
 func spirits_in_range(at: Vector2, rng: float) -> Array:
 	var out := []
 	for sp in spirits:
@@ -398,10 +412,11 @@ func spirits_in_range(at: Vector2, rng: float) -> Array:
 	return out
 
 
-func shoot(origin_world: Vector2, muzzle: Vector2, target, damage: float, style: String) -> void:
+func shoot(origin_world: Vector2, muzzle: Vector2, target, damage: float, style: String, splash := 0.0) -> void:
 	var p := Projectile.new()
 	_fx.add_child(p)
 	p.setup(self, board, origin_world + Vector2(muzzle.x / board.view_scale, 0), -muzzle.y / board.view_scale, target, damage, style)
+	p.splash = splash
 	p.position = board.proj(p.world) + Vector2(0, muzzle.y)
 	AudioDirector.play_sfx("bolt", -12.0 if style == "bolt" else -14.0)
 
@@ -501,7 +516,7 @@ func _try_place(d, local: Vector2) -> bool:
 	_update_hud()
 	var all_placed := true
 	for o in _dice:
-		if not o.placed:
+		if not o.placed and o.face != "ashes":
 			all_placed = false
 	if all_placed:
 		_auto_begin = 0.7
@@ -588,7 +603,7 @@ func _autoplay_step(delta: float) -> void:
 		begin_wave()
 		return
 	for d in _dice:
-		if d.placed:
+		if d.placed or d.face == "ashes":
 			continue
 		if d.face == "kindle":
 			_try_place(d, board.proj(Vector2.ZERO))
@@ -599,6 +614,11 @@ func _autoplay_step(delta: float) -> void:
 			if t != null and t.kind == d.face and t.level < 3:
 				best = i
 				break
+		if best == -1 and d.face == "guide":   # next to an existing defense
+			for i in board.tiles.size():
+				if board.tile_defense[i] == null and _has_neighbour(i):
+					best = i
+					break
 		if best == -1:
 			for i in [0, 3, 6, 1, 4, 7, 2, 5, 8]:  # inner tiles round the fire first
 				if board.tile_defense[i] == null:
@@ -609,6 +629,14 @@ func _autoplay_step(delta: float) -> void:
 		else:
 			begin_wave()
 		return
+	begin_wave()   # only Ashes left
+
+
+func _has_neighbour(i: int) -> bool:
+	for df in defenses:
+		if df.kind != "guide" and df.world.distance_to(board.tiles[i]) <= Defs.GUIDE_REACH:
+			return true
+	return false
 
 
 # ------------------------------------------------------------ input

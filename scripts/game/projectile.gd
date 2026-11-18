@@ -7,10 +7,12 @@ var battle
 var target
 var damage := 1.0
 var style := "bolt"
+var splash := 0.0           ## > 0: hits every spirit this close to the impact
 var height := 40.0          ## screen-space lift above the ground
 var world := Vector2.ZERO
 var _aim := Vector2.ZERO
 var _trail: Array[Vector2] = []
+var _from := Vector2.ZERO
 const SPEED := 620.0
 
 
@@ -23,16 +25,26 @@ func setup(b, bd, from_world: Vector2, lift: float, t, dmg: float, st: String) -
 	damage = dmg
 	style = st
 	_aim = t.world
+	_from = from_world
 
 
 func _process(delta: float) -> void:
 	if is_instance_valid(target) and not target.dead:
 		_aim = target.world
 	var to := _aim - world
-	var step := SPEED * delta
-	height = lerpf(height, 26.0, clampf(delta * 6.0, 0.0, 1.0))
+	var step := SPEED * delta * (0.55 if style == "mortar" else 1.0)
+	if style == "mortar":   # lob: a high arc over the clearing
+		var total := maxf(_from.distance_to(_aim), 1.0)
+		var f := clampf(1.0 - to.length() / total, 0.0, 1.0)
+		height = 26.0 + 4.0 * total * 0.25 * f * (1.0 - f)
+	else:
+		height = lerpf(height, 26.0, clampf(delta * 6.0, 0.0, 1.0))
 	if to.length() <= step:
-		if is_instance_valid(target) and not target.dead:
+		if splash > 0.0:
+			for sp in battle.spirits_in_range(_aim, splash):
+				sp.hit(damage)
+			battle.ring_fx(_aim, splash, Color("#e0603a"))
+		elif is_instance_valid(target) and not target.dead:
 			target.hit(damage)
 		battle.spark_fx(_aim, style)
 		queue_free()
@@ -48,7 +60,7 @@ func _process(delta: float) -> void:
 func _draw() -> void:
 	var v: float = board.view_scale
 	var core := Color("#fff3c4")
-	var outer := Color("#ff8a3a") if style == "bolt" else Color("#ffb238")
+	var outer := Color("#ff8a3a") if style == "bolt" else (Color("#e0603a") if style == "mortar" else Color("#ffb238"))
 	for i in _trail.size():
 		var p := _trail[i] - position
 		var f := 1.0 - float(i) / _trail.size()

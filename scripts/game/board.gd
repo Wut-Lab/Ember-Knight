@@ -249,6 +249,12 @@ func _draw() -> void:
 				var rng_r: float = _preview_range(glow_face if lift_tile < 0 else tile_defense[lift_tile].kind, i)
 				if rng_r > 0.0:
 					_ring(Vector2.ZERO + c, rng_r * view_scale, rng_r * view_scale * K, Color(1, 0.75, 0.35, 0.35), 2.0)
+				var face_now: String = glow_face if lift_tile < 0 else tile_defense[lift_tile].kind
+				if Defs.DEFENSES.has(face_now) and Defs.DEFENSES[face_now][0].has("min"):
+					var mn: float = Defs.DEFENSES[face_now][0]["min"]
+					_ring(c, mn * view_scale, mn * view_scale * K, Color(1, 0.4, 0.3, 0.3), 2.0)
+				if face_now == "guide":
+					_ring(c, Defs.GUIDE_REACH * view_scale, Defs.GUIDE_REACH * view_scale * K, Color(1, 0.92, 0.6, 0.3), 2.0)
 	# Fire target ring for the Kindle (★) die.
 	if glow_face == "kindle":
 		var gc := Color("#fff0b0")
