@@ -183,11 +183,11 @@ static func roll_wave_mod(night: int, rng: RandomNumberGenerator) -> String:
 
 ## Spawn list for one wave: Array of spirit kinds. night/wave are 0-based.
 static func wave_spirits(night: int, wave: int, stop: String, rng: RandomNumberGenerator) -> Array:
-	var count := 3 + night * 2 + wave * 2
-	# Mist Wisps first slip into night 1's last wave, then drift thicker in the hollow.
+	var count := 5 + night * 2 + wave * 2
+	# Mist Wisps slip into night 1 from wave 2, then drift thicker in the hollow.
 	var mist_chance := 0.15 + 0.05 * night
 	if night == 0:
-		mist_chance = 0.1 if wave == 2 else 0.0
+		mist_chance = [0.0, 0.1, 0.2][wave]
 	if stop == "hollow" and night > 0:
 		mist_chance += 0.15
 	var out := []
