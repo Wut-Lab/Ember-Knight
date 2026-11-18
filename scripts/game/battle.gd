@@ -18,6 +18,7 @@ signal abandoned
 
 const Defs := preload("res://scripts/game/defs.gd")
 const Style := preload("res://scripts/ui/ui_style.gd")
+const EssenceTracker := preload("res://scripts/ui/essence_tracker.gd")
 const Board := preload("res://scripts/game/board.gd")
 const Spirit := preload("res://scripts/game/spirit.gd")
 const Defense := preload("res://scripts/game/defense.gd")
@@ -224,7 +225,9 @@ func _wave_cleared() -> void:
 		phase = Phase.DONE
 		Run.nights_survived += 1
 		char_unit.set_mood("happy")
-		_show_banner("Dawn breaks!")
+		var gained := Defs.essence_for_night(Run.flame, Run.night)
+		Profile.add_essence(gained)
+		_show_banner("Dawn breaks!  +%d Essence" % gained)
 		AudioDirector.play_sfx("chime", -2.0)
 		get_tree().create_timer(2.0).timeout.connect(func(): night_over.emit(true))
 	else:
@@ -237,6 +240,7 @@ func _flame_out() -> void:
 	fighting = false
 	AudioDirector.set_tension(false)
 	char_unit.set_mood("hurt")
+	Profile.add_essence(Defs.essence_for_night(0.0, Run.night))
 	_show_banner("Char's flame went out...")
 	get_tree().create_timer(2.2).timeout.connect(func(): night_over.emit(false))
 
@@ -561,6 +565,7 @@ func _build_hud() -> void:
 	right.offset_top = 14
 	right.add_theme_constant_override("separation", 10)
 	right.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	right.add_child(EssenceTracker.new())
 	_speed_btn = _small_button("1×", _toggle_speed)
 	right.add_child(_speed_btn)
 	right.add_child(_small_button("II", _toggle_pause))

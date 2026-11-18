@@ -72,6 +72,16 @@ const WAVES_PER_NIGHT := 3
 const MAX_FLAME := 100.0
 const DAWN_HEAL := 20.0
 
+# ------------------------------------------------------------ essence
+## Essence is kept between runs (Profile). At the end of every night, won or
+## lost: 1 per ESSENCE_PER_FLAME flame left, plus the night's number (night 1
+## gives +1, night 5 gives +5). Never less than 1.
+const ESSENCE_PER_FLAME := 20.0
+
+
+static func essence_for_night(flame: float, night_idx: int) -> int:
+	return maxi(1, floori(flame / ESSENCE_PER_FLAME) + night_idx + 1)
+
 # ------------------------------------------------------------ map stops
 const STOPS := {
 	"road": {"name": "Old Road", "desc": "A plain night on the road."},

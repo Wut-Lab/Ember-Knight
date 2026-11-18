@@ -6,9 +6,10 @@ extends RefCounted
 ##   torch  -> flame (Torch)
 ##   vent   -> steam wisps (Steam Vent)
 ##   kindle -> star (Kindle Char)
+##   essence -> blue orb with a flame (the Essence currency; `t` waves the flame)
 
 
-static func draw(ci: CanvasItem, kind: String, c: Vector2, s: float, col: Color) -> void:
+static func draw(ci: CanvasItem, kind: String, c: Vector2, s: float, col: Color, t := 0.0) -> void:
 	match kind:
 		"bolt":
 			_bolt(ci, c, s, col)
@@ -20,6 +21,8 @@ static func draw(ci: CanvasItem, kind: String, c: Vector2, s: float, col: Color)
 			_steam(ci, c, s, col)
 		"kindle":
 			_star(ci, c, s, col)
+		"essence":
+			_essence(ci, c, s, t)
 
 
 static func _bolt(ci: CanvasItem, c: Vector2, s: float, col: Color) -> void:
@@ -95,3 +98,33 @@ static func _steam(ci: CanvasItem, c: Vector2, s: float, col: Color) -> void:
 			var t := float(i) / 8.0
 			pts.append(c + Vector2(x + sin(t * TAU) * s * 0.06, s * 0.16 - t * s * 0.56))
 		ci.draw_polyline(pts, col, s * 0.08, true)
+
+
+## Essence: a small blue orb with one flame waving off its top and a faint
+## white glow. Ignores the tint; it always looks the same.
+static func _essence(ci: CanvasItem, c: Vector2, s: float, t: float) -> void:
+	var r := s * 0.3
+	var o := c + Vector2(0, s * 0.12)
+	for k in 4:  # faint white glow
+		ci.draw_circle(o, r * (1.25 + 0.22 * k), Color(1, 1, 1, 0.07))
+	# Flame off the top, its tip swaying.
+	var sway := sin(t * 4.0) * r * 0.35
+	var tip := o + Vector2(sway, -r * 2.15)
+	var pts := PackedVector2Array()
+	for i in 9:
+		var a := PI + PI * i / 8.0
+		pts.append(o + Vector2(cos(a), sin(a) * 0.6) * r * 0.62 + Vector2(0, -r * 0.55))
+	var right := pts[pts.size() - 1]
+	var left := pts[0]
+	var out := PackedVector2Array()
+	for i in 10:
+		out.append(_qbez(right, o + Vector2(r * 0.55 + sway * 0.3, -r * 1.45), tip, i / 9.0))
+	for i in 10:
+		out.append(_qbez(tip, o + Vector2(-r * 0.6 + sway * 0.5, -r * 1.3), left, i / 9.0))
+	ci.draw_colored_polygon(out, Color("#8fd0ff"))
+	# The orb: deep blue rim, brighter body, a white highlight.
+	ci.draw_circle(o, r, Color("#1f4fa8"))
+	ci.draw_circle(o + Vector2(-r * 0.08, -r * 0.08), r * 0.82, Color("#3d86e6"))
+	ci.draw_circle(o + Vector2(-r * 0.15, -r * 0.15), r * 0.5, Color("#7fbaff"))
+	ci.draw_circle(o + Vector2(-r * 0.35, -r * 0.38), r * 0.18, Color(1, 1, 1, 0.85))
+	ci.draw_arc(o, r, 0, TAU, 32, Color(0.8, 0.92, 1.0, 0.5), maxf(1.0, s * 0.03), true)
