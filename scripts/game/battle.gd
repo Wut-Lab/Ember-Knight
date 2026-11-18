@@ -634,7 +634,7 @@ func _autoplay_step(delta: float) -> void:
 
 func _has_neighbour(i: int) -> bool:
 	for df in defenses:
-		if df.kind != "guide" and df.world.distance_to(board.tiles[i]) <= Defs.GUIDE_REACH:
+		if df.kind != "guide" and df.tile / 3 == i / 3:
 			return true
 	return false
 

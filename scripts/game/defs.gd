@@ -110,7 +110,7 @@ const DEFENSES := {
 		{"range": 400.0, "min": 200.0, "damage": 7.0, "rate": 0.4, "splash": 50.0},
 		{"range": 420.0, "min": 200.0, "damage": 10.0, "rate": 0.44, "splash": 55.0},
 	],
-	## No attack. Defenses on neighbouring tiles (within GUIDE_REACH) get their
+	## No attack. Defenses on the other tiles of its group get their
 	## range multiplied by "boost" and any "min" range by "min_mult". Several
 	## Guide Lights don't stack: the best one counts.
 	"guide": [
@@ -119,8 +119,8 @@ const DEFENSES := {
 		{"range": 0.0, "boost": 1.25, "min_mult": 0.65},
 	],
 }
-## Tiles closer than this count as neighbours (each tile group's three tiles).
-const GUIDE_REACH := 250.0
+## Guide Light boosts the other tiles in its group (the three tiles between
+## two trails: board tiles 3g, 3g+1, 3g+2).
 
 ## Char by kindle level 0..3. Kept weak on purpose: with no defenses or
 ## upgrades, a run should usually fail by night 4 or 5.

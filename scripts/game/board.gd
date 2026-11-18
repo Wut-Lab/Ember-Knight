@@ -253,8 +253,11 @@ func _draw() -> void:
 				if Defs.DEFENSES.has(face_now) and Defs.DEFENSES[face_now][0].has("min"):
 					var mn: float = Defs.DEFENSES[face_now][0]["min"]
 					_ring(c, mn * view_scale, mn * view_scale * K, Color(1, 0.4, 0.3, 0.3), 2.0)
-				if face_now == "guide":
-					_ring(c, Defs.GUIDE_REACH * view_scale, Defs.GUIDE_REACH * view_scale * K, Color(1, 0.92, 0.6, 0.3), 2.0)
+				if face_now == "guide":   # light up the tiles it would boost
+					for j in tiles.size():
+						if j != i and j / 3 == i / 3:
+							var cj := proj(tiles[j])
+							_ring(cj, rx * 1.3, rx * K * 1.3, Color(1, 0.92, 0.6, 0.45), 2.5 * view_scale)
 	# Fire target ring for the Kindle (★) die.
 	if glow_face == "kindle":
 		var gc := Color("#fff0b0")
