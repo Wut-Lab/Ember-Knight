@@ -28,21 +28,23 @@ const FACE_INFO := {
 ## face on it levels it up (max MAX_LEVEL). One entry per face, with stats for
 ## levels 1..3, e.g.
 ##   "lantern": [{"range": 235.0, "damage": 10.0, "rate": 1.0}, {...}, {...}],
-## range is in world units, rate is attacks per second. The behaviour and
+## range is in world units, rate is attacks per second. Tiles sit between the
+## trails: a spirit gets no closer than ~146 to an inner tile and ~180 to an
+## outer one, so a range must clear that to hit anything. The behaviour and
 ## drawing for each kind live in scripts/game/defense.gd.
 const DEFENSES := {
-	## A weak Char: well under half its damage and a bit less reach.
+	## A weak Char: well under half its damage.
 	"torch": [
-		{"range": 145.0, "damage": 3.0, "rate": 0.85},
-		{"range": 160.0, "damage": 4.5, "rate": 0.95},
-		{"range": 175.0, "damage": 7.0, "rate": 1.0},
+		{"range": 220.0, "damage": 3.0, "rate": 0.85},
+		{"range": 235.0, "damage": 4.5, "rate": 0.95},
+		{"range": 250.0, "damage": 7.0, "rate": 1.0},
 	],
-	## Weak support: a short-range steam puff that scalds everything near it.
+	## Weak support: a steam puff that scalds everything near it.
 	## "slow" is applied by the battle to spirits in range.
 	"vent": [
-		{"range": 95.0, "damage": 2.0, "rate": 0.5, "slow": 0.2},
-		{"range": 105.0, "damage": 3.0, "rate": 0.55, "slow": 0.27},
-		{"range": 115.0, "damage": 4.0, "rate": 0.6, "slow": 0.33},
+		{"range": 185.0, "damage": 2.0, "rate": 0.5, "slow": 0.2},
+		{"range": 195.0, "damage": 3.0, "rate": 0.55, "slow": 0.27},
+		{"range": 205.0, "damage": 4.0, "rate": 0.6, "slow": 0.33},
 	],
 }
 
