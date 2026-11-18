@@ -36,13 +36,21 @@ func _process(delta: float) -> void:
 
 func _draw() -> void:
 	var h := size.y
-	# Quiet pill behind it, like the other HUD chips.
-	var pill := Rect2(Vector2(0, h * 0.5 - 20), Vector2(size.x, 40))
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color("#1e1b25", 0.7)
-	sb.set_corner_radius_all(20)
-	sb.anti_aliasing = true
-	draw_style_box(sb, pill)
+	# A raised 2.5D chip: faint blue-white glow, a darker lip below for depth,
+	# then the face with a dark outline and a soft highlight along its top.
+	var face := Rect2(Vector2(2, h * 0.5 - 21), Vector2(size.x - 4, 38))
+	var glow := _box(Color(0, 0, 0, 0), 21)
+	glow.shadow_color = Color(0.62, 0.82, 1.0, 0.16 + 0.12 * sin(_pulse * PI))
+	glow.shadow_size = 14
+	draw_style_box(glow, face.grow_individual(0, 0, 0, 4))
+	var lip := _box(Color("#0f0d14"), 21)
+	draw_style_box(lip, Rect2(face.position + Vector2(0, 5), face.size))
+	var top := _box(Color("#2a2533"), 20)
+	top.border_color = Color("#120f17")
+	top.set_border_width_all(2)
+	draw_style_box(top, face)
+	var shine := _box(Color(1, 1, 1, 0.06), 16)
+	draw_style_box(shine, Rect2(face.position + Vector2(5, 3), Vector2(face.size.x - 10, face.size.y * 0.42)))
 	var icon_c := Vector2(22, h * 0.5 + 2)
 	Icons.draw(self, "essence", icon_c, 36.0 * (1.0 + 0.15 * sin(_pulse * PI)), Color.WHITE, _t)
 	var font := Style.display_font()
@@ -51,3 +59,11 @@ func _draw() -> void:
 		var a := clampf(_gain_t / 0.6, 0.0, 1.0)
 		var rise := (1.6 - _gain_t) * 14.0
 		draw_string(font, Vector2(42, h * 0.5 + 52 - rise), "+%d" % _gain, HORIZONTAL_ALIGNMENT_LEFT, -1, 20, Color(0.6, 0.85, 1.0, a))
+
+
+static func _box(col: Color, radius: int) -> StyleBoxFlat:
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = col
+	sb.set_corner_radius_all(radius)
+	sb.anti_aliasing = true
+	return sb

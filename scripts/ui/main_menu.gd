@@ -6,6 +6,7 @@ extends Control
 ## a Back button, and Esc / gamepad B also goes back.
 
 const Style := preload("res://scripts/ui/ui_style.gd")
+const EssenceTracker := preload("res://scripts/ui/essence_tracker.gd")
 
 signal play_requested
 
@@ -56,6 +57,12 @@ func _ready() -> void:
 		_column.add_child(b)
 		_buttons[item] = b
 	add_child(_column)
+	var essence := EssenceTracker.new()
+	essence.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+	essence.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	essence.offset_right = -20
+	essence.offset_top = 16
+	add_child(essence)
 	_column.modulate.a = 0.0
 	visible = false
 	resized.connect(_layout)

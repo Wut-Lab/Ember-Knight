@@ -240,7 +240,7 @@ func _flame_out() -> void:
 	fighting = false
 	AudioDirector.set_tension(false)
 	char_unit.set_mood("hurt")
-	Profile.add_essence(Defs.essence_for_night(0.0, Run.night))
+	Profile.add_essence(Defs.essence_for_lost_night(Run.night))
 	_show_banner("Char's flame went out...")
 	get_tree().create_timer(2.2).timeout.connect(func(): night_over.emit(false))
 
