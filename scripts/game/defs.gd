@@ -133,6 +133,46 @@ const STOPS := {
 }
 
 
+# ------------------------------------------------------------ road events
+## Fog Cloud: may roll after the player picks a stop, from night 2 on.
+const FOG_CHANCE := 0.3
+const POTHOLE_CHANCE := 0.33   ## Press On: the stagecoach hits a pothole
+const POTHOLE_DAMAGE := 8.0
+const AMBUSH_CHANCE := 0.5     ## Make Camp Early: Mist Wisps find the camp
+const CAMP_HEAL := 10.0        ## Make Camp Early always ends with this
+
+
+## The Fog Cloud ambush: one wave of Mist Wisps, as many as the night's first wave.
+static func ambush_spirits(night: int) -> Array:
+	var out := []
+	for i in 3 + night * 2:
+		out.append("mist_wisp")
+	return out
+
+
+# ------------------------------------------------------------ wave modifiers
+## From night 2 on, each wave has MOD_CHANCE to roll one of these (equal odds).
+## Shown in the prep phase so the player can plan for it.
+const MOD_CHANCE := 0.1
+const WAVE_MODS := {
+	"angry": {"name": "Angry", "desc": "The spirits move 20% faster."},
+	"hearty": {"name": "Hearty", "desc": "Half the spirits have +50% HP (the bigger ones)."},
+	"swarmy": {"name": "Swarmy", "desc": "Most spirits rush down the glowing trail."},
+}
+const ANGRY_SPEED := 1.2
+const HEARTY_HP := 1.5
+const HEARTY_SHARE := 0.5
+const SWARM_SHARE := 0.75      ## this share of spirits take the swarm trail
+const SWARM_GAP := 0.6         ## their spawn gap is multiplied by this
+
+
+## A wave modifier id, or "" for none. night is 0-based.
+static func roll_wave_mod(night: int, rng: RandomNumberGenerator) -> String:
+	if night == 0 or rng.randf() >= MOD_CHANCE:
+		return ""
+	return WAVE_MODS.keys()[rng.randi() % WAVE_MODS.size()]
+
+
 ## Spawn list for one wave: Array of spirit kinds. night/wave are 0-based.
 static func wave_spirits(night: int, wave: int, stop: String, rng: RandomNumberGenerator) -> Array:
 	var count := 3 + night * 2 + wave * 2

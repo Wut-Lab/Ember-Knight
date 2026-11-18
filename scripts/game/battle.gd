@@ -46,6 +46,10 @@ var _world := Node2D.new()
 var _entities := Node2D.new()
 var _fx := Node2D.new()
 var _campfire
+var ambush := false      ## Fog Cloud ambush: one wave of Mist Wisps in the mist
+var mod := ""            ## this wave's modifier (Defs.WAVE_MODS id) or ""
+var _swarm_lane := -1
+var _mark_t := 0.0
 var _props: Array = []   ## the stagecoach and horse Char is guarding
 var _spawn_queue: Array = []
 var _spawn_timer := 0.0
@@ -86,6 +90,12 @@ func _ready() -> void:
 	_world.add_child(_entities)
 	_world.add_child(_fx)
 	add_child(_world)
+	if ambush:   # the camp sits in the fog
+		var mist := ColorRect.new()
+		mist.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		mist.color = Color(0.72, 0.8, 0.95, 0.16)
+		mist.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(mist)
 
 	_campfire = Campfire.new()
 	_entities.add_child(_campfire)
@@ -163,10 +173,19 @@ func _start_prep() -> void:
 	_lifted = null
 	_shift_ready = wave > 0 and Run.has_oath("shifting_embers") and not defenses.is_empty()
 	_roll(true)
+	mod = "" if ambush else Defs.roll_wave_mod(Run.night, Run.rng)
+	_swarm_lane = Run.rng.randi() % board.paths.size() if mod == "swarmy" else -1
 	_update_hud()
-	_show_banner("Wave %d of %d" % [wave + 1, Defs.WAVES_PER_NIGHT])
+	if ambush:
+		_show_banner("Ambush in the fog!")
+	elif mod != "":
+		_show_banner("Wave %d of %d  ·  %s!" % [wave + 1, Defs.WAVES_PER_NIGHT, Defs.WAVE_MODS[mod]["name"]])
+	else:
+		_show_banner("Wave %d of %d" % [wave + 1, Defs.WAVES_PER_NIGHT])
 	if Run.night == 0 and wave == 0:
 		_hint.text = "Tap a die to hold it, then tap a glowing tile.  Or drag it there.  Star dice go on the fire."
+	elif mod != "":
+		_hint.text = "%s: %s  Place your dice, then Fight!" % [Defs.WAVE_MODS[mod]["name"], Defs.WAVE_MODS[mod]["desc"]]
 	else:
 		_hint.text = "Place your dice, then Fight!"
 	if _shift_ready:
@@ -211,8 +230,16 @@ func begin_wave() -> void:
 	for d in _dice:
 		if not d.placed:
 			d.placed = true  # unused dice fade back into the bag
-	_spawn_queue = Defs.wave_spirits(Run.night, wave, Run.current_stop(), Run.rng)
+	var kinds: Array = Defs.ambush_spirits(Run.night) if ambush else Defs.wave_spirits(Run.night, wave, Run.current_stop(), Run.rng)
+	# Each queue entry: [kind, lane (-1 = random), hearty]
+	_spawn_queue = []
+	for k in kinds:
+		var lane := _swarm_lane if mod == "swarmy" and Run.rng.randf() < Defs.SWARM_SHARE else -1
+		var hearty: bool = mod == "hearty" and Run.rng.randf() < Defs.HEARTY_SHARE
+		_spawn_queue.append([k, lane, hearty])
 	_spawn_timer = 0.6
+	if Run.autoplay and (ambush or mod != ""):
+		print("  night %d wave %d: %s" % [Run.night + 1, wave + 1, "fog ambush" if ambush else mod])
 	char_unit.set_mood("determined")
 	_hint.text = ""
 	_show_banner("Here they come!")
@@ -230,7 +257,13 @@ func _wave_cleared() -> void:
 	fighting = false
 	AudioDirector.set_tension(false)
 	wave += 1
-	if wave >= Defs.WAVES_PER_NIGHT:
+	if ambush:
+		phase = Phase.DONE
+		char_unit.set_mood("happy")
+		_show_banner("The mist lifts  ·  +%d flame" % roundi(Defs.CAMP_HEAL))
+		AudioDirector.play_sfx("chime", -2.0)
+		get_tree().create_timer(2.0).timeout.connect(func(): night_over.emit(true))
+	elif wave >= Defs.WAVES_PER_NIGHT:
 		phase = Phase.DONE
 		Run.nights_survived += 1
 		char_unit.set_mood("happy")
@@ -268,13 +301,22 @@ func _process(delta: float) -> void:
 			begin_wave()
 	if Run.autoplay and phase == Phase.PREP:
 		_autoplay_step(delta)
+	if _swarm_lane >= 0 and phase == Phase.PREP:   # point out the swarm trail
+		_mark_t -= delta
+		if _mark_t <= 0.0:
+			_mark_t = 0.25
+			var p = board.path_point(_swarm_lane, randf() * board.path_lengths[_swarm_lane] * 0.85)
+			_add_fx("ring", p, Color("#ff8f6b"), 40.0)
 	if not fighting:
 		return
 	if not _spawn_queue.is_empty():
 		_spawn_timer -= delta
 		if _spawn_timer <= 0.0:
-			_spawn(_spawn_queue.pop_front())
+			var e: Array = _spawn_queue.pop_front()
+			_spawn(e[0], e[1], e[2])
 			_spawn_timer = Defs.spawn_gap(Run.night, wave) * randf_range(0.8, 1.2)
+			if e[1] >= 0:
+				_spawn_timer *= Defs.SWARM_GAP
 	# Defenses with a "slow" stat slow spirits inside their reach (strongest wins).
 	for sp in spirits:
 		var slow := 0.0
@@ -294,10 +336,17 @@ func _process(delta: float) -> void:
 		_wave_cleared()
 
 
-func _spawn(kind: String) -> void:
+func _spawn(kind: String, lane := -1, hearty := false) -> void:
 	var sp := Spirit.new()
 	_entities.add_child(sp)
-	sp.setup(board, kind, Run.rng.randi() % board.paths.size(), Defs.spirit_hp_scale(Run.night, Run.current_stop()))
+	if lane < 0:
+		lane = Run.rng.randi() % board.paths.size()
+	var hp_scale := Defs.spirit_hp_scale(Run.night, Run.current_stop())
+	sp.setup(board, kind, lane, hp_scale * (Defs.HEARTY_HP if hearty else 1.0))
+	if hearty:
+		sp.size_k *= 1.2
+	if mod == "angry":
+		sp.speed *= Defs.ANGRY_SPEED
 	sp.banished.connect(_on_banished)
 	sp.reached_fire.connect(_on_reached_fire)
 	spirits.append(sp)
@@ -703,6 +752,10 @@ func _update_hud() -> void:
 	var stop_name: String = Defs.STOPS[Run.current_stop()]["name"]
 	_night_label.text = "Night %d/%d" % [Run.night + 1, Defs.NIGHTS]
 	_wave_label.text = "%s  ·  Wave %d/%d" % [stop_name, mini(wave + 1, Defs.WAVES_PER_NIGHT), Defs.WAVES_PER_NIGHT]
+	if ambush:
+		_wave_label.text = "Fog Camp  ·  Ambush"
+	elif mod != "":
+		_wave_label.text += "  ·  " + Defs.WAVE_MODS[mod]["name"]
 	var prep := phase == Phase.PREP
 	_roll_btn.text = "Roll (%d)" % _rerolls
 	_roll_btn.disabled = not prep or _rerolls <= 0

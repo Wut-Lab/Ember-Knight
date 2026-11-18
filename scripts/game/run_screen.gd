@@ -11,12 +11,14 @@ const DawnScreen := preload("res://scripts/game/dawn_screen.gd")
 const EndScreen := preload("res://scripts/game/end_screen.gd")
 const LoadoutScreen := preload("res://scripts/game/loadout_screen.gd")
 const OathsMenu := preload("res://scripts/ui/oaths_menu.gd")
+const FogEvent := preload("res://scripts/game/fog_event.gd")
 
 const TITLE_SCENE := "res://scenes/title_screen.tscn"
 
 var _screen: Control
 var _fade := ColorRect.new()
 var _sky: Control
+var _ambush := false   ## Fog Cloud: fight a Mist Wisp ambush before the night
 
 
 func _ready() -> void:
@@ -65,6 +67,18 @@ func _make_map() -> Control:
 
 func _on_stop_chosen(id: String) -> void:
 	Run.chosen_stops.append(id)
+	_ambush = false
+	if Run.night > 0 and Run.rng.randf() < Defs.FOG_CHANCE:
+		var f := FogEvent.new()
+		f.done.connect(func(ambush: bool):
+			_ambush = ambush
+			_to_loadout())
+		_show(f)
+	else:
+		_to_loadout()
+
+
+func _to_loadout() -> void:
 	var l := LoadoutScreen.new()
 	l.confirmed.connect(_start_battle)
 	l.oaths_requested.connect(show_oaths)
@@ -78,7 +92,8 @@ func show_oaths() -> void:
 
 func _start_battle() -> void:
 	var b := Battle.new()
-	b.night_over.connect(_on_night_over)
+	b.ambush = _ambush
+	b.night_over.connect(_on_ambush_over if _ambush else _on_night_over)
 	b.save_and_quit.connect(_save_and_quit)
 	b.abandoned.connect(_abandon)
 	b.oaths_requested.connect(show_oaths)
@@ -96,6 +111,16 @@ func _on_night_over(survived: bool) -> void:
 	var d := DawnScreen.new()
 	d.continued.connect(_on_dawn_done)
 	_show(d)
+
+
+## The Fog Cloud ambush is over: heal, then the real night starts (same loadout).
+func _on_ambush_over(survived: bool) -> void:
+	_ambush = false
+	if not survived:
+		_end(false)
+		return
+	Run.flame = minf(Run.max_flame, Run.flame + Defs.CAMP_HEAL)
+	_start_battle()
 
 
 func _on_dawn_done() -> void:
