@@ -44,7 +44,7 @@ func _ready() -> void:
 	root.add_child(pick)
 	root.move_child(pick, row.get_index())
 	var first: Button = null
-	for o in Defs.dawn_offerings(Run.rng, Run.oaths):
+	for o in Defs.dawn_offerings(Run.rng, Run.pool, Run.oaths):
 		var card: Button
 		if o["type"] == "die":
 			card = ChoiceCard.make(Defs.DICE[o["id"]]["name"], "New die:  " + _tally(Defs.DICE[o["id"]]["faces"]), 280.0)
@@ -61,6 +61,13 @@ func _ready() -> void:
 	status.add_theme_color_override("font_color", Style.MUTE)
 	status.add_theme_font_size_override("font_size", 20)
 	root.add_child(status)
+	if first == null:   # nothing left to offer
+		pick.text = "NO OFFERINGS LEFT"
+		first = ChoiceCard.make("Onward", "The road goes on.", 280.0)
+		first.pressed.connect(func():
+			AudioDirector.play_sfx("chime", -4.0)
+			continued.emit())
+		row.add_child(first)
 	first.grab_focus.call_deferred()
 	if Run.autoplay:
 		get_tree().create_timer(1.6).timeout.connect(first.emit_signal.bind("pressed"))

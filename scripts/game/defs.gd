@@ -33,12 +33,16 @@ const SHIFT_COST := 2.0
 const OFFERINGS := 3   ## Dawn Offerings shown after each night survived
 
 
-## Three different Dawn Offerings: {"type": "die"|"oath", "id": ...}.
-## Oaths already sworn are left out.
-static func dawn_offerings(rng: RandomNumberGenerator, oaths_owned: Array) -> Array:
+const MAX_DIE_COPIES := 3   ## a die kind leaves the offerings once owned this many times
+
+
+## Up to three different Dawn Offerings: {"type": "die"|"oath", "id": ...}.
+## Dice owned MAX_DIE_COPIES times and Oaths already sworn are left out.
+static func dawn_offerings(rng: RandomNumberGenerator, dice_owned: Array, oaths_owned: Array) -> Array:
 	var pool := []
 	for id in DICE:
-		pool.append({"type": "die", "id": id})
+		if dice_owned.count(id) < MAX_DIE_COPIES:
+			pool.append({"type": "die", "id": id})
 	for id in OATHS:
 		if not id in oaths_owned:
 			pool.append({"type": "oath", "id": id})
