@@ -12,10 +12,12 @@ const FIRE_RADIUS := 70.0      ## a spirit this close hurts Char's flame
 const SPAWN_RADIUS := 660.0
 const LIGHT_RADIUS := 360.0
 const TILE_RADIUS := 44.0
-const PATH_ANGLES := [180.0, 300.0, 60.0]
-const TILE_GROUP_ANGLES := [0.0, 120.0, 240.0]
+const FOUR_LANE_CHANCE := 0.5
+const SHAPES := ["straight", "wavy", "curved"]
 
 var view_scale := 0.85
+var layout_seed := 0                  ## set by the battle (from Run.rng) before _ready
+var shapes: Array[String] = []        ## per lane: straight / wavy / curved
 var paths: Array[PackedVector2Array] = []
 var path_lengths: Array[float] = []
 var tiles: Array[Vector2] = []
@@ -33,25 +35,9 @@ var _tufts: Array = []
 func _ready() -> void:
 	var r := RandomNumberGenerator.new()
 	r.seed = 2024
-	for i in PATH_ANGLES.size():
-		var a0 := deg_to_rad(PATH_ANGLES[i])
-		var pts := PackedVector2Array()
-		var steps := 28
-		for k in steps + 1:
-			var f := float(k) / steps
-			var rad := lerpf(SPAWN_RADIUS, FIRE_RADIUS - 6.0, f)
-			var wig := sin(f * PI * 1.6 + i * 1.7) * deg_to_rad(13.0) * (rad / SPAWN_RADIUS)
-			pts.append(Vector2(cos(a0 + wig), sin(a0 + wig)) * rad)
-		paths.append(pts)
-		var length := 0.0
-		for k in range(1, pts.size()):
-			length += pts[k].distance_to(pts[k - 1])
-		path_lengths.append(length)
-	for g in TILE_GROUP_ANGLES:
-		for t in [[g, 168.0], [g - 23.0, 300.0], [g + 23.0, 300.0]]:
-			var a := deg_to_rad(t[0])
-			tiles.append(Vector2(cos(a), sin(a)) * t[1])
-			tile_defense.append(null)
+	_build_layout()
+	if Run.autoplay:
+		print("  map: %d lanes %s" % [paths.size(), shapes])
 	for i in 70:
 		var a := r.randf() * TAU
 		var d := sqrt(r.randf()) * LIGHT_RADIUS * 1.05 + 60.0
@@ -118,6 +104,88 @@ func can_place(face: String, i: int) -> bool:
 ## Can a lifted defense be moved to tile i? Only onto an empty tile.
 func can_move_to(i: int) -> bool:
 	return lift_tile >= 0 and i >= 0 and i != lift_tile and tile_defense[i] == null
+
+
+# ------------------------------------------------------------ layout
+
+## Lane angle offset (radians) along the trail; f goes 0 at spawn .. 1 at the fire.
+func _offset(shape: String, f: float, ph: float, dir: float) -> float:
+	match shape:
+		"wavy":
+			return sin(f * PI * 2.4 + ph) * deg_to_rad(11.0) * (1.0 - f * 0.7)
+		"curved":
+			return dir * deg_to_rad(38.0) * pow(1.0 - f, 1.3)
+	return sin(f * PI * 0.9 + ph) * deg_to_rad(5.0) * (1.0 - f)
+
+
+func _f_at(rad: float) -> float:
+	return (SPAWN_RADIUS - rad) / (SPAWN_RADIUS - FIRE_RADIUS + 6.0)
+
+
+## 3-4 lanes, each a random shape; retried until no two lanes crowd each other.
+func _build_layout() -> void:
+	var r := RandomNumberGenerator.new()
+	r.seed = layout_seed
+	var n := 4 if r.randf() < FOUR_LANE_CHANCE else 3
+	var min_gap := deg_to_rad(52.0 if n == 4 else 72.0)
+	var lanes := []   # [base angle, shape, phase, dir]
+	for attempt in 30:
+		lanes.clear()
+		var rot := r.randf() * TAU
+		for i in n:
+			var shape: String = SHAPES[r.randi() % SHAPES.size()] if attempt < 25 else "straight"
+			lanes.append([rot + TAU * i / n + deg_to_rad(r.randf_range(-8.0, 8.0)), shape,
+				r.randf() * TAU, -1.0 if r.randf() < 0.5 else 1.0])
+		var ok := true
+		for k in 11:
+			var f := k / 10.0
+			for i in n:
+				var a: Array = lanes[i]
+				var b: Array = lanes[(i + 1) % n]
+				var gap := wrapf(b[0] + _offset(b[1], f, b[2], b[3]) - a[0] - _offset(a[1], f, a[2], a[3]), 0.0, TAU)
+				if gap < min_gap or gap > TAU - min_gap * (n - 1):
+					ok = false
+		if ok:
+			break
+	_lanes = lanes
+	for L in lanes:
+		shapes.append(L[1])
+		var pts := PackedVector2Array()
+		var steps := 36
+		for k in steps + 1:
+			var f := float(k) / steps
+			var rad := lerpf(SPAWN_RADIUS, FIRE_RADIUS - 6.0, f)
+			var a: float = L[0] + _offset(L[1], f, L[2], L[3])
+			pts.append(Vector2(cos(a), sin(a)) * rad)
+		paths.append(pts)
+		var length := 0.0
+		for k in range(1, pts.size()):
+			length += pts[k].distance_to(pts[k - 1])
+		path_lengths.append(length)
+	# A tile group sits between each pair of neighbouring lanes, centred in the gap.
+	for i in n:
+		var inner := _gap_mid(i, 168.0)
+		tiles.append(Vector2(cos(inner[0]), sin(inner[0])) * 168.0)
+		var outer := _gap_mid(i, 300.0)
+		var spread := minf(deg_to_rad(23.0), outer[1] / 2.0 - deg_to_rad(14.0))
+		for s in [-1.0, 1.0]:
+			var a: float = outer[0] + s * spread
+			tiles.append(Vector2(cos(a), sin(a)) * 300.0)
+	for t in tiles:
+		tile_defense.append(null)
+
+
+var _lanes := []
+
+
+## [mid angle, gap width] between lane i and lane i+1 at this radius.
+func _gap_mid(i: int, rad: float) -> Array:
+	var f := _f_at(rad)
+	var a: Array = _lanes[i]
+	var b: Array = _lanes[(i + 1) % _lanes.size()]
+	var a0: float = a[0] + _offset(a[1], f, a[2], a[3])
+	var gap := wrapf(b[0] + _offset(b[1], f, b[2], b[3]) - a0, 0.0, TAU)
+	return [a0 + gap / 2.0, gap]
 
 
 # ------------------------------------------------------------ drawing
