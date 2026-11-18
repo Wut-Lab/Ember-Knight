@@ -119,7 +119,7 @@ func _on_night_over(survived: bool) -> void:
 	if Run.night + 1 >= Defs.NIGHTS:
 		_end(true)
 		return
-	Run.flame = minf(Run.max_flame, Run.flame + Defs.DAWN_HEAL)
+	Run.flame = minf(Run.max_flame, Run.flame + Run.dawn_heal())
 	var d := DawnScreen.new()
 	d.continued.connect(_on_dawn_done)
 	_show(d)

@@ -27,8 +27,16 @@ const OATHS := {
 		"short": "Move one defense after each wave.",
 		"desc": "After each wave, before the next one starts, you may move one defense to another empty tile.\n\nThe move costs 2 flame. Tap a defense to lift it, then tap a glowing tile.",
 	},
+	"hearth_bound": {
+		"name": "Hearth-Bound",
+		"icon": "hearth",
+		"short": "Kindle heals +4 more, but dawn heals 10 less.",
+		"desc": "Char is bound to the campfire.\n\nEach Kindle die put on the fire heals 4 more flame (12 instead of 8), but dawn heals 10 less (10 instead of 20).\n\nPays off when you put plenty of Kindle dice on the fire.",
+	},
 }
 const SHIFT_COST := 2.0
+const HEARTH_KINDLE_BONUS := 4.0
+const HEARTH_DAWN_PENALTY := 10.0
 
 const OFFERINGS := 3   ## Dawn Offerings shown after each night survived
 

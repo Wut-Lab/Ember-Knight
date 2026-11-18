@@ -7,6 +7,7 @@ extends RefCounted
 ##   vent   -> steam wisps (Steam Vent)
 ##   kindle -> star (Kindle Char)
 ##   shift  -> flame with a curved arrow (Oath of Shifting Embers)
+##   hearth -> flame cradled in a heart (Hearth-Bound)
 ##   essence -> blue orb with a flame (the Essence currency; `t` waves the flame)
 
 
@@ -26,6 +27,8 @@ static func draw(ci: CanvasItem, kind: String, c: Vector2, s: float, col: Color,
 			_essence(ci, c, s, t)
 		"shift":
 			_shift(ci, c, s, col)
+		"hearth":
+			_hearth(ci, c, s, col)
 
 
 static func _bolt(ci: CanvasItem, c: Vector2, s: float, col: Color) -> void:
@@ -146,3 +149,15 @@ static func _shift(ci: CanvasItem, c: Vector2, s: float, col: Color) -> void:
 	var n := Vector2(cos(a1), sin(a1))
 	ci.draw_colored_polygon(PackedVector2Array([end + dir * s * 0.16,
 		end - dir * s * 0.04 + n * s * 0.12, end - dir * s * 0.04 - n * s * 0.12]), col)
+
+
+static func _hearth(ci: CanvasItem, c: Vector2, s: float, col: Color) -> void:
+	# A heart outline with a flame burning inside it.
+	var pts := PackedVector2Array()
+	for i in 33:
+		var t := TAU * i / 32.0
+		var x := 16.0 * pow(sin(t), 3)
+		var y := 13.0 * cos(t) - 5.0 * cos(2 * t) - 2.0 * cos(3 * t) - cos(4 * t)
+		pts.append(c + Vector2(x, -y - 2.0) * s * 0.026)
+	ci.draw_polyline(pts, col, s * 0.08, true)
+	_flame(ci, c + Vector2(0, s * 0.02), s * 0.5, col)

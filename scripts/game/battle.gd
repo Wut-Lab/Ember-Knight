@@ -488,7 +488,7 @@ func _try_place(d, local: Vector2) -> bool:
 		return false
 	if target == -2:
 		char_unit.kindle_up()
-		Run.flame = minf(Run.max_flame, Run.flame + Defs.KINDLE_HEAL)
+		Run.flame = minf(Run.max_flame, Run.flame + Run.kindle_heal())
 		_add_fx("ring", Vector2.ZERO, Color("#fff0b0"), 130.0)
 	else:
 		_build_defense(d.face, target)

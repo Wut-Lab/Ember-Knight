@@ -63,6 +63,16 @@ func has_oath(id: String) -> bool:
 	return id in oaths
 
 
+## Flame healed by one Kindle die (Hearth-Bound adds to it).
+func kindle_heal() -> float:
+	return Defs.KINDLE_HEAL + (Defs.HEARTH_KINDLE_BONUS if has_oath("hearth_bound") else 0.0)
+
+
+## Flame healed at dawn (Hearth-Bound takes from it).
+func dawn_heal() -> float:
+	return Defs.DAWN_HEAL - (Defs.HEARTH_DAWN_PENALTY if has_oath("hearth_bound") else 0.0)
+
+
 func current_stop() -> String:
 	return chosen_stops[night] if night < chosen_stops.size() else "road"
 

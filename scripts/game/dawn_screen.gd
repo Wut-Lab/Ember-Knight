@@ -27,7 +27,7 @@ func _ready() -> void:
 	h.add_theme_color_override("font_color", Color("#ffd58f"))
 	root.add_child(h)
 	var sub := Label.new()
-	sub.text = "The spirits fade with the sunrise. Char's flame recovers (+%d)." % roundi(Defs.DAWN_HEAL)
+	sub.text = "The spirits fade with the sunrise. Char's flame recovers (+%d)." % roundi(Run.dawn_heal())
 	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	sub.add_theme_font_size_override("font_size", 22)
 	root.add_child(sub)
