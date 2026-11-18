@@ -126,7 +126,7 @@ static func draw_die(ci: CanvasItem, c: Vector2, s: float, faces: Array, top: in
 	var o := Vector2(-h, -h)     # top-left of the top face
 	var r := e * 0.22            # corner rounding
 	var near := neighbours(top)
-	var sil := _silhouette(o, e, d, r)
+	var sil := _silhouette(o, e, d, r, 2.0)
 	# Soft ground shadow, then the outline (silhouette grown by a couple px).
 	ci.draw_set_transform_matrix(base * Transform2D(0.0, Vector2(1.0, 1.0), 0.0, Vector2(5, 8)))
 	ci.draw_colored_polygon(sil, Color(0, 0, 0, 0.3))
@@ -134,20 +134,24 @@ static func draw_die(ci: CanvasItem, c: Vector2, s: float, faces: Array, top: in
 	if lit:
 		ci.draw_polyline(_closed(sil), Color("#ffb238"), 6.0, true)
 	ci.draw_colored_polygon(sil, OUTLINE)
-	# Front and right sides with a vertical / horizontal shade.
-	var front := _front_face(o, e, d, r, -1.5)
+	# The body is one solid rounded block: fill it with the right side's shade,
+	# then lay the front side and the top face over it so they join cleanly.
+	var body := _silhouette(o, e, d, r, 0.0)
+	ci.draw_polygon(body, _shade(body, o.x + e, o.x + e + d, BONE_SIDE, BONE_SIDE.darkened(0.15), true))
+	var front := _front_face(o, e, d, r)
 	ci.draw_polygon(front, _shade(front, o.y + e, o.y + e + d, BONE_FRONT, BONE_FRONT.darkened(0.12), false))
-	var right := _right_face(o, e, d, r, -1.5)
-	ci.draw_polygon(right, _shade(right, o.x + e, o.x + e + d, BONE_SIDE, BONE_SIDE.darkened(0.15), true))
 	_side_icon(ci, base, faces[near[0]], o + Vector2(e * 0.5 + d * 0.5, e + d * 0.5), e * 0.42, Vector2(1.0, 0.36), BONE_FRONT)
 	_side_icon(ci, base, faces[near[1]], o + Vector2(e + d * 0.5, e * 0.5 + d * 0.5), e * 0.42, Vector2(0.36, 1.0), BONE_SIDE)
 	# Top face: gradient from a warm highlight (top left) to bone.
-	var top_pts := _rrect(Rect2(o + Vector2(1.5, 1.5), Vector2(e - 3, e - 3)), r)
+	# Its near corner, where all three faces meet, is only lightly rounded.
+	var top_pts := _top_face(o, e, r, r * 0.3)
 	var cols := PackedColorArray()
 	for p in top_pts:
 		var k := clampf(((p.x - o.x) + (p.y - o.y)) / (2.0 * e), 0.0, 1.0)
 		cols.append(BONE_HI.lerp(BONE, k))
 	ci.draw_polygon(top_pts, cols)
+	# Soft bevel where the top meets the sides.
+	ci.draw_polyline(top_pts.slice(11, 19), Color(BONE_HI, 0.7), 1.5, true)
 	# Firelight sheen along the top-left edge.
 	ci.draw_polyline(_rrect(Rect2(o + Vector2(4, 4), Vector2(e - 8, e - 8)), r * 0.8).slice(0, 12), Color(1, 0.93, 0.78, 0.6), 2.0, true)
 	_face_icon(ci, faces[top], o + Vector2(e, e) * 0.5, e * 0.62, BONE)
@@ -182,10 +186,10 @@ static func neighbours(top: int) -> Array:
 	return [out[0], out[1]]
 
 
-## Outline of the whole cube (top face plus the two sides), rounded corners.
-static func _silhouette(o: Vector2, e: float, d: float, r: float) -> PackedVector2Array:
+## Outline of the whole cube (top face plus the two sides), rounded corners,
+## grown by `g` (the outline's thickness when drawn behind the body).
+static func _silhouette(o: Vector2, e: float, d: float, r: float, g: float) -> PackedVector2Array:
 	var pts := PackedVector2Array()
-	var g := 2.0  # outline thickness
 	o -= Vector2(g, g)
 	e += g * 2.0
 	r += g
@@ -198,25 +202,26 @@ static func _silhouette(o: Vector2, e: float, d: float, r: float) -> PackedVecto
 	return pts
 
 
-## The front side: from the top face's bottom edge down to the cube's rounded
-## bottom edge. `g` grows (or, negative, shrinks) it.
-static func _front_face(o: Vector2, e: float, d: float, r: float, g: float) -> PackedVector2Array:
-	r += g
-	# Along the top edge, down the diagonal, then back along the rounded bottom.
-	var out := PackedVector2Array([o + Vector2(r - g, e), o + Vector2(e, e)])
-	out.append_array(_arc(o + Vector2(e + d - r + g, e + d - r + g), r, PI * 0.25, PI * 0.5))  # bottom-right half
-	out.append_array(_arc(o + Vector2(d + r - g, e + d - r + g), r, PI * 0.5, PI * 0.75))      # bottom-left
+## The front side: from under the top face's bottom edge, down the diagonal to
+## the near corner, then back along the block's rounded bottom and left edge.
+static func _front_face(o: Vector2, e: float, d: float, r: float) -> PackedVector2Array:
+	var out := PackedVector2Array([o + Vector2(0, e - r), o + Vector2(e, e - r), o + Vector2(e, e)])
+	out.append_array(_arc(o + Vector2(e + d - r, e + d - r), r, PI * 0.25, PI * 0.5))  # bottom-right half
+	out.append_array(_arc(o + Vector2(d + r, e + d - r), r, PI * 0.5, PI * 0.75))      # bottom-left
+	out.append_array(_arc(o + Vector2(r, e - r), r, PI * 0.75, PI))                    # left edge
 	return out
 
 
-## The right side: from the top face's right edge across to the cube's rounded
-## right edge.
-static func _right_face(o: Vector2, e: float, d: float, r: float, g: float) -> PackedVector2Array:
-	r += g
-	var out := PackedVector2Array([o + Vector2(e, e), o + Vector2(e, r - g)])
-	out.append_array(_arc(o + Vector2(e + d - r + g, d + r - g), r, PI * 1.75, TAU))      # back-right
-	out.append_array(_arc(o + Vector2(e + d - r + g, e + d - r + g), r, 0.0, PI * 0.25))  # bottom-right half
-	return out
+## The top face: rounded like the block, but the near (bottom-right) corner,
+## where it meets both sides, uses the smaller radius `rn`. Points 11..18 run
+## down its right edge, round the near corner and along its bottom edge.
+static func _top_face(o: Vector2, e: float, r: float, rn: float) -> PackedVector2Array:
+	var pts := PackedVector2Array()
+	pts.append_array(_arc(o + Vector2(r, r), r, PI, PI * 1.5))                # top-left
+	pts.append_array(_arc(o + Vector2(e - r, r), r, PI * 1.5, TAU))           # top-right
+	pts.append_array(_arc(o + Vector2(e - rn, e - rn), rn, 0.0, PI * 0.5))    # near corner
+	pts.append_array(_arc(o + Vector2(r, e - r), r, PI * 0.5, PI))            # bottom-left
+	return pts
 
 
 ## Per-vertex colours shading from a to b along y (or x when `horiz`).
