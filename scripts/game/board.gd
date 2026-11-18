@@ -22,6 +22,8 @@ var tiles: Array[Vector2] = []
 var tile_defense: Array = []          ## Defense node or null, per tile
 var glow_face := ""                   ## face being placed: valid tiles glow
 var hover_tile := -1
+var lift_tile := -1                 ## defense being moved (Oath of Shifting Embers)
+var shift_glow := false             ## a move is available: defenses / empty tiles glow
 var fire_glow := 1.0                  ## set by the battle (flicker, swells)
 
 var _t := 0.0
@@ -113,6 +115,11 @@ func can_place(face: String, i: int) -> bool:
 	return d.kind == face and d.level < 3
 
 
+## Can a lifted defense be moved to tile i? Only onto an empty tile.
+func can_move_to(i: int) -> bool:
+	return lift_tile >= 0 and i >= 0 and i != lift_tile and tile_defense[i] == null
+
+
 # ------------------------------------------------------------ drawing
 func _draw() -> void:
 	# Ground: rings from deep night to the warm lit dirt by the fire.
@@ -160,12 +167,18 @@ func _draw() -> void:
 		_ellipse_xy(c, rx, rx * K, Color("#3a312f").lerp(Color("#7d6a5c"), lit))
 		_ellipse_xy(c - Vector2(0, 2 * view_scale), rx * 0.82, rx * K * 0.78, Color("#4a3f3a").lerp(Color("#97806c"), lit))
 		var ok := glow_face != "" and can_place(glow_face, i)
+		if lift_tile >= 0:
+			ok = can_move_to(i)
+		if i == lift_tile or (shift_glow and lift_tile < 0 and tile_defense[i] != null):
+			var lc := Color("#fff0b0")
+			lc.a = 0.3 + 0.4 * pulse if i == lift_tile else 0.12 + 0.18 * pulse
+			_ring(c, rx * 1.2, rx * K * 1.2, lc, 3.0 * view_scale)
 		if ok:
 			var gc := Color("#ffb238")
 			gc.a = 0.35 + 0.35 * pulse + (0.3 if i == hover_tile else 0.0)
 			_ring(c, rx * 1.12, rx * K * 1.12, gc, 4.0 * view_scale)
 			if i == hover_tile:
-				var rng_r: float = _preview_range(glow_face, i)
+				var rng_r: float = _preview_range(glow_face if lift_tile < 0 else tile_defense[lift_tile].kind, i)
 				if rng_r > 0.0:
 					_ring(Vector2.ZERO + c, rng_r * view_scale, rng_r * view_scale * K, Color(1, 0.75, 0.35, 0.35), 2.0)
 	# Fire target ring for the Kindle (★) die.
@@ -179,7 +192,9 @@ func _preview_range(face: String, i: int) -> float:
 	if not Defs.DEFENSES.has(face):
 		return 0.0
 	var lvl := 0
-	if tile_defense[i] != null:
+	if lift_tile >= 0:
+		lvl = tile_defense[lift_tile].level - 1   # moving keeps its level
+	elif tile_defense[i] != null:
 		lvl = tile_defense[i].level
 	return Defs.DEFENSES[face][mini(lvl, 2)]["range"]
 

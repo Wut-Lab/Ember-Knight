@@ -6,6 +6,7 @@ extends RefCounted
 ##   torch  -> flame (Torch)
 ##   vent   -> steam wisps (Steam Vent)
 ##   kindle -> star (Kindle Char)
+##   shift  -> flame with a curved arrow (Oath of Shifting Embers)
 ##   essence -> blue orb with a flame (the Essence currency; `t` waves the flame)
 
 
@@ -23,6 +24,8 @@ static func draw(ci: CanvasItem, kind: String, c: Vector2, s: float, col: Color,
 			_star(ci, c, s, col)
 		"essence":
 			_essence(ci, c, s, t)
+		"shift":
+			_shift(ci, c, s, col)
 
 
 static func _bolt(ci: CanvasItem, c: Vector2, s: float, col: Color) -> void:
@@ -128,3 +131,18 @@ static func _essence(ci: CanvasItem, c: Vector2, s: float, t: float) -> void:
 	ci.draw_circle(o + Vector2(-r * 0.15, -r * 0.15), r * 0.5, Color("#7fbaff"))
 	ci.draw_circle(o + Vector2(-r * 0.35, -r * 0.38), r * 0.18, Color(1, 1, 1, 0.85))
 	ci.draw_arc(o, r, 0, TAU, 32, Color(0.8, 0.92, 1.0, 0.5), maxf(1.0, s * 0.03), true)
+
+
+static func _shift(ci: CanvasItem, c: Vector2, s: float, col: Color) -> void:
+	# A small flame with an arrow sweeping over it, from left to right.
+	_flame(ci, c + Vector2(0, s * 0.12), s * 0.62, col)
+	var r := s * 0.36
+	var o := c + Vector2(0, s * 0.08)
+	var a0 := PI * 1.05
+	var a1 := TAU - PI * 0.12
+	ci.draw_arc(o, r, a0, a1, 20, col, s * 0.08, true)
+	var end := o + Vector2(cos(a1), sin(a1)) * r
+	var dir := Vector2(-sin(a1), cos(a1))   # along the arc
+	var n := Vector2(cos(a1), sin(a1))
+	ci.draw_colored_polygon(PackedVector2Array([end + dir * s * 0.16,
+		end - dir * s * 0.04 + n * s * 0.12, end - dir * s * 0.04 - n * s * 0.12]), col)

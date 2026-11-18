@@ -1,5 +1,6 @@
 extends Control
-## Dawn after a night survived: the flame recovers, then the road goes on.
+## Dawn after a night survived: the flame recovers, then the player picks one
+## of three Dawn Offerings (a new die or an Oath) and the road goes on.
 
 signal continued
 
@@ -35,11 +36,49 @@ func _ready() -> void:
 	row.add_theme_constant_override("separation", 22)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(row)
-	var first := ChoiceCard.make("Onward", "Flame %d / %d" % [roundi(Run.flame), roundi(Run.max_flame)], 280.0)
-	first.pressed.connect(func():
-		AudioDirector.play_sfx("chime", -4.0)
-		continued.emit())
-	row.add_child(first)
+	var pick := Label.new()
+	pick.text = "DAWN OFFERINGS  ·  CHOOSE ONE"
+	pick.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	pick.add_theme_color_override("font_color", Style.MUTE)
+	pick.add_theme_font_size_override("font_size", 16)
+	root.add_child(pick)
+	root.move_child(pick, row.get_index())
+	var first: Button = null
+	for o in Defs.dawn_offerings(Run.rng, Run.oaths):
+		var card: Button
+		if o["type"] == "die":
+			card = ChoiceCard.make(Defs.DICE[o["id"]]["name"], "New die:  " + _tally(Defs.DICE[o["id"]]["faces"]), 280.0)
+		else:
+			card = ChoiceCard.make(Defs.OATHS[o["id"]]["name"], "Oath:  " + Defs.OATHS[o["id"]]["short"], 280.0)
+		card.custom_minimum_size.y = 150
+		card.pressed.connect(_take.bind(o))
+		row.add_child(card)
+		if first == null:
+			first = card
+	var status := Label.new()
+	status.text = "Flame %d / %d" % [roundi(Run.flame), roundi(Run.max_flame)]
+	status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	status.add_theme_color_override("font_color", Style.MUTE)
+	status.add_theme_font_size_override("font_size", 20)
+	root.add_child(status)
 	first.grab_focus.call_deferred()
 	if Run.autoplay:
 		get_tree().create_timer(1.6).timeout.connect(first.emit_signal.bind("pressed"))
+
+
+func _take(o: Dictionary) -> void:
+	if o["type"] == "die":
+		Run.pool.append(o["id"])
+	else:
+		Run.oaths.append(o["id"])
+	AudioDirector.play_sfx("chime", -4.0)
+	continued.emit()
+
+
+static func _tally(faces: Array) -> String:
+	var parts := []
+	for f in Defs.DIE_FACES:
+		var n := faces.count(f)
+		if n > 0:
+			parts.append("%d %s" % [n, Defs.FACE_INFO[f]["name"]])
+	return ", ".join(parts)

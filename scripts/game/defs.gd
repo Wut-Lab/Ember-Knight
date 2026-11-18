@@ -10,6 +10,42 @@ const DIE_FACES := ["kindle", "torch", "vent"]
 ## The player starts every run with STARTING_DICE copies of the starter die.
 const STARTER_DIE := ["torch", "vent", "kindle", "kindle", "vent", "torch"]
 const STARTING_DICE := 3
+const LOADOUT_SIZE := 3   ## dice slots filled before each night
+
+## Dice kinds the player can own. Opposite faces are i and 5 - i.
+const DICE := {
+	"ember": {"name": "Ember Die", "faces": STARTER_DIE},
+	"torch": {"name": "Torchbearer Die", "faces": ["torch", "kindle", "torch", "vent", "kindle", "torch"]},
+	"steam": {"name": "Boiler Die", "faces": ["vent", "kindle", "vent", "torch", "kindle", "vent"]},
+}
+
+## Oaths: passives sworn for the rest of the run.
+const OATHS := {
+	"shifting_embers": {
+		"name": "Oath of Shifting Embers",
+		"icon": "shift",
+		"short": "Move one defense after each wave.",
+		"desc": "After each wave, before the next one starts, you may move one defense to another empty tile.\n\nThe move costs 2 flame. Tap a defense to lift it, then tap a glowing tile.",
+	},
+}
+const SHIFT_COST := 2.0
+
+const OFFERINGS := 3   ## Dawn Offerings shown after each night survived
+
+
+## Three different Dawn Offerings: {"type": "die"|"oath", "id": ...}.
+## Oaths already sworn are left out.
+static func dawn_offerings(rng: RandomNumberGenerator, oaths_owned: Array) -> Array:
+	var pool := []
+	for id in DICE:
+		pool.append({"type": "die", "id": id})
+	for id in OATHS:
+		if not id in oaths_owned:
+			pool.append({"type": "oath", "id": id})
+	var out := []
+	while out.size() < OFFERINGS and not pool.is_empty():
+		out.append(pool.pop_at(rng.randi() % pool.size()))
+	return out
 const REROLLS_PER_WAVE := 2
 const MAX_LEVEL := 3
 

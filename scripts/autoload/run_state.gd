@@ -7,7 +7,10 @@ const Defs := preload("res://scripts/game/defs.gd")
 var night := 0                 ## 0-based; Defs.NIGHTS nights per run
 var flame := Defs.MAX_FLAME
 var max_flame := Defs.MAX_FLAME
-var dice: Array = []           ## dice owned this run; each is a list of 6 faces
+var pool: Array = []           ## die kinds owned this run (Defs.DICE ids, repeats allowed)
+var loadout: Array = []        ## die kinds in tonight's slots (Defs.LOADOUT_SIZE)
+var dice: Array = []           ## tonight's dice as face lists, built from the loadout
+var oaths: Array = []          ## Defs.OATHS ids sworn this run
 var stop_options: Array = []   ## per night: the stop_ids on offer
 var chosen_stops: Array[String] = []
 var spirits_banished := 0
@@ -23,9 +26,12 @@ func new_run() -> void:
 	night = 0
 	max_flame = Defs.MAX_FLAME
 	flame = max_flame
-	dice.clear()
+	pool.clear()
 	for i in Defs.STARTING_DICE:
-		dice.append(Defs.STARTER_DIE.duplicate())
+		pool.append("ember")
+	loadout = pool.duplicate()
+	apply_loadout()
+	oaths.clear()
 	chosen_stops.clear()
 	spirits_banished = 0
 	nights_survived = 0
@@ -34,6 +40,21 @@ func new_run() -> void:
 		stop_options.append(Defs.STOPS.keys())
 
 
+
+
+## Builds tonight's dice from the loadout.
+func apply_loadout() -> void:
+	dice.clear()
+	for id in loadout:
+		dice.append(Array(Defs.DICE[id]["faces"]).duplicate())
+
+
+func owned(id: String) -> int:
+	return pool.count(id)
+
+
+func has_oath(id: String) -> bool:
+	return id in oaths
 
 
 func current_stop() -> String:
@@ -56,7 +77,9 @@ func checkpoint() -> void:
 	_checkpoint = {}
 	for k in SAVE_KEYS:
 		_checkpoint[k] = get(k).duplicate() if get(k) is Array else get(k)
-	_checkpoint["dice"] = dice.duplicate(true)
+	_checkpoint["pool"] = pool.duplicate()
+	_checkpoint["loadout"] = loadout.duplicate()
+	_checkpoint["oaths"] = oaths.duplicate()
 
 
 func save_run() -> void:
@@ -88,12 +111,17 @@ func load_run() -> bool:
 	chosen_stops.assign(d["chosen_stops"])
 	spirits_banished = int(d["spirits_banished"])
 	nights_survived = int(d["nights_survived"])
-	dice.clear()
-	for die in d.get("dice", []):  # older saves have no dice: use the starter set
-		dice.append(Array(die))
-	if dice.is_empty():
+	pool.clear()
+	for id in d.get("pool", []):  # older saves have no pool: use the starter set
+		if Defs.DICE.has(id):
+			pool.append(id)
+	if pool.size() < Defs.LOADOUT_SIZE:
+		pool.clear()
 		for i in Defs.STARTING_DICE:
-			dice.append(Defs.STARTER_DIE.duplicate())
+			pool.append("ember")
+	loadout = Array(d.get("loadout", pool.slice(0, Defs.LOADOUT_SIZE)))
+	apply_loadout()
+	oaths = Array(d.get("oaths", []))
 	checkpoint()
 	return true
 

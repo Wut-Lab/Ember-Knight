@@ -4,6 +4,7 @@ extends Control
 
 signal stop_chosen(stop_id: String)
 signal save_and_quit
+signal oaths_requested
 
 const Defs := preload("res://scripts/game/defs.gd")
 const Style := preload("res://scripts/ui/ui_style.gd")
@@ -81,12 +82,20 @@ func _ready() -> void:
 	status.add_theme_font_size_override("font_size", 20)
 	_root.add_child(status)
 
+	var buttons := HBoxContainer.new()
+	buttons.alignment = BoxContainer.ALIGNMENT_CENTER
+	buttons.add_theme_constant_override("separation", 18)
+	_root.add_child(buttons)
+	var oaths := Button.new()
+	oaths.text = "Oaths"
+	oaths.custom_minimum_size = Vector2(180, 58)
+	oaths.pressed.connect(func(): oaths_requested.emit())
+	buttons.add_child(oaths)
 	var save := Button.new()
 	save.text = "Save and Quit"
 	save.custom_minimum_size = Vector2(280, 58)
-	save.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	save.pressed.connect(func(): save_and_quit.emit())
-	_root.add_child(save)
+	buttons.add_child(save)
 	if first_open:
 		first_open.grab_focus.call_deferred()
 		if Run.autoplay:

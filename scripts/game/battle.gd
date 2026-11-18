@@ -15,6 +15,7 @@ extends Control
 signal night_over(survived: bool)
 signal save_and_quit
 signal abandoned
+signal oaths_requested
 
 const Defs := preload("res://scripts/game/defs.gd")
 const Style := preload("res://scripts/ui/ui_style.gd")
@@ -57,6 +58,8 @@ var _ghost: Control
 var _hover := -1
 var _auto_begin := -1.0
 var _ap_timer := 1.2
+var _shift_ready := false  ## Oath of Shifting Embers: a move is available this prep
+var _lifted = null         ## the defense being moved, or null
 
 # HUD
 var _flame_bar
@@ -157,6 +160,8 @@ func _start_prep() -> void:
 		_tray.move_child(d, i)
 		_dice.append(d)
 	_select(null)
+	_lifted = null
+	_shift_ready = wave > 0 and Run.has_oath("shifting_embers") and not defenses.is_empty()
 	_roll(true)
 	_update_hud()
 	_show_banner("Wave %d of %d" % [wave + 1, Defs.WAVES_PER_NIGHT])
@@ -164,6 +169,8 @@ func _start_prep() -> void:
 		_hint.text = "Tap a die to hold it, then tap a glowing tile.  Or drag it there.  Star dice go on the fire."
 	else:
 		_hint.text = "Place your dice, then Fight!"
+	if _shift_ready:
+		_hint.text += "   Tap a defense to move it (−%d flame)." % roundi(Defs.SHIFT_COST)
 	_layout.call_deferred()
 
 
@@ -199,6 +206,8 @@ func begin_wave() -> void:
 	fighting = true
 	_auto_begin = -1.0
 	_select(null)
+	_drop_lift()
+	_shift_ready = false
 	for d in _dice:
 		if not d.placed:
 			d.placed = true  # unused dice fade back into the bag
@@ -250,6 +259,7 @@ func _process(delta: float) -> void:
 	board.fire_glow = 0.9 + 0.1 * sin(Time.get_ticks_msec() * 0.006) * sin(Time.get_ticks_msec() * 0.0017)
 	board.hover_tile = _hover
 	board.glow_face = _drag_die.face if _drag_die else (_selected.face if _selected else "")
+	board.shift_glow = _shift_ready and _selected == null and _drag_die == null
 	if _ghost:
 		_ghost.queue_redraw()
 	if _auto_begin > 0.0:
@@ -377,6 +387,8 @@ func _on_die_tapped(d) -> void:
 
 
 func _select(d) -> void:
+	if d:
+		_drop_lift()
 	if _selected:
 		_selected.selected = false
 	_selected = d
@@ -458,6 +470,50 @@ func _build_defense(face: String, tile: int) -> void:
 	_add_fx("ring", df.world, Color("#ffb238"), 60.0)
 
 
+# ------------------------------------------------------------ Oath of Shifting Embers
+## Tap a defense to lift it, tap an empty tile to move it there (costs flame),
+## tap it again to put it back.
+func _try_shift(tile: int) -> bool:
+	if tile < 0:
+		return false
+	if _lifted == null:
+		var df = board.tile_defense[tile]
+		if df == null:
+			return false
+		if Run.flame <= Defs.SHIFT_COST:
+			_hint.text = "Char's flame is too low to move a defense."
+			return true
+		_lifted = df
+		board.lift_tile = tile
+		_hint.text = "Tap an empty glowing tile to move the %s there (−%d flame).  Tap it again to cancel." % [
+			Defs.FACE_INFO[df.kind]["name"], roundi(Defs.SHIFT_COST)]
+		AudioDirector.play_sfx("tap", -8.0)
+		return true
+	if tile == _lifted.tile:
+		_drop_lift()
+		_hint.text = "Tap a defense to move it (−%d flame)." % roundi(Defs.SHIFT_COST)
+		return true
+	if not board.can_move_to(tile):
+		return false
+	var df = _lifted
+	_drop_lift()
+	board.tile_defense[df.tile] = null
+	board.tile_defense[tile] = df
+	df.move_to(tile)
+	Run.flame -= Defs.SHIFT_COST
+	_shift_ready = false
+	_add_fx("ring", df.world, Color("#ffb238"), 60.0)
+	AudioDirector.play_sfx("place", -3.0)
+	_hint.text = "Moved.  Place your dice, then Fight!"
+	_update_hud()
+	return true
+
+
+func _drop_lift() -> void:
+	_lifted = null
+	board.lift_tile = -1
+
+
 func _any_rolling() -> bool:
 	for d in _dice:
 		if d.is_rolling():
@@ -525,11 +581,18 @@ func _unhandled_input(event: InputEvent) -> void:
 	var local: Vector2
 	if event is InputEventMouseMotion:
 		local = board.get_global_transform_with_canvas().affine_inverse() * event.position
-		_hover = _target_at(local, _selected.face) if _selected else -1
+		if _lifted:
+			var t: int = board.tile_at(local)
+			_hover = t if board.can_move_to(t) else -1
+		else:
+			_hover = _target_at(local, _selected.face) if _selected else -1
 	elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		local = board.get_global_transform_with_canvas().affine_inverse() * event.position
 		if _selected and phase == Phase.PREP:
 			if _try_place(_selected, local):
+				get_viewport().set_input_as_handled()
+		elif _shift_ready and phase == Phase.PREP:
+			if _try_shift(board.tile_at(local)):
 				get_viewport().set_input_as_handled()
 
 
@@ -566,6 +629,9 @@ func _build_hud() -> void:
 	right.add_theme_constant_override("separation", 10)
 	right.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	right.add_child(EssenceTracker.new())
+	var oaths := _small_button("Oaths", func(): oaths_requested.emit())
+	oaths.custom_minimum_size.x = 96
+	right.add_child(oaths)
 	_speed_btn = _small_button("1×", _toggle_speed)
 	right.add_child(_speed_btn)
 	right.add_child(_small_button("II", _toggle_pause))

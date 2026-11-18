@@ -9,6 +9,8 @@ const MapScreen := preload("res://scripts/game/map_screen.gd")
 const Battle := preload("res://scripts/game/battle.gd")
 const DawnScreen := preload("res://scripts/game/dawn_screen.gd")
 const EndScreen := preload("res://scripts/game/end_screen.gd")
+const LoadoutScreen := preload("res://scripts/game/loadout_screen.gd")
+const OathsMenu := preload("res://scripts/ui/oaths_menu.gd")
 
 const TITLE_SCENE := "res://scenes/title_screen.tscn"
 
@@ -57,15 +59,29 @@ func _make_map() -> Control:
 	var m := MapScreen.new()
 	m.stop_chosen.connect(_on_stop_chosen)
 	m.save_and_quit.connect(_save_and_quit)
+	m.oaths_requested.connect(show_oaths)
 	return m
 
 
 func _on_stop_chosen(id: String) -> void:
 	Run.chosen_stops.append(id)
+	var l := LoadoutScreen.new()
+	l.confirmed.connect(_start_battle)
+	l.oaths_requested.connect(show_oaths)
+	_show(l)
+
+
+## Opens the Oaths menu over whatever is showing.
+func show_oaths() -> void:
+	add_child(OathsMenu.new())
+
+
+func _start_battle() -> void:
 	var b := Battle.new()
 	b.night_over.connect(_on_night_over)
 	b.save_and_quit.connect(_save_and_quit)
 	b.abandoned.connect(_abandon)
+	b.oaths_requested.connect(show_oaths)
 	_show(b)
 
 
