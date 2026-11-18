@@ -288,13 +288,23 @@ TENSE_NOTE = {78: 77, 66: 65, 90: 89, 83: 82}
 
 
 def heartbeat(amp):
+    """Lub-dub. A pitch-dropping thump (130 -> 60 Hz) with a muffled click and
+    soft saturation, so the beat still reads on phone and laptop speakers,
+    which can't play the deep fundamental."""
     n = int(0.5 * SR)
     t = np.arange(n) / SR
-    thump = lambda f, d: np.sin(2 * np.pi * f * t * (1 - 0.3 * t)) * np.exp(-t / d) * np.minimum(1, t / 0.004)
-    beat = thump(52, 0.09)
+
+    def thump(f0, d):
+        f = 60 + (f0 - 60) * np.exp(-t / 0.03)
+        body = np.sin(2 * np.pi * np.cumsum(f) / SR) * np.exp(-t / d)
+        click = fft_filter(rng.standard_normal(n), lo=120, hi=900) * np.exp(-t / 0.012)
+        click *= 0.35 / (np.abs(click).max() + 1e-9)
+        return np.tanh(2.2 * (body + click)) * np.minimum(1, t / 0.003)
+
+    beat = thump(130, 0.11)
     second = np.zeros(n)
-    k = int(0.16 * SR)
-    second[k:] = thump(48, 0.08)[:n - k] * 0.7
+    k = int(0.17 * SR)
+    second[k:] = thump(115, 0.09)[:n - k] * 0.7
     return amp * (beat + second)
 
 
