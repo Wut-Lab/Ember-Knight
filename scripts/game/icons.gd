@@ -4,6 +4,7 @@ extends RefCounted
 ##   flare  -> flame (Brazier)
 ##   ward   -> rune diamond (Rune Stone)
 ##   torch  -> flame (Torch)
+##   vent   -> steam wisps (Steam Vent)
 ##   kindle -> star (Kindle Char)
 
 
@@ -15,6 +16,8 @@ static func draw(ci: CanvasItem, kind: String, c: Vector2, s: float, col: Color)
 			_flame(ci, c, s, col)
 		"ward":
 			_rune(ci, c, s, col)
+		"vent":
+			_steam(ci, c, s, col)
 		"kindle":
 			_star(ci, c, s, col)
 
@@ -68,3 +71,15 @@ static func _star(ci: CanvasItem, c: Vector2, s: float, col: Color) -> void:
 		var r := s * (0.42 if i % 2 == 0 else 0.18)
 		pts.append(c + Vector2(cos(a), sin(a)) * r)
 	ci.draw_colored_polygon(pts, col)
+
+
+static func _steam(ci: CanvasItem, c: Vector2, s: float, col: Color) -> void:
+	# A nozzle with three wavy steam wisps rising from it.
+	ci.draw_rect(Rect2(c + Vector2(-s * 0.22, s * 0.22), Vector2(s * 0.44, s * 0.16)), col)
+	for k in 3:
+		var x := (k - 1) * s * 0.2
+		var pts := PackedVector2Array()
+		for i in 9:
+			var t := float(i) / 8.0
+			pts.append(c + Vector2(x + sin(t * TAU) * s * 0.06, s * 0.16 - t * s * 0.56))
+		ci.draw_polyline(pts, col, s * 0.08, true)

@@ -6,9 +6,9 @@ extends RefCounted
 ## Every face that exists. "kindle" (star) goes on the fire to power up Char.
 ## Every other face must be a key in DEFENSES. Dice only roll Kindle plus the
 ## defenses the player owns this run (Run.die_faces()).
-const DIE_FACES := ["kindle", "torch"]
+const DIE_FACES := ["kindle", "torch", "vent"]
 ## Defenses the player owns at the start of every run, without unlocking them.
-const STARTING_DEFENSES := ["torch"]
+const STARTING_DEFENSES := ["torch", "vent"]
 const DICE_PER_WAVE := 3
 const REROLLS_PER_WAVE := 2
 const MAX_LEVEL := 3
@@ -19,6 +19,8 @@ const FACE_INFO := {
 		"desc": "Place on the fire: Char hits harder and heals a little."},
 	"torch": {"name": "Torch", "color": Color("#ff9a3c"),
 		"desc": "A small flame on a post. Shoots embers like a weak Char."},
+	"vent": {"name": "Steam Vent", "color": Color("#9fd6d0"),
+		"desc": "A brass boiler that puffs steam: slows nearby spirits and scalds them a little."},
 }
 
 # ------------------------------------------------------------ defenses
@@ -34,6 +36,13 @@ const DEFENSES := {
 		{"range": 150.0, "damage": 4.0, "rate": 0.9},
 		{"range": 165.0, "damage": 6.0, "rate": 1.0},
 		{"range": 180.0, "damage": 9.0, "rate": 1.1},
+	],
+	## Weak support: a short-range steam puff that scalds everything near it.
+	## "slow" is applied by the battle to spirits in range.
+	"vent": [
+		{"range": 95.0, "damage": 2.0, "rate": 0.5, "slow": 0.2},
+		{"range": 105.0, "damage": 3.0, "rate": 0.55, "slow": 0.27},
+		{"range": 115.0, "damage": 4.0, "rate": 0.6, "slow": 0.33},
 	],
 }
 

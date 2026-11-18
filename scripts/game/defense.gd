@@ -22,6 +22,7 @@ var board
 var _cool := 0.0
 var _t := 0.0
 var _pop := 0.0        ## build / level-up bounce
+var _puff := 0.0       ## steam vent: 1 right after a puff, fades to 0
 
 
 func setup(b, bd, k: String, tile_idx: int) -> void:
@@ -48,6 +49,7 @@ func stats() -> Dictionary:
 func _process(delta: float) -> void:
 	_t += delta
 	_pop = maxf(0.0, _pop - delta * 3.0)
+	_puff = maxf(0.0, _puff - delta * 1.5)
 	queue_redraw()
 	if battle.fighting:
 		_act(delta, stats())
@@ -62,6 +64,16 @@ func _act(delta: float, st: Dictionary) -> void:
 				var target = battle.pick_target(world, st["range"])
 				if target:
 					battle.shoot(world, Vector2(0, -46.0 * board.view_scale * _scale()), target, st["damage"], "torch")
+					_cool = 1.0 / st["rate"]
+		"vent":
+			_cool -= delta
+			if _cool <= 0.0:
+				var near: Array = battle.spirits_in_range(world, st["range"])
+				if not near.is_empty():
+					for sp in near:
+						sp.hit(st["damage"])
+					battle.ring_fx(world, st["range"], Color("#cfeee9"))
+					_puff = 1.0
 					_cool = 1.0 / st["rate"]
 
 
@@ -92,5 +104,19 @@ func _draw_kind(v: float, lit: float) -> void:
 			var sway := 1.5 * v * sin(_t * 5.0)
 			draw_colored_polygon(PackedVector2Array([Vector2(-6 * v, -40 * v), Vector2(sway, -40 * v - h * 1.6), Vector2(6 * v, -40 * v)]), Color("#ff7a1e"))
 			draw_colored_polygon(PackedVector2Array([Vector2(-3 * v, -40 * v), Vector2(sway * 0.6, -40 * v - h), Vector2(3 * v, -40 * v)]), Color("#ffe27a"))
+		"vent":
+			# Brass boiler with a pressure gauge and a chimney; steam after a puff.
+			var brass := Color("#5a4220").lerp(Color("#c9973f"), lit)
+			draw_rect(Rect2(-11 * v, -26 * v, 22 * v, 28 * v), brass)
+			draw_rect(Rect2(-11 * v, -28 * v, 22 * v, 3 * v), brass.darkened(0.3))
+			draw_rect(Rect2(3 * v, -42 * v, 6 * v, 15 * v), Color("#4a4038"))
+			draw_circle(Vector2(-3 * v, -13 * v), 5 * v, Color("#e8e2d0"))
+			var a := -PI * 0.75 + PI * 1.5 * (0.3 + 0.7 * _puff)
+			draw_line(Vector2(-3 * v, -13 * v), Vector2(-3 * v, -13 * v) + Vector2.from_angle(a) * 4 * v, Color("#a02a1a"), 1.2 * v)
+			for k in 3:
+				var age := fmod(_t * 0.6 + k / 3.0, 1.0)
+				var alpha := 0.15 + 0.55 * _puff
+				var r := (3.0 + 6.0 * age + 2.0 * level) * v
+				draw_circle(Vector2(6 * v + 4 * v * sin(_t * 2.0 + k), -44 * v - 22 * v * age), r, Color(0.92, 0.96, 0.95, alpha * (1.0 - age)))
 		_:
 			draw_rect(Rect2(-4 * v, -40 * v, 8 * v, 42 * v), wood)
