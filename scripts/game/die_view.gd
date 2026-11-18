@@ -124,7 +124,7 @@ static func draw_die(ci: CanvasItem, c: Vector2, s: float, faces: Array, top: in
 	var d := s * 0.2             # depth of the side faces
 	var e := s - d               # edge of the top face
 	var o := Vector2(-h, -h)     # top-left of the top face
-	var r := e * 0.14            # corner rounding
+	var r := e * 0.22            # corner rounding
 	var near := neighbours(top)
 	var sil := _silhouette(o, e, d, r)
 	# Soft ground shadow, then the outline (silhouette grown by a couple px).
@@ -135,10 +135,10 @@ static func draw_die(ci: CanvasItem, c: Vector2, s: float, faces: Array, top: in
 		ci.draw_polyline(_closed(sil), Color("#ffb238"), 6.0, true)
 	ci.draw_colored_polygon(sil, OUTLINE)
 	# Front and right sides with a vertical / horizontal shade.
-	var front := PackedVector2Array([o + Vector2(r, e - 1), o + Vector2(e, e - 1), o + Vector2(e + d - 1.5, e + d - 1.5), o + Vector2(d + r, e + d - 1.5)])
-	ci.draw_polygon(front, PackedColorArray([BONE_FRONT, BONE_FRONT, BONE_FRONT.darkened(0.12), BONE_FRONT.darkened(0.12)]))
-	var right := PackedVector2Array([o + Vector2(e - 1, r), o + Vector2(e + d - 1.5, d + r), o + Vector2(e + d - 1.5, e + d - 1.5), o + Vector2(e - 1, e)])
-	ci.draw_polygon(right, PackedColorArray([BONE_SIDE, BONE_SIDE.darkened(0.15), BONE_SIDE.darkened(0.15), BONE_SIDE]))
+	var front := _front_face(o, e, d, r, -1.5)
+	ci.draw_polygon(front, _shade(front, o.y + e, o.y + e + d, BONE_FRONT, BONE_FRONT.darkened(0.12), false))
+	var right := _right_face(o, e, d, r, -1.5)
+	ci.draw_polygon(right, _shade(right, o.x + e, o.x + e + d, BONE_SIDE, BONE_SIDE.darkened(0.15), true))
 	_side_icon(ci, base, faces[near[0]], o + Vector2(e * 0.5 + d * 0.5, e + d * 0.5), e * 0.42, Vector2(1.0, 0.36), BONE_FRONT)
 	_side_icon(ci, base, faces[near[1]], o + Vector2(e + d * 0.5, e * 0.5 + d * 0.5), e * 0.42, Vector2(0.36, 1.0), BONE_SIDE)
 	# Top face: gradient from a warm highlight (top left) to bone.
@@ -188,6 +188,7 @@ static func _silhouette(o: Vector2, e: float, d: float, r: float) -> PackedVecto
 	var g := 2.0  # outline thickness
 	o -= Vector2(g, g)
 	e += g * 2.0
+	r += g
 	pts.append_array(_arc(o + Vector2(r, r), r, PI, PI * 1.5))                      # top-left
 	pts.append_array(_arc(o + Vector2(e - r, r), r, PI * 1.5, PI * 1.75))            # top-right
 	pts.append_array(_arc(o + Vector2(e + d - r, d + r), r, PI * 1.75, TAU))        # back-right
@@ -195,6 +196,36 @@ static func _silhouette(o: Vector2, e: float, d: float, r: float) -> PackedVecto
 	pts.append_array(_arc(o + Vector2(d + r, e + d - r), r, PI * 0.5, PI * 0.75))   # bottom-front-left
 	pts.append_array(_arc(o + Vector2(r, e - r), r, PI * 0.75, PI))                 # left
 	return pts
+
+
+## The front side: from the top face's bottom edge down to the cube's rounded
+## bottom edge. `g` grows (or, negative, shrinks) it.
+static func _front_face(o: Vector2, e: float, d: float, r: float, g: float) -> PackedVector2Array:
+	r += g
+	# Along the top edge, down the diagonal, then back along the rounded bottom.
+	var out := PackedVector2Array([o + Vector2(r - g, e), o + Vector2(e, e)])
+	out.append_array(_arc(o + Vector2(e + d - r + g, e + d - r + g), r, PI * 0.25, PI * 0.5))  # bottom-right half
+	out.append_array(_arc(o + Vector2(d + r - g, e + d - r + g), r, PI * 0.5, PI * 0.75))      # bottom-left
+	return out
+
+
+## The right side: from the top face's right edge across to the cube's rounded
+## right edge.
+static func _right_face(o: Vector2, e: float, d: float, r: float, g: float) -> PackedVector2Array:
+	r += g
+	var out := PackedVector2Array([o + Vector2(e, e), o + Vector2(e, r - g)])
+	out.append_array(_arc(o + Vector2(e + d - r + g, d + r - g), r, PI * 1.75, TAU))      # back-right
+	out.append_array(_arc(o + Vector2(e + d - r + g, e + d - r + g), r, 0.0, PI * 0.25))  # bottom-right half
+	return out
+
+
+## Per-vertex colours shading from a to b along y (or x when `horiz`).
+static func _shade(pts: PackedVector2Array, from: float, to: float, a: Color, b: Color, horiz: bool) -> PackedColorArray:
+	var cols := PackedColorArray()
+	for p in pts:
+		var v := p.x if horiz else p.y
+		cols.append(a.lerp(b, clampf((v - from) / (to - from), 0.0, 1.0)))
+	return cols
 
 
 static func _rrect(rc: Rect2, r: float) -> PackedVector2Array:
