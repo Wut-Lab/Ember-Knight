@@ -142,6 +142,14 @@ const AMBUSH_CHANCE := 0.5     ## Make Camp Early: Mist Wisps find the camp
 const CAMP_HEAL := 10.0        ## Make Camp Early always ends with this
 
 
+## Ember Shrine: same chance as Fog Cloud, at most once per run.
+const SHRINE_CHANCE := 0.3
+const SHRINE_OFFER_COST := 15.0   ## Kneel and Offer: flame paid
+const SHRINE_REROLLS := 1         ## ...for this many extra rerolls every wave, rest of run
+const SHRINE_TAKE_HEAL := 20.0    ## Take the Embers: flame gained
+const SHRINE_CURSE_HP := 1.25     ## ...but tonight's spirits have this much HP
+
+
 ## The Fog Cloud ambush: one wave of Mist Wisps, as many as the night's first wave.
 static func ambush_spirits(night: int) -> Array:
 	var out := []

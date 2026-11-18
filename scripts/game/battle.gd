@@ -153,7 +153,7 @@ func _start_prep() -> void:
 	phase = Phase.PREP
 	fighting = false
 	char_unit.set_mood("open")
-	_rerolls = Defs.REROLLS_PER_WAVE
+	_rerolls = Defs.REROLLS_PER_WAVE + Run.bonus_rerolls
 	var n: int = Run.dice.size()
 	for d in _dice:
 		d.queue_free()
@@ -342,6 +342,8 @@ func _spawn(kind: String, lane := -1, hearty := false) -> void:
 	if lane < 0:
 		lane = Run.rng.randi() % board.paths.size()
 	var hp_scale := Defs.spirit_hp_scale(Run.night, Run.current_stop())
+	if Run.shrine_curse:
+		hp_scale *= Defs.SHRINE_CURSE_HP
 	sp.setup(board, kind, lane, hp_scale * (Defs.HEARTY_HP if hearty else 1.0))
 	if hearty:
 		sp.size_k *= 1.2
@@ -756,6 +758,8 @@ func _update_hud() -> void:
 		_wave_label.text = "Fog Camp  ·  Ambush"
 	elif mod != "":
 		_wave_label.text += "  ·  " + Defs.WAVE_MODS[mod]["name"]
+	if Run.shrine_curse:
+		_wave_label.text += "  ·  Shrine's Wrath"
 	var prep := phase == Phase.PREP
 	_roll_btn.text = "Roll (%d)" % _rerolls
 	_roll_btn.disabled = not prep or _rerolls <= 0

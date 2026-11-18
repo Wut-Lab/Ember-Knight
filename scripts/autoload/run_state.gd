@@ -14,6 +14,9 @@ var oaths: Array = []          ## Defs.OATHS ids sworn this run
 var stop_options: Array = []   ## per night: the stop_ids on offer
 var chosen_stops: Array[String] = []
 var spirits_banished := 0
+var bonus_rerolls := 0         ## extra rerolls every wave (Ember Shrine)
+var shrine_seen := false       ## the Ember Shrine shows up once per run
+var shrine_curse := false      ## tonight's spirits are tougher (Ember Shrine)
 var nights_survived := 0
 var rng := RandomNumberGenerator.new()
 ## `-- --autoplay`: the game plays itself (for previews and balance checks).
@@ -35,6 +38,9 @@ func new_run() -> void:
 	chosen_stops.clear()
 	spirits_banished = 0
 	nights_survived = 0
+	bonus_rerolls = 0
+	shrine_seen = false
+	shrine_curse = false
 	stop_options.clear()
 	for n in Defs.NIGHTS:
 		stop_options.append(Defs.STOPS.keys())
@@ -67,6 +73,8 @@ func current_stop() -> String:
 const SAVE_PATH := "user://run.save"
 const SAVE_KEYS := ["night", "flame", "max_flame", "stop_options", "chosen_stops",
 	"spirits_banished", "nights_survived"]
+## Newer keys: older saves load without them.
+const EXTRA_KEYS := ["bonus_rerolls", "shrine_seen"]
 
 var resume := false   ## set by the menu's Continue; read by the run screen
 var _checkpoint := {}
@@ -80,6 +88,8 @@ func checkpoint() -> void:
 	_checkpoint["pool"] = pool.duplicate()
 	_checkpoint["loadout"] = loadout.duplicate()
 	_checkpoint["oaths"] = oaths.duplicate()
+	for k in EXTRA_KEYS:
+		_checkpoint[k] = get(k)
 	# The RNG is saved too, so Save and Quit can't reroll anything (fog, ambush,
 	# wave modifiers, spawns, dice). Strings: JSON would round 64-bit ints.
 	_checkpoint["rng_seed"] = str(rng.seed)
@@ -126,6 +136,9 @@ func load_run() -> bool:
 	loadout = Array(d.get("loadout", pool.slice(0, Defs.LOADOUT_SIZE)))
 	apply_loadout()
 	oaths = Array(d.get("oaths", []))
+	bonus_rerolls = int(d.get("bonus_rerolls", 0))
+	shrine_seen = bool(d.get("shrine_seen", false))
+	shrine_curse = false
 	if d.has("rng_seed") and d.has("rng_state"):
 		rng.seed = int(d["rng_seed"])
 		rng.state = int(d["rng_state"])

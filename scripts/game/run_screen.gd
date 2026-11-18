@@ -12,6 +12,7 @@ const EndScreen := preload("res://scripts/game/end_screen.gd")
 const LoadoutScreen := preload("res://scripts/game/loadout_screen.gd")
 const OathsMenu := preload("res://scripts/ui/oaths_menu.gd")
 const FogEvent := preload("res://scripts/game/fog_event.gd")
+const ShrineEvent := preload("res://scripts/game/shrine_event.gd")
 
 const TITLE_SCENE := "res://scenes/title_screen.tscn"
 
@@ -68,14 +69,25 @@ func _make_map() -> Control:
 func _on_stop_chosen(id: String) -> void:
 	Run.chosen_stops.append(id)
 	_ambush = false
-	if Run.night > 0 and Run.rng.randf() < Defs.FOG_CHANCE:
-		var f := FogEvent.new()
-		f.done.connect(func(ambush: bool):
-			_ambush = ambush
-			_to_loadout())
-		_show(f)
-	else:
+	Run.shrine_curse = false
+	# Road events from night 2 on. Each rolls its own chance; at most one per night.
+	var events := []
+	if Run.night > 0:
+		if Run.rng.randf() < Defs.FOG_CHANCE:
+			events.append(FogEvent)
+		if not Run.shrine_seen and Run.rng.randf() < Defs.SHRINE_CHANCE:
+			events.append(ShrineEvent)
+	if events.is_empty():
 		_to_loadout()
+		return
+	var ev: Script = events[Run.rng.randi() % events.size()]
+	if ev == ShrineEvent:
+		Run.shrine_seen = true
+	var e = ev.new()
+	e.done.connect(func(ambush: bool):
+		_ambush = ambush
+		_to_loadout())
+	_show(e)
 
 
 func _to_loadout() -> void:
