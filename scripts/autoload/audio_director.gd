@@ -6,6 +6,8 @@ extends Node
 signal swell_changed(level: float)  ## 0 = calm fire, 1 = peak of a swell
 
 const MUSIC := preload("res://assets/audio/campfire_lullaby.ogg")
+## Same key, tempo and length as MUSIC; plays in sync and fades in during waves.
+const TENSION := preload("res://assets/audio/campfire_tension.ogg")
 const FIRE := preload("res://assets/audio/fire_crackle.ogg")
 const CRICKETS := preload("res://assets/audio/crickets.ogg")
 
@@ -25,6 +27,8 @@ const SWELL_GAP := Vector2(16.0, 30.0)  ## random seconds between swells
 
 var swell_level := 0.0
 var _music: AudioStreamPlayer
+var _tension: AudioStreamPlayer
+var _tense := false
 var _fire: AudioStreamPlayer
 var _fire_layer: AudioStreamPlayer  ## same loop, other offset: thickens swells
 var _crickets: AudioStreamPlayer
@@ -50,6 +54,7 @@ func _ready() -> void:
 	_lowpass = AudioServer.get_bus_effect(bus, 0)
 
 	_music = _make_player(MUSIC, "Master")
+	_tension = _make_player(TENSION, "Master")
 	_crickets = _make_player(CRICKETS, "Master")
 	_fire = _make_player(FIRE, "Fire")
 	_fire_layer = _make_player(FIRE, "Fire")
@@ -99,6 +104,7 @@ func start_music(fade := 1.0) -> void:
 	if _music.playing:
 		return
 	_music.play()
+	_tension.play()   # silent until set_tension(true); started together to stay in step
 	_fade(_music, MUSIC_DB, fade)
 	# The fire steps back so the music can lead.
 	_fire_base_db = FIRE_BED_DB
@@ -107,6 +113,15 @@ func start_music(fade := 1.0) -> void:
 
 func is_music_playing() -> bool:
 	return _music.playing
+
+
+## Crossfades to the suspenseful version of the music (waves) and back.
+func set_tension(on: bool, seconds := 2.5) -> void:
+	if on == _tense or not _music.playing:
+		return
+	_tense = on
+	_fade(_tension, MUSIC_DB if on else SILENT_DB, seconds)
+	_fade(_music, SILENT_DB if on else MUSIC_DB, seconds * (1.4 if on else 0.8))
 
 
 # ------------------------------------------------------------ menu swells

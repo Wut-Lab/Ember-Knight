@@ -102,6 +102,7 @@ func _ready() -> void:
 
 
 func _exit_tree() -> void:
+	AudioDirector.set_tension(false)
 	Engine.time_scale = 1.0
 
 
@@ -205,6 +206,7 @@ func begin_wave() -> void:
 	_hint.text = ""
 	_show_banner("Here they come!")
 	AudioDirector.play_sfx("wave", -4.0)
+	AudioDirector.set_tension(true)
 	_update_hud()
 
 
@@ -215,6 +217,7 @@ func _wave_cleared() -> void:
 			desc.append("%s%d@%d" % [d.kind, d.level, d.tile])
 		print("  night %d wave %d cleared  flame=%d  char_kindle=%d  defenses=%s" % [Run.night + 1, wave + 1, roundi(Run.flame), char_unit.kindle, desc])
 	fighting = false
+	AudioDirector.set_tension(false)
 	wave += 1
 	if wave >= Defs.WAVES_PER_NIGHT:
 		phase = Phase.DONE
@@ -231,6 +234,7 @@ func _wave_cleared() -> void:
 func _flame_out() -> void:
 	phase = Phase.DONE
 	fighting = false
+	AudioDirector.set_tension(false)
 	char_unit.set_mood("hurt")
 	_show_banner("Char's flame went out...")
 	get_tree().create_timer(2.2).timeout.connect(func(): night_over.emit(false))

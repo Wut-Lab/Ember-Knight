@@ -279,17 +279,46 @@ def pad_chord(tones, dur):
     return s * env * swell / (len(tones) * 6)
 
 
-def make_music():
+# The tense version for waves: same key, tempo, form and length, so the game can
+# crossfade between the two at the same playback position. Major chords go
+# minor, F# melody notes become F, a heartbeat thump pulses under every
+# dotted quarter, the pad trembles and a low D drone sits underneath.
+TENSE_CH = {"D": (50, [62, 65, 69]), "Bm": (46, [58, 62, 65]), "F#m": (53, [53, 57, 60])}
+TENSE_NOTE = {78: 77, 66: 65, 90: 89, 83: 82}
+
+
+def heartbeat(amp):
+    n = int(0.5 * SR)
+    t = np.arange(n) / SR
+    thump = lambda f, d: np.sin(2 * np.pi * f * t * (1 - 0.3 * t)) * np.exp(-t / d) * np.minimum(1, t / 0.004)
+    beat = thump(52, 0.09)
+    second = np.zeros(n)
+    k = int(0.16 * SR)
+    second[k:] = thump(48, 0.08)[:n - k] * 0.7
+    return amp * (beat + second)
+
+
+def make_music(tense=False):
     n = int(BARS * 2.5 * SR)
     dry = np.zeros((2, n))
     bar_s = 2.5
+    if tense:  # low D drone under the whole loop (seamless: whole cycles)
+        tt = np.arange(n) / SR
+        drone = 0.05 * (np.sin(2 * np.pi * 36.75 * tt) + 0.4 * np.sin(2 * np.pi * 73.5 * tt))
+        drone *= 1 + 0.25 * np.sin(2 * np.pi * tt / 10.0)
+        dry += np.stack([drone, drone])
     for b, ch in enumerate(FORM):
-        root, tones = CH[ch]
+        root, tones = (TENSE_CH.get(ch) or CH[ch]) if tense else CH[ch]
         t0 = b * bar_s
         # Dynamics: soft intro, fuller middle, thinning in the last 4 bars to loop home.
         lvl = 0.8 if b < 8 else (1.0 if b < 44 else 0.85)
         # Pad.
-        add_wrap(dry, pan(pad_chord(tones, bar_s) * 0.22 * lvl, 0.0), int(t0 * SR))
+        pad = pad_chord(tones, bar_s) * 0.22 * lvl
+        if tense:  # trembling strings
+            pad *= 1 + 0.35 * np.sin(2 * np.pi * 7.0 * np.arange(len(pad)) / SR)
+            for beat in (0, 3):
+                add_wrap(dry, pan(heartbeat(0.32 * lvl), 0.0), int((t0 + beat * EIGHTH) * SR))
+        add_wrap(dry, pan(pad, 0.0), int(t0 * SR))
         # Bass pluck + soft sub on the downbeat.
         bass = pluck(mtof(root), 3.2, bright=0.2, amp=0.42 * lvl)
         tt = np.arange(int(2.6 * SR)) / SR
@@ -310,11 +339,15 @@ def make_music():
         pos = 0
         for m, d in MELODY[b]:
             if m is not None:
+                if tense:
+                    m = TENSE_NOTE.get(m, m)
                 s = recorder(m, d * EIGHTH * 0.96, amp=0.14 * lvl)
                 add_wrap(dry, pan(s, 0.25), int((t0 + pos * EIGHTH) * SR))
             pos += d
         # Bells.
         for k, m in enumerate(BELL_BARS.get(b, [])):
+            if tense:
+                m = TENSE_NOTE.get(m, m)
             add_wrap(dry, pan(bell(m, 0.09), 0.45 - 0.3 * k), int((t0 + k * 3 * EIGHTH) * SR))
     wet = circ_convolve(dry, reverb_ir(3.2, 2.6, 5, bright=5000))
     mix = 0.78 * dry + 0.55 * wet
@@ -463,10 +496,14 @@ def write_sfx(only=None):
 
 if __name__ == "__main__":
     import sys
+    if sys.argv[1:] == ["tension"]:
+        write_ogg("campfire_tension", make_music(tense=True))
+        sys.exit()
     if len(sys.argv) > 1:  # e.g. `make_audio.py button` rebuilds just that effect
         write_sfx(sys.argv[1:])
         sys.exit()
     write_ogg("fire_crackle", make_fire())
     write_ogg("crickets", make_crickets(), q=5)
     write_ogg("campfire_lullaby", make_music())
+    write_ogg("campfire_tension", make_music(tense=True))
     write_sfx()
