@@ -314,7 +314,7 @@ func _process(delta: float) -> void:
 		if _spawn_timer <= 0.0:
 			var e: Array = _spawn_queue.pop_front()
 			_spawn(e[0], e[1], e[2])
-			_spawn_timer = Defs.spawn_gap(Run.night, wave) * randf_range(0.8, 1.2)
+			_spawn_timer = Defs.spawn_gap(Run.night, wave) * Run.rng.randf_range(0.8, 1.2)
 			if e[1] >= 0:
 				_spawn_timer *= Defs.SWARM_GAP
 	# Defenses with a "slow" stat slow spirits inside their reach (strongest wins).

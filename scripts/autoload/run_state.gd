@@ -80,6 +80,10 @@ func checkpoint() -> void:
 	_checkpoint["pool"] = pool.duplicate()
 	_checkpoint["loadout"] = loadout.duplicate()
 	_checkpoint["oaths"] = oaths.duplicate()
+	# The RNG is saved too, so Save and Quit can't reroll anything (fog, ambush,
+	# wave modifiers, spawns, dice). Strings: JSON would round 64-bit ints.
+	_checkpoint["rng_seed"] = str(rng.seed)
+	_checkpoint["rng_state"] = str(rng.state)
 
 
 func save_run() -> void:
@@ -122,6 +126,9 @@ func load_run() -> bool:
 	loadout = Array(d.get("loadout", pool.slice(0, Defs.LOADOUT_SIZE)))
 	apply_loadout()
 	oaths = Array(d.get("oaths", []))
+	if d.has("rng_seed") and d.has("rng_state"):
+		rng.seed = int(d["rng_seed"])
+		rng.state = int(d["rng_state"])
 	checkpoint()
 	return true
 

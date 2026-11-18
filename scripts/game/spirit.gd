@@ -36,7 +36,7 @@ func setup(b, k: String, path: int, hp_scale: float) -> void:
 	var d: Dictionary = Defs.SPIRITS[k]
 	max_hp = d["hp"] * hp_scale
 	hp = max_hp
-	speed = d["speed"] * randf_range(0.92, 1.08)
+	speed = d["speed"] * Run.rng.randf_range(0.92, 1.08)
 	damage = d["damage"]
 	size_k = d["size"]
 	base_color = d["color"]

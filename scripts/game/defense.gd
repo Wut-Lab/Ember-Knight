@@ -33,7 +33,7 @@ func setup(b, bd, k: String, tile_idx: int) -> void:
 	world = board.tiles[tile_idx]
 	position = board.proj(world)
 	_pop = 1.0
-	_cool = randf_range(0.1, 0.5)
+	_cool = Run.rng.randf_range(0.1, 0.5)
 
 
 ## Oath of Shifting Embers: picked up and set down on another tile.
