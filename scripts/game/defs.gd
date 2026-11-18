@@ -31,11 +31,11 @@ const FACE_INFO := {
 ## range is in world units, rate is attacks per second. The behaviour and
 ## drawing for each kind live in scripts/game/defense.gd.
 const DEFENSES := {
-	## A weak Char: about half its damage and a bit less reach.
+	## A weak Char: well under half its damage and a bit less reach.
 	"torch": [
-		{"range": 150.0, "damage": 4.0, "rate": 0.9},
-		{"range": 165.0, "damage": 6.0, "rate": 1.0},
-		{"range": 180.0, "damage": 9.0, "rate": 1.1},
+		{"range": 145.0, "damage": 3.0, "rate": 0.85},
+		{"range": 160.0, "damage": 4.5, "rate": 0.95},
+		{"range": 175.0, "damage": 7.0, "rate": 1.0},
 	],
 	## Weak support: a short-range steam puff that scalds everything near it.
 	## "slow" is applied by the battle to spirits in range.
