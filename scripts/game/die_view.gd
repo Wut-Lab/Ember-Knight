@@ -105,40 +105,72 @@ func _draw() -> void:
 	draw_string(font, Vector2(6, SIZE + 14), str(index + 1), HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(1, 1, 1, 0.35))
 
 
-## Shared die drawing (also used for the drag ghost): a 2.5D cube with the
-## top face (faces[top]) big, and two neighbouring faces on the front and
-## right sides, squashed for depth.
+## Shared die drawing (also used for the drag ghost): a 2.5D bone cube in the
+## camp art style (dark outline, soft shading, warm firelight from the top
+## left). The rolled face (faces[top]) is on top; two neighbouring faces show,
+## squashed, on the front and right sides.
+const OUTLINE := Color("#2a1a12")
+const BONE_HI := Color("#fbf3e6")
+const BONE := Color("#efe2cd")
+const BONE_FRONT := Color("#d7c4a6")
+const BONE_SIDE := Color("#b9a383")
+
+
 static func draw_die(ci: CanvasItem, c: Vector2, s: float, faces: Array, top: int, lit: bool, rolling: bool, t: float) -> void:
 	var wob := sin(t * 40.0) * 0.08 if rolling else 0.0
 	var base := Transform2D(wob, c)
 	ci.draw_set_transform_matrix(base)
 	var h := s / 2
-	var d := s * 0.24            # depth of the side faces
+	var d := s * 0.2             # depth of the side faces
 	var e := s - d               # edge of the top face
 	var o := Vector2(-h, -h)     # top-left of the top face
+	var r := e * 0.14            # corner rounding
 	var near := neighbours(top)
-	# Shadow.
-	ci.draw_colored_polygon(_quad(o + Vector2(6, 10), e, d), Color(0, 0, 0, 0.35))
-	# Front side (below the top face) and right side, slightly shaded.
-	var front := PackedVector2Array([o + Vector2(0, e), o + Vector2(e, e), o + Vector2(e + d, e + d), o + Vector2(d, e + d)])
-	var right := PackedVector2Array([o + Vector2(e, 0), o + Vector2(e + d, d), o + Vector2(e + d, e + d), o + Vector2(e, e)])
-	ci.draw_colored_polygon(front, Color("#cbbca8"))
-	ci.draw_colored_polygon(right, Color("#a89a87"))
-	_side_icon(ci, base, faces[near[0]], o + Vector2(e * 0.5 + d * 0.5, e + d * 0.5), s * 0.34, Vector2(1.0, 0.42))
-	_side_icon(ci, base, faces[near[1]], o + Vector2(e + d * 0.5, e * 0.5 + d * 0.5), s * 0.34, Vector2(0.42, 1.0))
-	ci.draw_polyline(front + PackedVector2Array([front[0]]), Color(0, 0, 0, 0.25), 1.5, true)
-	ci.draw_polyline(right + PackedVector2Array([right[0]]), Color(0, 0, 0, 0.25), 1.5, true)
-	# Top face.
-	_round_rect(ci, Rect2(o, Vector2(e, e)), 10, Color("#f3e9dc"))
-	_round_rect(ci, Rect2(o + Vector2(4, 3), Vector2(e - 8, e * 0.28)), 8, Color(1, 1, 1, 0.35))
+	var sil := _silhouette(o, e, d, r)
+	# Soft ground shadow, then the outline (silhouette grown by a couple px).
+	ci.draw_set_transform_matrix(base * Transform2D(0.0, Vector2(1.0, 1.0), 0.0, Vector2(5, 8)))
+	ci.draw_colored_polygon(sil, Color(0, 0, 0, 0.3))
+	ci.draw_set_transform_matrix(base)
 	if lit:
-		_round_outline(ci, Rect2(o - Vector2(3, 3), Vector2(e + d + 6, e + d + 6)), 12, Color("#ffb238"), 4.0)
-	var f: String = faces[top]
+		ci.draw_polyline(_closed(sil), Color("#ffb238"), 6.0, true)
+	ci.draw_colored_polygon(sil, OUTLINE)
+	# Front and right sides with a vertical / horizontal shade.
+	var front := PackedVector2Array([o + Vector2(r, e - 1), o + Vector2(e, e - 1), o + Vector2(e + d - 1.5, e + d - 1.5), o + Vector2(d + r, e + d - 1.5)])
+	ci.draw_polygon(front, PackedColorArray([BONE_FRONT, BONE_FRONT, BONE_FRONT.darkened(0.12), BONE_FRONT.darkened(0.12)]))
+	var right := PackedVector2Array([o + Vector2(e - 1, r), o + Vector2(e + d - 1.5, d + r), o + Vector2(e + d - 1.5, e + d - 1.5), o + Vector2(e - 1, e)])
+	ci.draw_polygon(right, PackedColorArray([BONE_SIDE, BONE_SIDE.darkened(0.15), BONE_SIDE.darkened(0.15), BONE_SIDE]))
+	_side_icon(ci, base, faces[near[0]], o + Vector2(e * 0.5 + d * 0.5, e + d * 0.5), e * 0.42, Vector2(1.0, 0.36), BONE_FRONT)
+	_side_icon(ci, base, faces[near[1]], o + Vector2(e + d * 0.5, e * 0.5 + d * 0.5), e * 0.42, Vector2(0.36, 1.0), BONE_SIDE)
+	# Top face: gradient from a warm highlight (top left) to bone.
+	var top_pts := _rrect(Rect2(o + Vector2(1.5, 1.5), Vector2(e - 3, e - 3)), r)
+	var cols := PackedColorArray()
+	for p in top_pts:
+		var k := clampf(((p.x - o.x) + (p.y - o.y)) / (2.0 * e), 0.0, 1.0)
+		cols.append(BONE_HI.lerp(BONE, k))
+	ci.draw_polygon(top_pts, cols)
+	# Firelight sheen along the top-left edge.
+	ci.draw_polyline(_rrect(Rect2(o + Vector2(4, 4), Vector2(e - 8, e - 8)), r * 0.8).slice(0, 12), Color(1, 0.93, 0.78, 0.6), 2.0, true)
+	_face_icon(ci, faces[top], o + Vector2(e, e) * 0.5, e * 0.62, BONE)
+	ci.draw_set_transform_matrix(Transform2D())
+
+
+## A face icon pressed into the bone: a soft recessed dimple with the icon
+## engraved in its colour, a dark lip below and a light lip above.
+static func _face_icon(ci: CanvasItem, f: String, at: Vector2, s: float, bone: Color) -> void:
 	var col: Color = Defs.FACE_INFO[f]["color"]
-	var mid := o + Vector2(e, e) * 0.5
-	ci.draw_circle(mid, e * 0.36, col.darkened(0.55) if f != "kindle" else Color("#8a5a10"))
-	Icons.draw(ci, f, mid, e * 0.6, col if f != "kindle" else Color("#ffe27a"))
-	ci.draw_set_transform(Vector2.ZERO)
+	var ink := col.darkened(0.15) if f != "kindle" else Color("#e0a020")
+	ci.draw_circle(at, s * 0.5, bone.darkened(0.06))
+	ci.draw_arc(at, s * 0.5, PI * 1.1, PI * 1.9, 16, Color(OUTLINE, 0.18), 1.5, true)
+	ci.draw_arc(at, s * 0.5, PI * 0.1, PI * 0.9, 16, Color(1, 1, 1, 0.45), 1.2, true)
+	Icons.draw(ci, f, at + Vector2(0, 1.2), s * 0.78, OUTLINE.lerp(bone, 0.35))
+	Icons.draw(ci, f, at, s * 0.78, ink)
+
+
+## A face icon drawn squashed onto a side of the cube.
+static func _side_icon(ci: CanvasItem, base: Transform2D, f: String, at: Vector2, s: float, squash: Vector2, bone: Color) -> void:
+	ci.draw_set_transform_matrix(base * Transform2D(0.0, squash, 0.0, at))
+	_face_icon(ci, f, Vector2.ZERO, s, bone)
+	ci.draw_set_transform_matrix(base)
 
 
 ## Two sides next to `top` (not top itself and not its opposite, 5 - top).
@@ -150,35 +182,43 @@ static func neighbours(top: int) -> Array:
 	return [out[0], out[1]]
 
 
-static func _quad(o: Vector2, e: float, d: float) -> PackedVector2Array:
-	return PackedVector2Array([o, o + Vector2(e, 0), o + Vector2(e + d, d), o + Vector2(e + d, e + d), o + Vector2(d, e + d), o + Vector2(0, e)])
+## Outline of the whole cube (top face plus the two sides), rounded corners.
+static func _silhouette(o: Vector2, e: float, d: float, r: float) -> PackedVector2Array:
+	var pts := PackedVector2Array()
+	var g := 2.0  # outline thickness
+	o -= Vector2(g, g)
+	e += g * 2.0
+	pts.append_array(_arc(o + Vector2(r, r), r, PI, PI * 1.5))                      # top-left
+	pts.append_array(_arc(o + Vector2(e - r, r), r, PI * 1.5, PI * 1.75))            # top-right
+	pts.append_array(_arc(o + Vector2(e + d - r, d + r), r, PI * 1.75, TAU))        # back-right
+	pts.append_array(_arc(o + Vector2(e + d - r, e + d - r), r, 0.0, PI * 0.5))     # bottom-right
+	pts.append_array(_arc(o + Vector2(d + r, e + d - r), r, PI * 0.5, PI * 0.75))   # bottom-front-left
+	pts.append_array(_arc(o + Vector2(r, e - r), r, PI * 0.75, PI))                 # left
+	return pts
 
 
-## A face icon drawn squashed onto a side of the cube.
-static func _side_icon(ci: CanvasItem, base: Transform2D, f: String, at: Vector2, s: float, squash: Vector2) -> void:
-	var col: Color = Defs.FACE_INFO[f]["color"]
-	ci.draw_set_transform_matrix(base * Transform2D(0.0, squash, 0.0, at))
-	ci.draw_circle(Vector2.ZERO, s * 0.5, col.darkened(0.6) if f != "kindle" else Color("#7a5010"))
-	Icons.draw(ci, f, Vector2.ZERO, s * 0.8, (col if f != "kindle" else Color("#ffe27a")).darkened(0.15))
-	ci.draw_set_transform_matrix(base)
+static func _rrect(rc: Rect2, r: float) -> PackedVector2Array:
+	var pts := PackedVector2Array()
+	var p := rc.position
+	var z := rc.size
+	pts.append_array(_arc(p + Vector2(r, r), r, PI, PI * 1.5))
+	pts.append_array(_arc(p + Vector2(z.x - r, r), r, PI * 1.5, TAU))
+	pts.append_array(_arc(p + Vector2(z.x - r, z.y - r), r, 0.0, PI * 0.5))
+	pts.append_array(_arc(p + Vector2(r, z.y - r), r, PI * 0.5, PI))
+	return pts
 
 
-static func _round_rect(ci: CanvasItem, r: Rect2, rad: float, col: Color) -> void:
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = col
-	sb.set_corner_radius_all(int(rad))
-	sb.anti_aliasing = true
-	ci.draw_style_box(sb, r)
+static func _arc(c: Vector2, r: float, a0: float, a1: float) -> PackedVector2Array:
+	var pts := PackedVector2Array()
+	for i in 6:
+		pts.append(c + Vector2.from_angle(lerpf(a0, a1, i / 5.0)) * r)
+	return pts
 
 
-static func _round_outline(ci: CanvasItem, r: Rect2, rad: float, col: Color, w: float) -> void:
-	var sb := StyleBoxFlat.new()
-	sb.draw_center = false
-	sb.border_color = col
-	sb.set_border_width_all(int(w))
-	sb.set_corner_radius_all(int(rad))
-	sb.anti_aliasing = true
-	ci.draw_style_box(sb, r)
+static func _closed(pts: PackedVector2Array) -> PackedVector2Array:
+	var out := pts.duplicate()
+	out.append(pts[0])
+	return out
 
 
 func _draw_lock(c: Vector2) -> void:

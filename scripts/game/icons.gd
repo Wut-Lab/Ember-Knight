@@ -37,21 +37,33 @@ static func _bolt(ci: CanvasItem, c: Vector2, s: float, col: Color) -> void:
 
 
 static func _flame(ci: CanvasItem, c: Vector2, s: float, col: Color) -> void:
+	# Round base, pointed tip leaning a little right, with a lighter core.
+	var outer := _flame_pts(c + Vector2(0, s * 0.14), s * 0.27, s * 0.62)
+	ci.draw_colored_polygon(outer, col)
+	var inner := _flame_pts(c + Vector2(0, s * 0.2), s * 0.13, s * 0.34)
+	ci.draw_colored_polygon(inner, col.lightened(0.55))
+
+
+## Flame outline: half circle of radius r at `base`, rising to a tip `tall` up.
+static func _flame_pts(base: Vector2, r: float, tall: float) -> PackedVector2Array:
 	var pts := PackedVector2Array()
-	for i in 33:
-		var t := float(i) / 32.0 * TAU
-		# Teardrop: round bottom, pointed top, slight lick to the right.
-		var r := s * 0.34
-		var x := sin(t) * r * (0.75 + 0.25 * cos(t))
-		var y := -cos(t) * r * 1.35 * (1.0 if cos(t) > 0 else 0.7)
-		if cos(t) > 0.6:
-			x += sin(t * 2.0) * s * 0.05
-		pts.append(c + Vector2(x, y + s * 0.1))
-	ci.draw_colored_polygon(pts, col)
-	var inner := PackedVector2Array()
-	for p in pts:
-		inner.append(c + Vector2(0, s * 0.18) + (p - c - Vector2(0, s * 0.1)) * 0.45)
-	ci.draw_colored_polygon(inner, col.lightened(0.6))
+	for i in 13:  # bottom half circle, left to right
+		var a := PI - PI * i / 12.0
+		pts.append(base + Vector2(cos(a) * r, -sin(a) * r * -1.0))
+	var tip := base + Vector2(r * 0.25, -tall)
+	var right := base + Vector2(r, 0)
+	var left := base + Vector2(-r, 0)
+	for i in range(1, 13):  # right side up to the tip
+		var t := i / 12.0
+		pts.append(_qbez(right, base + Vector2(r * 1.05, -tall * 0.55), tip, t))
+	for i in range(1, 12):  # tip back down the left side
+		var t := i / 12.0
+		pts.append(_qbez(tip, base + Vector2(-r * 0.85, -tall * 0.4), left, t))
+	return pts
+
+
+static func _qbez(a: Vector2, b: Vector2, c: Vector2, t: float) -> Vector2:
+	return a.lerp(b, t).lerp(b.lerp(c, t), t)
 
 
 static func _rune(ci: CanvasItem, c: Vector2, s: float, col: Color) -> void:
