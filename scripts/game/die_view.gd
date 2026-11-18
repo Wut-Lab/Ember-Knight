@@ -48,7 +48,7 @@ func _process(delta: float) -> void:
 	if _rolling > 0.0:
 		_rolling -= delta
 		if int(_t * 18.0) % 2 == 0:
-			_shown_face = Defs.DIE_FACES[randi() % Defs.DIE_FACES.size()]
+			_shown_face = Run.die_faces().pick_random()
 		if _rolling <= 0.0:
 			_shown_face = face
 	else:

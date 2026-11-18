@@ -8,6 +8,7 @@ var night := 0                 ## 0-based; Defs.NIGHTS nights per run
 var flame := Defs.MAX_FLAME
 var max_flame := Defs.MAX_FLAME
 var passives: Array[String] = []
+var defenses: Array[String] = []  ## defense kinds owned this run
 var stop_options: Array = []   ## per night: [stop_id, stop_id]
 var chosen_stops: Array[String] = []
 var spirits_banished := 0
@@ -24,6 +25,7 @@ func new_run() -> void:
 	max_flame = Defs.MAX_FLAME
 	flame = max_flame
 	passives.clear()
+	defenses.assign(Defs.STARTING_DEFENSES)
 	chosen_stops.clear()
 	spirits_banished = 0
 	nights_survived = 0
@@ -33,6 +35,11 @@ func new_run() -> void:
 		var pool := ids.duplicate()
 		pool.shuffle()
 		stop_options.append([pool[0], pool[1]])
+
+
+## Faces the dice can roll: Kindle plus every owned defense.
+func die_faces() -> Array:
+	return ["kindle"] + defenses
 
 
 func has(passive: String) -> bool:
