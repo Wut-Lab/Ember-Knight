@@ -317,7 +317,7 @@ def make_music(tense=False):
         if tense:  # trembling strings
             pad *= 1 + 0.35 * np.sin(2 * np.pi * 7.0 * np.arange(len(pad)) / SR)
             for beat in (0, 3):
-                add_wrap(dry, pan(heartbeat(0.32 * lvl), 0.0), int((t0 + beat * EIGHTH) * SR))
+                add_wrap(dry, pan(heartbeat(0.45 * lvl), 0.0), int((t0 + beat * EIGHTH) * SR))
         add_wrap(dry, pan(pad, 0.0), int(t0 * SR))
         # Bass pluck + soft sub on the downbeat.
         bass = pluck(mtof(root), 3.2, bright=0.2, amp=0.42 * lvl)
