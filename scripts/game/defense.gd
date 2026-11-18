@@ -156,15 +156,21 @@ func _draw_kind(v: float, lit: float) -> void:
 				var r := (3.0 + 6.0 * age + 2.0 * level) * v
 				draw_circle(Vector2(6 * v + 4 * v * sin(_t * 2.0 + k), -44 * v - 22 * v * age), r, Color(0.92, 0.96, 0.95, alpha * (1.0 - age)))
 		"mortar":
-			# Squat iron mortar on a stone base, recoiling after a shot.
-			var iron := Color("#2e2a28").lerp(Color("#6a625c"), lit)
-			draw_rect(Rect2(-13 * v, -8 * v, 26 * v, 10 * v), Color("#4a4038"))
+			# Wooden block with a fat iron barrel angled up; recoils and glows after a shot.
+			var iron := Color("#4a4440").lerp(Color("#9a8f86"), lit)
+			draw_rect(Rect2(-14 * v, -10 * v, 28 * v, 12 * v), wood)
+			draw_rect(Rect2(-14 * v, -10 * v, 28 * v, 2.5 * v), wood.lightened(0.2))
 			var kick := 3.0 * v * _puff
-			var mouth := Vector2(4 * v, -32 * v + kick)
-			draw_colored_polygon(PackedVector2Array([Vector2(-10 * v, -6 * v), Vector2(-7 * v, -26 * v + kick),
-				mouth + Vector2(4 * v, 0), Vector2(11 * v, -6 * v)]), iron)
-			draw_circle(mouth + Vector2(-2 * v, 0), (5.5 + level) * v, iron.darkened(0.3))
-			draw_circle(mouth + Vector2(-2 * v, 0), (3.5 + level * 0.6) * v, Color("#ff7a1e").lerp(Color("#3a1a0a"), 1.0 - _puff))
+			var dir := Vector2(0.55, -1.0).normalized()
+			var nrm := Vector2(-dir.y, dir.x)
+			var base := Vector2(-2 * v, -10 * v + kick)
+			var w := (8.0 + level) * v
+			var tip := base + dir * (22.0 + 2.0 * level) * v
+			draw_colored_polygon(PackedVector2Array([base - nrm * w, tip - nrm * w * 1.15, tip + nrm * w * 1.15, base + nrm * w]), iron)
+			draw_line(base - nrm * w * 0.6 + dir * 6 * v, tip - nrm * w * 0.8, iron.lightened(0.35), 2.0 * v)
+			draw_circle(base, w, iron.darkened(0.15))
+			draw_circle(tip, w * 1.15, iron.darkened(0.45))
+			draw_circle(tip, w * 0.75, Color("#ff7a1e").lerp(Color("#5a2410"), 0.7 - 0.7 * _puff))
 		"guide":
 			# Tall pole with a hanging lantern and a soft halo.
 			draw_rect(Rect2(-2.5 * v, -54 * v, 5 * v, 56 * v), wood)

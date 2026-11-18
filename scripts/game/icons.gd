@@ -39,11 +39,14 @@ static func draw(ci: CanvasItem, kind: String, c: Vector2, s: float, col: Color,
 
 ## Cinder Mortar: a stubby barrel tilted up with a cinder arcing out.
 static func _mortar(ci: CanvasItem, c: Vector2, s: float, col: Color) -> void:
-	ci.draw_rect(Rect2(c + Vector2(-s * 0.38, s * 0.22), Vector2(s * 0.62, s * 0.14)), col)
-	ci.draw_colored_polygon(PackedVector2Array([c + Vector2(-s * 0.3, s * 0.24), c + Vector2(-s * 0.2, -s * 0.06),
-		c + Vector2(s * 0.08, -s * 0.06), c + Vector2(s * 0.14, s * 0.24)]), col)
-	ci.draw_arc(c + Vector2(s * 0.12, s * 0.1), s * 0.3, -PI * 0.95, -PI * 0.35, 10, col, s * 0.06, true)
-	ci.draw_circle(c + Vector2(s * 0.32, -s * 0.2), s * 0.1, col)
+	# Block base, a fat barrel angled up-right, and a cinder flying out.
+	ci.draw_rect(Rect2(c + Vector2(-s * 0.38, s * 0.18), Vector2(s * 0.56, s * 0.18)), col)
+	var dir := Vector2(0.6, -1.0).normalized()
+	var n := Vector2(-dir.y, dir.x)
+	var b0 := c + Vector2(-s * 0.12, s * 0.16)
+	var tip := b0 + dir * s * 0.42
+	ci.draw_colored_polygon(PackedVector2Array([b0 - n * s * 0.13, tip - n * s * 0.16, tip + n * s * 0.16, b0 + n * s * 0.13]), col)
+	ci.draw_circle(c + Vector2(s * 0.34, -s * 0.36), s * 0.09, col)
 
 
 ## Guide Light: a lantern hanging from a hook, with light rays.
