@@ -3,10 +3,12 @@ extends RefCounted
 ## map stops and wave sizes. Tune numbers here.
 
 # ------------------------------------------------------------ dice
-## Faces on a standard die. "kindle" (star) goes on the fire to power up Char.
-## Every other face must be a key in DEFENSES. No defenses exist yet, so for
-## now every die rolls Kindle. Add defense faces here as they are designed.
-const DIE_FACES := ["kindle"]
+## Every face that exists. "kindle" (star) goes on the fire to power up Char.
+## Every other face must be a key in DEFENSES. Dice only roll Kindle plus the
+## defenses the player owns this run (Run.die_faces()).
+const DIE_FACES := ["kindle", "torch"]
+## Defenses the player owns at the start of every run, without unlocking them.
+const STARTING_DEFENSES := ["torch"]
 const DICE_PER_WAVE := 3
 const REROLLS_PER_WAVE := 2
 const MAX_LEVEL := 3
@@ -15,6 +17,8 @@ const MAX_LEVEL := 3
 const FACE_INFO := {
 	"kindle": {"name": "Kindle Char", "color": Color("#fff0b0"),
 		"desc": "Place on the fire: Char hits harder and heals a little."},
+	"torch": {"name": "Torch", "color": Color("#ff9a3c"),
+		"desc": "A small flame on a post. Shoots embers like a weak Char."},
 }
 
 # ------------------------------------------------------------ defenses
@@ -24,7 +28,14 @@ const FACE_INFO := {
 ##   "lantern": [{"range": 235.0, "damage": 10.0, "rate": 1.0}, {...}, {...}],
 ## range is in world units, rate is attacks per second. The behaviour and
 ## drawing for each kind live in scripts/game/defense.gd.
-const DEFENSES := {}
+const DEFENSES := {
+	## A weak Char: about half its damage and a bit less reach.
+	"torch": [
+		{"range": 150.0, "damage": 4.0, "rate": 0.9},
+		{"range": 165.0, "damage": 6.0, "rate": 1.0},
+		{"range": 180.0, "damage": 9.0, "rate": 1.1},
+	],
+}
 
 ## Char by kindle level 0..3. Kept weak on purpose: with no defenses or
 ## upgrades, a run should usually fail by night 4 or 5.

@@ -2,8 +2,9 @@ extends Node2D
 ## A defense built from a die on a tile. Placing another die with the same
 ## face on it raises its level (max Defs.MAX_LEVEL).
 ##
-## No defense kinds exist yet. To add one:
-##   1. Add its stats to Defs.DEFENSES and its face to Defs.DIE_FACES / FACE_INFO.
+## To add a defense kind:
+##   1. Add its stats to Defs.DEFENSES and its face to Defs.DIE_FACES / FACE_INFO
+##      (and to Defs.STARTING_DEFENSES if the player owns it from the start).
 ##   2. Add its behaviour to _act() and its look to _draw_kind() below.
 ## Helpers on the battle: pick_target(world, range), shoot(...),
 ## spirits_in_range(world, range), ring_fx(...). A "slow" stat is applied by the
@@ -53,10 +54,15 @@ func _process(delta: float) -> void:
 
 
 ## Per-kind behaviour while a wave is on.
-func _act(_delta: float, _st: Dictionary) -> void:
+func _act(delta: float, st: Dictionary) -> void:
 	match kind:
-		_:
-			pass
+		"torch":
+			_cool -= delta
+			if _cool <= 0.0:
+				var target = battle.pick_target(world, st["range"])
+				if target:
+					battle.shoot(world, Vector2(0, -46.0 * board.view_scale * _scale()), target, st["damage"], "torch")
+					_cool = 1.0 / st["rate"]
 
 
 func _scale() -> float:
@@ -75,7 +81,16 @@ func _draw() -> void:
 
 ## Per-kind look. Until a kind has art, it shows as a plain marker post.
 func _draw_kind(v: float, lit: float) -> void:
+	var wood := Color("#3b2416").lerp(Color("#8b5a3a"), lit)
 	match kind:
+		"torch":
+			# Post, iron cup and a flickering flame that grows with level.
+			draw_rect(Rect2(-3.5 * v, -36 * v, 7 * v, 38 * v), wood)
+			draw_rect(Rect2(-7 * v, -40 * v, 14 * v, 5 * v), Color("#4a4038"))
+			var f := 1.0 + 0.08 * sin(_t * 11.0) + 0.05 * sin(_t * 17.0)
+			var h := (12.0 + 3.0 * level) * v * f
+			var sway := 1.5 * v * sin(_t * 5.0)
+			draw_colored_polygon(PackedVector2Array([Vector2(-6 * v, -40 * v), Vector2(sway, -40 * v - h * 1.6), Vector2(6 * v, -40 * v)]), Color("#ff7a1e"))
+			draw_colored_polygon(PackedVector2Array([Vector2(-3 * v, -40 * v), Vector2(sway * 0.6, -40 * v - h), Vector2(3 * v, -40 * v)]), Color("#ffe27a"))
 		_:
-			var wood := Color("#3b2416").lerp(Color("#8b5a3a"), lit)
 			draw_rect(Rect2(-4 * v, -40 * v, 8 * v, 42 * v), wood)

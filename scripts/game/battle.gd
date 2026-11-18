@@ -170,7 +170,8 @@ func _roll(first := false) -> void:
 	for d in _dice:
 		if d.placed or (d.held and not first):
 			continue
-		d.roll(Defs.DIE_FACES[Run.rng.randi() % Defs.DIE_FACES.size()], 0.45 + 0.12 * d.index)
+		var faces := Run.die_faces()
+		d.roll(faces[Run.rng.randi() % faces.size()], 0.45 + 0.12 * d.index)
 		any = true
 	if any:
 		AudioDirector.play_sfx("dice_roll", -3.0)

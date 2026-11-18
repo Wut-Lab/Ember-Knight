@@ -3,6 +3,7 @@ extends RefCounted
 ##   bolt   -> ember arrow (Ember Lantern)
 ##   flare  -> flame (Brazier)
 ##   ward   -> rune diamond (Rune Stone)
+##   torch  -> flame (Torch)
 ##   kindle -> star (Kindle Char)
 
 
@@ -10,7 +11,7 @@ static func draw(ci: CanvasItem, kind: String, c: Vector2, s: float, col: Color)
 	match kind:
 		"bolt":
 			_bolt(ci, c, s, col)
-		"flare":
+		"flare", "torch":
 			_flame(ci, c, s, col)
 		"ward":
 			_rune(ci, c, s, col)
