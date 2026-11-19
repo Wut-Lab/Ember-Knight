@@ -489,13 +489,51 @@ def sfx_wave():
     return s * env
 
 
+def sfx_charge_hum():
+    """Charged Wisp spawns: a buzzy electric hum that swells in, wavers and fades,
+    with a few faint crackle ticks on top."""
+    dur = 1.2
+    n = int(dur * SR)
+    t = np.arange(n) / SR
+    f = 98 * (1 + 0.04 * t / dur) * (1 + 0.006 * np.sin(2 * np.pi * 7 * t))
+    ph = 2 * np.pi * np.cumsum(f) / SR
+    buzz = sum(np.sin(h * ph) / h ** 0.9 for h in range(1, 14))   # bright, saw-like
+    buzz = fft_filter(buzz, lo=70, hi=2400)
+    buzz *= 1 + 0.25 * np.sin(2 * np.pi * 13 * t)                   # electric flutter
+    env = np.clip(t / 0.35, 0, 1) ** 1.5 * np.clip((dur - t) / 0.45, 0, 1)
+    out = np.tanh(1.8 * buzz / np.abs(buzz).max()) * env
+    for k in range(6):
+        m = int(0.015 * SR)
+        tick = _noise(m, 2500, 8000) * _env(m, 0.0003, 0.003)
+        _place(out, 0.25 * tick / np.abs(tick).max(), rng.uniform(0.25, 0.95))
+    return out
+
+
+def sfx_zap():
+    """Charged Wisp attacks: a sharp crackling snap with a falling buzz."""
+    dur = 0.38
+    n = int(dur * SR)
+    t = np.arange(n) / SR
+    crackle = _noise(n, 1500, 9000)
+    gate = (rng.random(n // 220 + 1) < 0.55).repeat(220)[:n]          # stuttering arc
+    crackle = crackle / np.abs(crackle).max() * gate * _env(n, 0.001, 0.09)
+    f = np.geomspace(1400, 220, n)
+    ph = 2 * np.pi * np.cumsum(f) / SR
+    buzz = sum(np.sin(h * ph) / h for h in range(1, 8)) * _env(n, 0.002, 0.12)
+    snap = _noise(int(0.01 * SR), 800, 6000) * _env(int(0.01 * SR), 0.0002, 0.002)
+    out = 0.7 * crackle + 0.5 * buzz / np.abs(buzz).max()
+    _place(out, 0.8 * snap / np.abs(snap).max(), 0)
+    return np.tanh(2.0 * out)
+
+
 def write_sfx(only=None):
     global OUT
     base = OUT
     OUT = os.path.join(base, "sfx")
     for name, fn in [("dice_roll", sfx_dice_roll), ("place", sfx_place), ("bolt", sfx_bolt),
                      ("flare", sfx_flare), ("pop", sfx_pop), ("hurt", sfx_hurt), ("tap", sfx_tap),
-                     ("chime", sfx_chime), ("wave", sfx_wave), ("button", sfx_button)]:
+                     ("chime", sfx_chime), ("wave", sfx_wave), ("button", sfx_button),
+                     ("charge_hum", sfx_charge_hum), ("zap", sfx_zap)]:
         if only and name not in only:
             continue
         mono = fn()

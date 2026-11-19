@@ -369,6 +369,8 @@ func _spawn(kind: String, lane := -1, hearty := false) -> void:
 	sp.banished.connect(_on_banished)
 	sp.reached_fire.connect(_on_reached_fire)
 	sp.zapped.connect(_on_zapped)
+	if sp.zap_range > 0.0:
+		AudioDirector.play_sfx("charge_hum", -5.0)
 	spirits.append(sp)
 
 
@@ -386,17 +388,17 @@ func _on_reached_fire(sp) -> void:
 
 ## A Charged Wisp's zap: the same hurt as reaching the fire, but it stays.
 func _on_zapped(sp) -> void:
-	_hurt_fire(sp)
+	_hurt_fire(sp, "zap")
 
 
-func _hurt_fire(sp) -> void:
+func _hurt_fire(sp, sfx := "hurt") -> void:
 	if phase == Phase.DONE:
 		return
 	Run.flame = maxf(0.0, Run.flame - sp.damage)
 	char_unit.hurt()
 	_flame_bar.flash()
 	_add_fx("ring", Vector2.ZERO, Color("#8fa0ff"), 110.0)
-	AudioDirector.play_sfx("hurt", -2.0)
+	AudioDirector.play_sfx(sfx, -2.0 if sfx == "hurt" else -4.0)
 	_update_hud()
 	if Run.flame <= 0.0:
 		_flame_out()
