@@ -164,7 +164,7 @@ static func essence_for_lost_night(night_idx: int) -> int:
 # ------------------------------------------------------------ map stops
 const STOPS := {
 	"road": {"name": "Old Road", "desc": "A plain night on the road."},
-	"hill": {"name": "Hillside Clearing", "desc": "Camp on a hilltop. 2-3 trails spiral round the stagecoach.", "forks": false},
+	"hill": {"name": "Hillside Clearing", "desc": "Camp on a hilltop. 2-3 trails spiral round the stagecoach."},
 }
 ## Hillside Clearing: each trail wraps this far round the camp (degrees), and
 ## spirits run faster down the long spirals.
@@ -263,7 +263,7 @@ static func spawn_gap(night: int, wave: int) -> float:
 	return maxf(SPAWN_GAP_MIN, SPAWN_GAP - SPAWN_GAP_PER_NIGHT * night - SPAWN_GAP_PER_WAVE * wave)
 
 
-## Does this stop's map get forks (and so gates)? Not the hill: too confusing.
+## Does this stop's map get forks (and so gates)? Set "forks": false on a stop to drop them.
 static func has_forks(stop: String) -> bool:
 	return STOPS.get(stop, {}).get("forks", true)
 

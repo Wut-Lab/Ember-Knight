@@ -13,6 +13,10 @@ const SPAWN_RADIUS := 660.0
 const LIGHT_RADIUS := 360.0
 const TILE_RADIUS := 44.0
 const FOUR_LANE_CHANCE := 0.5
+## World half-extents the battle camera fits on screen. The hill pulls back a
+## little so its downhill shortcuts (which start further out) stay in view.
+const VIEW_FIT := Vector2(420.0, 330.0)
+const VIEW_FIT_HILL := Vector2(500.0, 390.0)
 const SHAPES := ["straight", "wavy", "curved"]
 
 var view_scale := 0.85
@@ -38,7 +42,7 @@ func _ready() -> void:
 	r.seed = 2024
 	_build_layout()
 	if Run.autoplay:
-		print("  map: %d lanes %s, %d forks" % [lane_count, shapes, links.size()])
+		print("  map: %d lanes %s, %d forks %s" % [lane_count, shapes, links.size(), links.map(func(L): return snappedf(maxf(absf(L["pts"][0].x) / VIEW_FIT_HILL.x, absf(L["pts"][0].y) / VIEW_FIT_HILL.y), 0.01))])
 	for i in 70:
 		var a := r.randf() * TAU
 		var d := sqrt(r.randf()) * LIGHT_RADIUS * 1.05 + 60.0
@@ -131,6 +135,15 @@ func _f_at(rad: float) -> float:
 func _build_layout() -> void:
 	var r := RandomNumberGenerator.new()
 	r.seed = layout_seed
+	for attempt in 30:   # a hill reshapes its spiral until a shortcut fits
+		for a in [paths, path_lengths, tiles, tile_defense, links, shapes]:
+			a.clear()
+		_build_once(r)
+		if not links.is_empty() or not Defs.has_forks(stop):
+			return
+
+
+func _build_once(r: RandomNumberGenerator) -> void:
 	var hill := stop == "hill"
 	var n := 4 if r.randf() < FOUR_LANE_CHANCE else 3
 	if hill:   # Hillside Clearing: 2-3 trails spiral round the camp, all the same way
@@ -250,6 +263,11 @@ func _build_forks(r: RandomNumberGenerator) -> void:
 	for g in order:
 		if links.size() >= want:
 			break
+		if stop == "hill":
+			var rung := _hill_rung(g, r)
+			if not rung.is_empty():
+				_add_fork(rung)
+			continue
 		var a: int = g
 		var b: int = (g + 1) % n
 		if r.randf() < 0.5:
@@ -271,6 +289,45 @@ func _build_forks(r: RandomNumberGenerator) -> void:
 		if not _clear_of_tiles(fk[4]):
 			continue
 		_add_fork(fk)
+
+
+## Hill fork: a straight shortcut down the slope, from arm i inward to the
+## next arm, so it reads clearly against the curving spirals. Of those that
+## clear the tiles, the one whose junction sits most in view wins.
+func _hill_rung(i: int, r: RandomNumberGenerator) -> Array:
+	var best := []
+	var best_len := INF
+	var off := r.randf()
+	for k in 40:
+		var f1 := lerpf(0.0, 0.7, (k + off) / 40.0)
+		var p1 := _lane_pos(i, f1)
+		var ang := p1.angle()
+		var r1 := p1.length()
+		var prev := {}
+		var rad := r1 - 20.0
+		while rad > FIRE_RADIUS + 60.0:
+			var fb := _f_at(rad)
+			var hit := -1
+			for b in lane_count:
+				if b == i:
+					continue
+				var diff := wrapf(_lane_angle(b, fb) - ang, -PI, PI)
+				if prev.has(b) and signf(diff) != signf(prev[b]) and absf(diff) < 0.5:
+					hit = b
+				prev[b] = diff
+			if hit >= 0:
+				# Prefer the junction most in view (the screen is wider than tall).
+				var seg_len := maxf(absf(p1.x) / VIEW_FIT_HILL.x, absf(p1.y) / VIEW_FIT_HILL.y)
+				if seg_len < best_len and seg_len < 0.97:
+					var pts := PackedVector2Array()
+					for j in 9:
+						pts.append(Vector2(cos(ang), sin(ang)) * lerpf(r1, rad, j / 8.0))
+					if _clear_of_tiles(pts):
+						best = [i, hit, f1, fb, pts]
+						best_len = seg_len
+				break
+			rad -= 3.0
+	return best
 
 
 func _clear_of_tiles(pts: PackedVector2Array) -> bool:

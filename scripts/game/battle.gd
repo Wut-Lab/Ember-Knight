@@ -130,7 +130,8 @@ func _layout() -> void:
 	var top := 78.0
 	var tray_h := 150.0
 	var avail_h := s.y - top - tray_h
-	board.view_scale = clampf(minf(s.x * 0.5 / 420.0, avail_h * 0.5 / (330.0 * Board.K)), 0.6, 1.35)
+	var fit: Vector2 = Board.VIEW_FIT_HILL if board.stop == "hill" else Board.VIEW_FIT
+	board.view_scale = clampf(minf(s.x * 0.5 / fit.x, avail_h * 0.5 / (fit.y * Board.K)), 0.6, 1.35)
 	_world.position = Vector2(s.x / 2, top + avail_h * 0.5 + 6.0)
 	_campfire.scale = Vector2.ONE * 0.36 * board.view_scale
 	_campfire.position = board.proj(Vector2.ZERO)
