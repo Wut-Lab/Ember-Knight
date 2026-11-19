@@ -22,6 +22,9 @@ var _grid: GridContainer
 var _go: Button
 
 
+const GATE_KIT := "_gates"   ## a slot traded for gates
+
+
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -97,6 +100,8 @@ func _ready() -> void:
 ## Last night's dice if still owned, topped up from the bag.
 func _start_slots() -> Array:
 	var out := []
+	if Run.gates > 0:   # kept the gate kit last night
+		out.append(GATE_KIT)
 	for id in Run.loadout:
 		if out.count(id) < Run.owned(id) and out.size() < Defs.LOADOUT_SIZE:
 			out.append(id)
@@ -109,9 +114,12 @@ func _start_slots() -> Array:
 
 
 func _confirm() -> void:
+	if Run.autoplay and not GATE_KIT in _slots and Run.rng.randf() < 0.5:
+		_slots[_slots.size() - 1] = GATE_KIT   # autoplay tries the trade half the time
 	if "" in _slots:
 		return
-	Run.loadout = _slots.duplicate()
+	Run.gates = _slots.count(GATE_KIT) * Defs.GATES_PER_SLOT
+	Run.loadout = _slots.filter(func(id): return id != GATE_KIT)
 	Run.apply_loadout()
 	AudioDirector.play_sfx("dice_roll", -6.0)
 	confirmed.emit()
@@ -133,6 +141,8 @@ func _refresh() -> void:
 			_filter = f[0]
 			_refresh())
 		_filter_row.add_child(b)
+	if _filter == "":
+		_grid.add_child(_gate_card())
 	for id in _bag_ids():
 		_grid.add_child(_bag_card(id))
 	_go.disabled = "" in _slots
@@ -165,7 +175,10 @@ func _slot_button(i: int) -> Button:
 	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	art.draw_fn = func(ci: CanvasItem):
 		var c := Vector2(85, 62)
-		if id == "":
+		if id == GATE_KIT:
+			_draw_gate(ci, c, 1.6)
+			_text(ci, "%d Gates" % Defs.GATES_PER_SLOT, Vector2(0, 132), 170, 18, Style.FG)
+		elif id == "":
 			for k in 16:  # dashed outline of an empty slot
 				var a0 := TAU * k / 16.0
 				ci.draw_arc(c, 40, a0, a0 + TAU / 32.0, 4, Color(1, 1, 1, 0.3), 3.0, true)
@@ -176,6 +189,43 @@ func _slot_button(i: int) -> Button:
 			_text(ci, Defs.DICE[id]["name"], Vector2(0, 132), 170, 18, Style.FG)
 	b.add_child(art)
 	return b
+
+
+## Trade one die slot for gates Char cobbles at the forks.
+func _gate_card() -> Button:
+	var used := GATE_KIT in _slots
+	var b := Button.new()
+	b.custom_minimum_size = Vector2(200, 112)
+	b.mouse_entered.connect(b.grab_focus)
+	b.pressed.connect(func():
+		var empty := _slots.find("")
+		if used:
+			_slots[_slots.find(GATE_KIT)] = ""
+		elif empty != -1:
+			_slots[empty] = GATE_KIT
+		AudioDirector.play_sfx("tap", -8.0)
+		_refresh())
+	var art := DrawProxy.new()
+	art.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	art.draw_fn = func(ci: CanvasItem):
+		_draw_gate(ci, Vector2(44, 58), 1.0)
+		_text(ci, "Cobble Gates", Vector2(82, 30), 116, 17, Style.FG, HORIZONTAL_ALIGNMENT_LEFT)
+		ci.draw_multiline_string(Style.BODY_MEDIUM, Vector2(82, 50), "Trade a slot for %d gates to steer spirits at forks." % Defs.GATES_PER_SLOT,
+			HORIZONTAL_ALIGNMENT_LEFT, 112, 13, 3, Style.MUTE)
+		_text(ci, "In use" if used else "One slot max", Vector2(82, 98), 116, 15,
+			Style.ACCENT if used else Style.MUTE, HORIZONTAL_ALIGNMENT_LEFT)
+	b.add_child(art)
+	return b
+
+
+static func _draw_gate(ci: CanvasItem, c: Vector2, k: float) -> void:
+	var wood := Color("#c88a50")
+	for x in [-22.0, 22.0]:
+		ci.draw_line(c + Vector2(x, 26) * k, c + Vector2(x, -26) * k, wood.darkened(0.3), 7 * k, true)
+	for y in [-14.0, 8.0]:
+		ci.draw_line(c + Vector2(-30, y) * k, c + Vector2(30, y) * k, wood, 7 * k, true)
+	ci.draw_line(c + Vector2(-20, 8) * k, c + Vector2(20, -14) * k, wood.darkened(0.15), 5 * k, true)
 
 
 func _bag_card(id: String) -> Button:

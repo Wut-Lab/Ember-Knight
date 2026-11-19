@@ -172,6 +172,16 @@ const HILL_WRAP_MIN := 200.0
 const HILL_WRAP_MAX := 270.0
 const HILL_SPEED := 1.6
 
+## Forks and Char's gates. Each battle map gets FORKS_MIN..MAX one-way forks;
+## a spirit at an ungated fork goes either way at random. Gates come two to a
+## loadout slot; tapping one in a wave switches it, then it needs GATE_COOLDOWN.
+const FORKS_MIN := 1
+const FORKS_MAX := 3
+const FORK_RADIUS := 440.0    ## road forks leave their trail this far out ...
+const MERGE_RADIUS := 378.0   ## ... and join the next trail here (outside the tiles)
+const GATES_PER_SLOT := 2
+const GATE_COOLDOWN := 4.0
+
 
 # ------------------------------------------------------------ road events
 ## Fog Cloud: may roll after the player picks a stop, from night 2 on.

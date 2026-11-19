@@ -49,6 +49,8 @@ var _campfire
 var ambush := false      ## Fog Cloud ambush: one wave of Mist Wisps in the mist
 var mod := ""            ## this wave's modifier (Defs.WAVE_MODS id) or ""
 var _swarm_lane := -1
+var _gates_left := 0       ## gates Char can still cobble tonight
+var _ap_gate_t := 0.0
 var _mark_t := 0.0
 var _props: Array = []   ## the stagecoach and horse Char is guarding
 var _spawn_queue: Array = []
@@ -153,6 +155,8 @@ func _layout() -> void:
 # ------------------------------------------------------------ phases
 func _start_prep() -> void:
 	phase = Phase.PREP
+	if wave == 0:
+		_gates_left = Run.gates
 	fighting = false
 	char_unit.set_mood("open")
 	_rerolls = Defs.REROLLS_PER_WAVE + Run.bonus_rerolls
@@ -176,7 +180,7 @@ func _start_prep() -> void:
 	_shift_ready = wave > 0 and Run.has_oath("shifting_embers") and not defenses.is_empty()
 	_roll(true)
 	mod = "" if ambush else Defs.roll_wave_mod(Run.night, Run.rng)
-	_swarm_lane = Run.rng.randi() % board.paths.size() if mod == "swarmy" else -1
+	_swarm_lane = Run.rng.randi() % board.lane_count if mod == "swarmy" else -1
 	_update_hud()
 	if ambush:
 		_show_banner("Ambush in the fog!")
@@ -190,6 +194,8 @@ func _start_prep() -> void:
 		_hint.text = "%s: %s  Place your dice, then Fight!" % [Defs.WAVE_MODS[mod]["name"], Defs.WAVE_MODS[mod]["desc"]]
 	else:
 		_hint.text = "Place your dice, then Fight!"
+	if _gates_left > 0 and not board.links.is_empty():
+		_hint.text += "   Tap a glowing fork to cobble a gate (%d left)." % _gates_left
 	if _shift_ready:
 		_hint.text += "   Tap a defense to move it (−%d flame)." % roundi(Defs.SHIFT_COST)
 	_layout.call_deferred()
@@ -293,6 +299,9 @@ func _process(delta: float) -> void:
 	# The board's light follows the campfire's flicker.
 	board.fire_glow = 0.9 + 0.1 * sin(Time.get_ticks_msec() * 0.006) * sin(Time.get_ticks_msec() * 0.0017)
 	board.hover_tile = _hover
+	board.gates_left = _gates_left if phase == Phase.PREP else 0
+	if Run.autoplay and phase == Phase.FIGHT:
+		_autoplay_gates(delta)
 	board.glow_face = _drag_die.face if _drag_die else (_selected.face if _selected else "")
 	board.shift_glow = _shift_ready and _selected == null and _drag_die == null
 	if _ghost:
@@ -342,7 +351,7 @@ func _spawn(kind: String, lane := -1, hearty := false) -> void:
 	var sp := Spirit.new()
 	_entities.add_child(sp)
 	if lane < 0:
-		lane = Run.rng.randi() % board.paths.size()
+		lane = Run.rng.randi() % board.lane_count
 	var hp_scale := Defs.spirit_hp_scale(Run.night, Run.current_stop())
 	if Run.shrine_curse:
 		hp_scale *= Defs.SHRINE_CURSE_HP
@@ -605,6 +614,11 @@ func _autoplay_step(delta: float) -> void:
 	if "--idle" in OS.get_cmdline_user_args():   # do nothing, just start waves
 		begin_wave()
 		return
+	for i in board.links.size():
+		if _gates_left > 0 and not board.links[i]["gate"]:
+			_tap_fork(i)
+			board.links[i]["cross"] = _fork_score(board.links[i]["path"]) > _fork_score(board.links[i]["from"])
+			return
 	for d in _dice:
 		if d.placed or d.face == "ashes":
 			continue
@@ -623,7 +637,8 @@ func _autoplay_step(delta: float) -> void:
 					best = i
 					break
 		if best == -1:
-			for i in [0, 3, 6, 1, 4, 7, 2, 5, 8]:  # inner tiles round the fire first
+			for k in board.tiles.size():  # inner tiles round the fire first
+				var i: int = (k % board.lane_count) * 3 + k / board.lane_count
 				if board.tile_defense[i] == null:
 					best = i
 					break
@@ -633,6 +648,33 @@ func _autoplay_step(delta: float) -> void:
 			begin_wave()
 		return
 	begin_wave()   # only Ashes left
+
+
+## Autoplay: how much defense covers a route past the forks.
+func _fork_score(path_idx: int) -> float:
+	var score := 0.0
+	var pts: PackedVector2Array = board.paths[path_idx]
+	for df in defenses:
+		var rng_r: float = Defs.DEFENSES[df.kind][mini(df.level - 1, 2)]["range"] if Defs.DEFENSES.has(df.kind) else 0.0
+		for p in pts:
+			if p.distance_to(df.world) < rng_r:
+				score += df.level
+	return score
+
+
+## Autoplay: now and then, point a ready gate at the better-covered way.
+func _autoplay_gates(delta: float) -> void:
+	_ap_gate_t -= delta
+	if _ap_gate_t > 0.0:
+		return
+	_ap_gate_t = 1.5
+	for i in board.links.size():
+		var L: Dictionary = board.links[i]
+		if L["gate"] and L["cool"] <= 0.0:
+			var want := _fork_score(L["path"]) > _fork_score(L["from"])
+			if want != L["cross"] or Run.rng.randf() < 0.15:
+				_tap_fork(i)
+				return
 
 
 func _has_neighbour(i: int) -> bool:
@@ -674,9 +716,42 @@ func _unhandled_input(event: InputEvent) -> void:
 		if _selected and phase == Phase.PREP:
 			if _try_place(_selected, local):
 				get_viewport().set_input_as_handled()
+		elif _tap_fork(board.link_at(local)):
+			get_viewport().set_input_as_handled()
 		elif _shift_ready and phase == Phase.PREP:
 			if _try_shift(board.tile_at(local)):
 				get_viewport().set_input_as_handled()
+
+
+## Prep: cobble a gate on a bare fork, or flip one for free. In a wave: flip
+## a gate if its flame has filled, then it cools down again.
+func _tap_fork(i: int) -> bool:
+	if i < 0 or phase == Phase.DONE:
+		return false
+	var L: Dictionary = board.links[i]
+	if not L["gate"]:
+		if phase != Phase.PREP or _gates_left <= 0:
+			return false
+		L["gate"] = true
+		L["cross"] = true
+		_gates_left -= 1
+		AudioDirector.play_sfx("place", -4.0)
+		_start_hint_refresh()
+		return true
+	if phase == Phase.FIGHT and L["cool"] > 0.0:
+		AudioDirector.play_sfx("tap", -10.0)
+		return true
+	L["cross"] = not L["cross"]
+	if phase == Phase.FIGHT:
+		L["cool"] = Defs.GATE_COOLDOWN
+	AudioDirector.play_sfx("tap", -4.0)
+	return true
+
+
+func _start_hint_refresh() -> void:
+	_hint.text = _hint.text.split("   Tap a glowing fork")[0]
+	if _gates_left > 0:
+		_hint.text += "   Tap a glowing fork to cobble a gate (%d left)." % _gates_left
 
 
 # ------------------------------------------------------------ HUD

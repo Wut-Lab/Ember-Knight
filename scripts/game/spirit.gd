@@ -69,7 +69,9 @@ func _process(delta: float) -> void:
 			queue_free()
 		queue_redraw()
 		return
+	var d0 := dist
 	dist += speed * (1.0 - slow) * delta
+	path_idx = board.route(path_idx, d0, dist)   # forks: pick a way (or the gate's)
 	if dist >= board.path_lengths[path_idx]:
 		dead = true
 		reached_fire.emit(self)

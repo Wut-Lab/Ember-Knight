@@ -38,7 +38,7 @@ func _ready() -> void:
 	r.seed = 2024
 	_build_layout()
 	if Run.autoplay:
-		print("  map: %d lanes %s" % [paths.size(), shapes])
+		print("  map: %d lanes %s, %d forks" % [lane_count, shapes, links.size()])
 	for i in 70:
 		var a := r.randf() * TAU
 		var d := sqrt(r.randf()) * LIGHT_RADIUS * 1.05 + 60.0
@@ -47,6 +47,8 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	_t += delta
+	for L in links:
+		L["cool"] = maxf(0.0, L["cool"] - delta)
 	queue_redraw()
 
 
@@ -163,7 +165,8 @@ func _build_layout() -> void:
 	for L in lanes:
 		shapes.append(L[1])
 		var pts := PackedVector2Array()
-		var steps := 72 if hill else 36
+		_steps = 72 if hill else 36
+		var steps := _steps
 		for k in steps + 1:
 			var f := float(k) / steps
 			var rad := lerpf(SPAWN_RADIUS, FIRE_RADIUS - 6.0, f)
@@ -185,9 +188,18 @@ func _build_layout() -> void:
 			tiles.append(Vector2(cos(a), sin(a)) * 300.0)
 	for t in tiles:
 		tile_defense.append(null)
+	lane_count = n
+	_build_forks(r, hill)
 
 
 var _lanes := []
+var _steps := 36
+var lane_count := 0          ## real trails; paths past this index are fork routes
+## One-way forks. Each: from (lane), to (lane), at (dist on `from` where it forks),
+## path (index of the route that takes the fork), pts (connector, for drawing),
+## gate (Char has cobbled one here), cross (gate sends spirits down the fork),
+## cool (seconds until the gate can be switched again).
+var links: Array = []
 
 
 ## [mid angle, gap width] between lane i and lane i+1 at this radius.
@@ -198,6 +210,157 @@ func _gap_mid(i: int, rad: float) -> Array:
 	var a0: float = a[0] + _offset(a[1], f, a[2], a[3])
 	var gap := wrapf(b[0] + _offset(b[1], f, b[2], b[3]) - a0, 0.0, TAU)
 	return [a0 + gap / 2.0, gap]
+
+
+func _lane_angle(i: int, f: float) -> float:
+	var L: Array = _lanes[i]
+	return L[0] + _offset(L[1], f, L[2], L[3])
+
+
+func _lane_pos(i: int, f: float) -> Vector2:
+	var a := _lane_angle(i, f)
+	return Vector2(cos(a), sin(a)) * lerpf(SPAWN_RADIUS, FIRE_RADIUS - 6.0, f)
+
+
+## Distance along lane i at fraction f (lane points are evenly spaced in f).
+func _dist_at(i: int, f: float) -> float:
+	var pts := paths[i]
+	var kf := f * _steps
+	var k := int(kf)
+	var d := 0.0
+	for j in range(1, k + 1):
+		d += pts[j].distance_to(pts[j - 1])
+	if k < _steps:
+		d += pts[k].distance_to(pts[k + 1]) * (kf - k)
+	return d
+
+
+## 1-3 one-way forks. On the road a fork cuts across the gap between two
+## neighbouring trails, out past the tiles; on the hill it is a shortcut
+## straight down the slope to the next spiral arm in.
+func _build_forks(r: RandomNumberGenerator, hill: bool) -> void:
+	var n := lane_count
+	var want := r.randi_range(Defs.FORKS_MIN, Defs.FORKS_MAX)
+	var order := range(n)
+	for i in range(n - 1, 0, -1):   # shuffle which gaps / arms get forks
+		var j := r.randi_range(0, i)
+		var t = order[i]
+		order[i] = order[j]
+		order[j] = t
+	for g in order:
+		if links.size() >= want:
+			break
+		var fk := []   # [from, to, f_from, f_to, connector pts]
+		if hill:
+			fk = _hill_fork(g, r)
+		else:
+			var a: int = g
+			var b: int = (g + 1) % n
+			if r.randf() < 0.5:
+				var t := a
+				a = b
+				b = t
+			var f1 := _f_at(Defs.FORK_RADIUS)
+			var f2 := _f_at(Defs.MERGE_RADIUS)
+			var a1 := _lane_angle(a, f1)
+			var b2 := _lane_angle(b, f2)
+			var delta := wrapf(b2 - a1, -PI, PI)
+			var pts := PackedVector2Array()
+			for k in 13:
+				var t := k / 12.0
+				var ang := a1 + delta * t
+				pts.append(Vector2(cos(ang), sin(ang)) * lerpf(Defs.FORK_RADIUS, Defs.MERGE_RADIUS, t))
+			fk = [a, b, f1, f2, pts]
+		if fk.is_empty() or not _clear_of_tiles(fk[4]):
+			continue
+		_add_fork(fk)
+
+
+## A hill fork: from arm i, straight down the slope to the next arm inward.
+func _hill_fork(i: int, r: RandomNumberGenerator) -> Array:
+	var best := []
+	var best_len := INF
+	for tries in 16:
+		var f1 := _f_at(r.randf_range(360.0, 520.0))
+		var p1 := _lane_pos(i, f1)
+		for b in lane_count:
+			if b == i:
+				continue
+			for k in 40:   # chords down the slope to points further in on arm b
+				var fb := lerpf(f1 + 0.08, 0.85, k / 39.0)
+				var p2 := _lane_pos(b, fb)
+				var d := p1.distance_to(p2)
+				if d >= best_len or d < 90.0:
+					continue
+				var pts := PackedVector2Array()
+				for j in 9:
+					pts.append(p1.lerp(p2, j / 8.0))
+				if _clear_of_tiles(pts) and _clear_of_lanes(pts, i, b):
+					best = [i, b, f1, fb, pts]
+					best_len = d
+	return best
+
+
+## The fork's middle mustn't run over another trail.
+func _clear_of_lanes(pts: PackedVector2Array, a: int, b: int) -> bool:
+	for j in range(2, pts.size() - 2):
+		for L in lane_count:
+			for q in paths[L]:
+				if q.distance_to(pts[j]) < 40.0:
+					return false
+	return true
+
+
+func _clear_of_tiles(pts: PackedVector2Array) -> bool:
+	for p in pts:
+		for t in tiles:
+			if p.distance_to(t) < TILE_RADIUS + 22.0:
+				return false
+	return true
+
+
+## The route a spirit takes down the fork: lane `from` up to the fork, the
+## connector, then lane `to` on to the fire. It shares the lane's start, so a
+## spirit can switch onto it without changing its distance travelled.
+func _add_fork(fk: Array) -> void:
+	var a: int = fk[0]
+	var b: int = fk[1]
+	var route := PackedVector2Array()
+	var la := paths[a]
+	var lb := paths[b]
+	var ka := int(fk[2] * _steps)
+	for k in ka + 1:
+		route.append(la[k])
+	route.append_array(fk[4])
+	for k in range(int(fk[3] * _steps) + 1, lb.size()):
+		route.append(lb[k])
+	paths.append(route)
+	var length := 0.0
+	for k in range(1, route.size()):
+		length += route[k].distance_to(route[k - 1])
+	path_lengths.append(length)
+	links.append({"from": a, "to": b, "at": _dist_at(a, fk[2]), "path": paths.size() - 1,
+		"pts": fk[4], "gate": false, "cross": false, "cool": 0.0})
+
+
+## Called by a spirit each step: does it hit a fork, and which way does it go?
+func route(path_idx: int, d0: float, d1: float) -> int:
+	if path_idx >= lane_count:
+		return path_idx
+	for L in links:
+		if L["from"] == path_idx and d0 < L["at"] and d1 >= L["at"]:
+			var cross: bool = L["cross"] if L["gate"] else Run.rng.randf() < 0.5
+			return L["path"] if cross else path_idx
+	return path_idx
+
+
+## Index of the fork whose junction is near this local point, or -1.
+func link_at(local: Vector2) -> int:
+	var w := unproj(local)
+	for i in links.size():
+		if links[i]["pts"][0].distance_to(w) < 60.0:
+			return i
+	return -1
 
 
 # ------------------------------------------------------------ drawing
@@ -212,7 +375,10 @@ func _draw() -> void:
 		var col := Color("#0a080b").lerp(Color("#5e3d26"), clampf(lit, 0.0, 1.0))
 		_ellipse(Vector2.ZERO, rad, col)
 	# Trails, lighter packed dirt, fading into the dark.
-	for p in paths:
+	var trails: Array = paths.slice(0, lane_count)
+	for L in links:
+		trails.append(L["pts"])
+	for p: PackedVector2Array in trails:
 		for k in range(1, p.size()):
 			var mid := (p[k] + p[k - 1]) / 2.0
 			var lit := light_at(mid) * fire_glow
@@ -270,11 +436,72 @@ func _draw() -> void:
 						if j != i and j / 3 == i / 3:
 							var cj := proj(tiles[j])
 							_ring(cj, rx * 1.3, rx * K * 1.3, Color(1, 0.92, 0.6, 0.45), 2.5 * view_scale)
+	_draw_forks(pulse)
 	# Fire target ring for the Kindle (★) die.
 	if glow_face == "kindle":
 		var gc := Color("#fff0b0")
 		gc.a = 0.35 + 0.4 * pulse + (0.25 if hover_tile == -2 else 0.0)
 		_ring(Vector2.ZERO, 92.0 * view_scale, 92.0 * view_scale * K, gc, 4.0 * view_scale)
+
+
+var gates_left := 0          ## set by the battle: junctions glow while gates remain
+
+
+## Junction markers, and Char's gates with their cooldown flame.
+func _draw_forks(pulse: float) -> void:
+	for L in links:
+		var pts: PackedVector2Array = L["pts"]
+		var w := pts[0]
+		var c := proj(w)
+		var lit := maxf(light_at(w), 0.45)
+		var s := view_scale
+		# Little arrows down the fork show which way it runs.
+		var mid: Vector2 = pts[pts.size() / 2]
+		var dir: Vector2 = (proj(pts[pts.size() / 2 + 1]) - proj(mid)).normalized()
+		var tip := proj(mid)
+		var arrow := Color(1, 0.85, 0.6, 0.35 * lit)
+		draw_line(tip, tip - dir.rotated(0.6) * 12 * s, arrow, 3 * s, true)
+		draw_line(tip, tip - dir.rotated(-0.6) * 12 * s, arrow, 3 * s, true)
+		if not L["gate"]:
+			var gc := Color("#ffb238")
+			gc.a = (0.3 + 0.4 * pulse) if gates_left > 0 else 0.25
+			_ring(c, 30 * s, 30 * s * K, gc, 3 * s)
+			continue
+		# The gate: two posts and a plank barring the way not taken.
+		var lane_dir: Vector2 = (proj(path_point(L["from"], L["at"] + 30.0)) - c).normalized()
+		var fork_dir: Vector2 = (proj(pts[2]) - c).normalized()
+		var barred: Vector2 = lane_dir if L["cross"] else fork_dir
+		var open: Vector2 = fork_dir if L["cross"] else lane_dir
+		var wood := Color("#8a5a32").lerp(Color("#c88a50"), lit)
+		var across := barred.orthogonal()
+		var bc := c + barred * 26 * s
+		for side in [-1.0, 1.0]:
+			var post: Vector2 = bc + across * 20 * s * side
+			draw_line(post, post - Vector2(0, 22 * s), wood.darkened(0.3), 5 * s, true)
+		draw_line(bc - across * 22 * s - Vector2(0, 8 * s), bc + across * 22 * s - Vector2(0, 8 * s), wood, 6 * s, true)
+		draw_line(bc - across * 22 * s - Vector2(0, 17 * s), bc + across * 22 * s - Vector2(0, 17 * s), wood, 5 * s, true)
+		var go := c + open * 30 * s
+		var ac := Color("#ffd27a", 0.8)
+		draw_line(go, go - open.rotated(0.6) * 14 * s, ac, 4 * s, true)
+		draw_line(go, go - open.rotated(-0.6) * 14 * s, ac, 4 * s, true)
+		# Cooldown: a small flame above the gate fills up, then glows when ready.
+		var ready := 1.0 - clampf(L["cool"] / Defs.GATE_COOLDOWN, 0.0, 1.0)
+		var fc := c - Vector2(0, 52 * s)
+		_flame(fc, 13 * s, Color(0.2, 0.15, 0.12, 0.8))
+		if ready >= 1.0:
+			_ellipse_xy(fc, 22 * s, 22 * s, Color(1, 0.7, 0.3, 0.12 + 0.12 * pulse))
+		_flame(fc + Vector2(0, 13 * s * (1.0 - ready) * 0.5), 13 * s * maxf(ready, 0.05),
+			Color("#ff9a3c") if ready >= 1.0 else Color("#b8642a"))
+
+
+func _flame(c: Vector2, r: float, col: Color) -> void:
+	var pts := PackedVector2Array()
+	for i in 24:
+		var a := TAU * i / 24.0
+		var y := sin(a)
+		var x := cos(a) * (1.0 - 0.35 * maxf(-y, 0.0))
+		pts.append(c + Vector2(x * r * 0.75, y * r * 0.8 - (r * 0.9 * maxf(-y, 0.0) ** 3)))
+	draw_colored_polygon(pts, col)
 
 
 func _preview_range(face: String, i: int) -> float:

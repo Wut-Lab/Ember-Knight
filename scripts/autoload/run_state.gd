@@ -16,6 +16,7 @@ var chosen_stops: Array[String] = []
 var spirits_banished := 0
 var bonus_rerolls := 0         ## extra rerolls every wave (Ember Shrine)
 var shrine_seen := false       ## the Ember Shrine shows up once per run
+var gates := 0                ## gates Char can cobble tonight (2 per loadout slot traded)
 var shrine_curse := false      ## tonight's spirits are tougher (Ember Shrine)
 var nights_survived := 0
 var rng := RandomNumberGenerator.new()
@@ -39,6 +40,7 @@ func new_run() -> void:
 	spirits_banished = 0
 	nights_survived = 0
 	bonus_rerolls = 0
+	gates = 0
 	shrine_seen = false
 	shrine_curse = false
 	stop_options.clear()
@@ -84,7 +86,7 @@ const SAVE_PATH := "user://run.save"
 const SAVE_KEYS := ["night", "flame", "max_flame", "stop_options", "chosen_stops",
 	"spirits_banished", "nights_survived"]
 ## Newer keys: older saves load without them.
-const EXTRA_KEYS := ["bonus_rerolls", "shrine_seen"]
+const EXTRA_KEYS := ["bonus_rerolls", "shrine_seen", "gates"]
 
 var resume := false   ## set by the menu's Continue; read by the run screen
 var _checkpoint := {}
