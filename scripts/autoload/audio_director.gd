@@ -53,9 +53,9 @@ func _ready() -> void:
 	var bus := AudioServer.get_bus_index("Fire")
 	_lowpass = AudioServer.get_bus_effect(bus, 0)
 
-	_music = _make_player(MUSIC, "Master")
-	_tension = _make_player(TENSION, "Master")
-	_crickets = _make_player(CRICKETS, "Master")
+	_music = _make_player(MUSIC, "Music")
+	_tension = _make_player(TENSION, "Music")
+	_crickets = _make_player(CRICKETS, "Effects")
 	_fire = _make_player(FIRE, "Fire")
 	_fire_layer = _make_player(FIRE, "Fire")
 
@@ -63,9 +63,10 @@ func _ready() -> void:
 		_sfx[n] = load("res://assets/audio/sfx/%s.ogg" % n)
 	for i in SFX_VOICES:
 		var p := AudioStreamPlayer.new()
-		p.bus = "Master"
+		p.bus = "Effects"
 		add_child(p)
 		_sfx_pool.append(p)
+	_load_volumes()
 
 	_swell_timer.one_shot = true
 	_swell_timer.timeout.connect(swell)
@@ -171,6 +172,42 @@ func play_sfx(sfx_name: String, db := 0.0, pitch_jitter := 0.06) -> void:
 	p.volume_db = db
 	p.pitch_scale = 1.0 + randf_range(-pitch_jitter, pitch_jitter)
 	p.play()
+
+
+# ------------------------------------------------------------ volume settings
+## Player-facing volume sliders, 0..1 per bus. Saved to user://settings.cfg.
+const VOLUME_BUSES := ["Master", "Music", "Effects"]
+const SETTINGS_PATH := "user://settings.cfg"
+var _volumes := {"Master": 1.0, "Music": 1.0, "Effects": 1.0}
+
+
+func get_volume(bus: String) -> float:
+	return _volumes.get(bus, 1.0)
+
+
+func set_volume(bus: String, v: float, save := true) -> void:
+	v = clampf(v, 0.0, 1.0)
+	_volumes[bus] = v
+	var i := AudioServer.get_bus_index(bus)
+	if i < 0:
+		return
+	# Squared curve so the slider feels even to the ear; 0 is true silence.
+	AudioServer.set_bus_mute(i, v <= 0.001)
+	AudioServer.set_bus_volume_db(i, linear_to_db(maxf(v * v, 0.0001)))
+	if save:
+		var cfg := ConfigFile.new()
+		cfg.load(SETTINGS_PATH)
+		for b in VOLUME_BUSES:
+			cfg.set_value("audio", b, _volumes[b])
+		cfg.save(SETTINGS_PATH)
+
+
+func _load_volumes() -> void:
+	var cfg := ConfigFile.new()
+	var ok := cfg.load(SETTINGS_PATH) == OK
+	for b in VOLUME_BUSES:
+		var v: float = cfg.get_value("audio", b, _volumes[b]) if ok else _volumes[b]
+		set_volume(b, v, false)
 
 
 # ------------------------------------------------------------ helpers

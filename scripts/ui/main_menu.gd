@@ -1,12 +1,14 @@
 extends Control
 ## Main menu: Play, Unlocks, Options, Credits in one centred column,
 ## with Continue on top when a saved run exists.
-## Play starts a run; Unlocks and Options open an "Under Construction" card;
+## Play starts a run; Options holds the volume sliders; Unlocks opens an
+## "Under Construction" card;
 ## Credits lists who made the game. Every card has
 ## a Back button, and Esc / gamepad B also goes back.
 
 const Style := preload("res://scripts/ui/ui_style.gd")
 const EssenceTracker := preload("res://scripts/ui/essence_tracker.gd")
+const VolumeSliders := preload("res://scripts/ui/volume_sliders.gd")
 
 signal play_requested
 
@@ -16,7 +18,6 @@ const BUTTON_SIZE := Vector2(320, 60)
 ## Title of the card + one line under "Under Construction".
 const PLACEHOLDERS := {
 	"Unlocks": ["Unlocks", "Caravan unlockables will live here."],
-	"Options": ["Options", "Sound, controls and display settings will live here."],
 }
 
 const CREDITS := [
@@ -110,6 +111,8 @@ func _on_pick(item: String) -> void:
 		play_requested.emit()
 	elif item == "Credits":
 		_open_card(_credits_card())
+	elif item == "Options":
+		_open_card(_options_card())
 	else:
 		_open_card(_placeholder_card(PLACEHOLDERS[item][0], PLACEHOLDERS[item][1]))
 
@@ -193,6 +196,14 @@ func _placeholder_card(heading: String, line: String) -> PanelContainer:
 	sub.add_theme_color_override("font_color", Style.MUTE)
 	sub.add_theme_font_size_override("font_size", 22)
 	box.add_child(sub)
+	_add_back(box)
+	return parts[0]
+
+
+func _options_card() -> PanelContainer:
+	var parts := _base_card("Options")
+	var box: VBoxContainer = parts[1]
+	box.add_child(VolumeSliders.build())
 	_add_back(box)
 	return parts[0]
 

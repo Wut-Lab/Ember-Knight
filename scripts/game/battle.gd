@@ -20,6 +20,7 @@ signal oaths_requested
 const Defs := preload("res://scripts/game/defs.gd")
 const Style := preload("res://scripts/ui/ui_style.gd")
 const EssenceTracker := preload("res://scripts/ui/essence_tracker.gd")
+const VolumeSliders := preload("res://scripts/ui/volume_sliders.gd")
 const Board := preload("res://scripts/game/board.gd")
 const Spirit := preload("res://scripts/game/spirit.gd")
 const Defense := preload("res://scripts/game/defense.gd")
@@ -916,24 +917,11 @@ func _show_pause_menu() -> void:
 	(box.get_child(1) as Button).grab_focus()
 
 
-## Same "Under Construction" card as the main menu's Options.
+## Same volume sliders as the main menu's Options.
 func _show_pause_options() -> void:
 	var box := _pause_panel("Options")
 	_pause_card.set_meta("sub", true)
-	var sign := Label.new()
-	sign.text = "Under Construction"
-	sign.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	sign.add_theme_font_override("font", Style.BODY_MEDIUM)
-	sign.add_theme_font_size_override("font_size", 30)
-	box.add_child(sign)
-	var sub := Label.new()
-	sub.text = "Sound, controls and display settings will live here."
-	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	sub.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	sub.custom_minimum_size = Vector2(440, 0)
-	sub.add_theme_color_override("font_color", Style.MUTE)
-	sub.add_theme_font_size_override("font_size", 22)
-	box.add_child(sub)
+	box.add_child(VolumeSliders.build())
 	var back := _pause_button("Back", _show_pause_menu)
 	box.add_child(back)
 	back.grab_focus()

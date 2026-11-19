@@ -50,7 +50,43 @@ static func make_theme() -> Theme:
 	panel.shadow_size = 24
 	t.set_stylebox("panel", "PanelContainer", panel)
 	t.set_color("font_color", "Label", FG)
+
+	# Volume sliders: thin dark track, ember fill, round glowing grabber.
+	var track := _box(Color(LINE, 0.9), LINE, 0)
+	track.set_content_margin_all(3)
+	track.set_corner_radius_all(4)
+	var fill := _box(ACCENT2, ACCENT2, 0)
+	fill.set_content_margin_all(3)
+	fill.set_corner_radius_all(4)
+	var fill_hi := _box(ACCENT, ACCENT, 0)
+	fill_hi.set_content_margin_all(3)
+	fill_hi.set_corner_radius_all(4)
+	t.set_stylebox("slider", "HSlider", track)
+	t.set_stylebox("grabber_area", "HSlider", fill)
+	t.set_stylebox("grabber_area_highlight", "HSlider", fill_hi)
+	t.set_icon("grabber", "HSlider", _dot(22, FG))
+	t.set_icon("grabber_highlight", "HSlider", _dot(24, Color("#ffd58f")))
+	t.set_icon("grabber_disabled", "HSlider", _dot(22, MUTE))
+	var ring := StyleBoxFlat.new()
+	ring.draw_center = false
+	ring.border_color = Color(ACCENT, 0.7)
+	ring.set_border_width_all(2)
+	ring.set_corner_radius_all(10)
+	ring.set_expand_margin_all(6)
+	t.set_stylebox("focus", "HSlider", ring)
 	return t
+
+
+## A soft-edged filled circle, for slider grabbers.
+static func _dot(d: int, col: Color) -> ImageTexture:
+	var img := Image.create(d, d, false, Image.FORMAT_RGBA8)
+	var r := d / 2.0
+	for y in d:
+		for x in d:
+			var dist := Vector2(x + 0.5 - r, y + 0.5 - r).length()
+			var a := clampf(r - 1.0 - dist + 0.5, 0.0, 1.0)
+			img.set_pixel(x, y, Color(col, a))
+	return ImageTexture.create_from_image(img)
 
 
 static func _box(bg: Color, border: Color, width: int) -> StyleBoxFlat:
