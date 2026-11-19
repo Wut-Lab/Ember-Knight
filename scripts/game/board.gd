@@ -58,11 +58,25 @@ func _process(delta: float) -> void:
 
 # ------------------------------------------------------------ geometry
 func proj(w: Vector2) -> Vector2:
-	return Vector2(w.x, w.y * K) * view_scale
+	return Vector2(w.x, w.y * K + _drop(w.length())) * view_scale
 
 
 func unproj(local: Vector2) -> Vector2:
-	return Vector2(local.x, local.y / K) / view_scale
+	var w := Vector2(local.x, local.y / K) / view_scale
+	if stop == "hill":   # undo the hill's slope (converges: the slope stays gentle)
+		for i in 8:
+			w.y = (local.y / view_scale - _drop(w.length())) / K
+	return w
+
+
+## Hillside Clearing: the camp sits on the summit and the ground falls away
+## all round it. Lower ground shows lower on screen (camera tilt ~34 deg, so
+## height reads at cos ~0.83), squeezing the far slope and stretching the near.
+const HILL_DROP := 0.0003
+const TILT_COS := 0.83
+
+func _drop(rad: float) -> float:
+	return HILL_DROP * rad * rad * TILT_COS if stop == "hill" else 0.0
 
 
 ## World position `dist` units along path `i` (from the dark toward the fire).
@@ -632,20 +646,11 @@ func _draw_cliff() -> void:
 
 
 # ------------------------------------------------------------ hill art
-const HILL_CREST := 470.0   ## world radius where the hilltop rolls out of sight behind camp
 var _hill_rocks: Array = []
 
 
-## Hillside trails fade as they come up over the crest behind camp.
-func _hill_trail_fade(w: Vector2) -> float:
-	if stop != "hill" or w.y >= 0.0:
-		return 1.0
-	var back := -w.y / maxf(w.length(), 1.0)   # 1 straight behind camp
-	return clampf((HILL_CREST + 40.0 - w.length()) / 90.0, 0.0, 1.0) * back + (1.0 - back)
-
-
-## Hilltop at night: the ground rolls away out of sight behind camp, with
-## misty lowlands and far hills beyond; faint contour lines ring the slope.
+## Hilltop at night: faint contour lines ring the summit (bunched up on the
+## far slope, spread out on the near one), with a few rocks on the slope.
 func _draw_hill() -> void:
 	var s := view_scale
 	if _hill_rocks.is_empty():
@@ -653,10 +658,9 @@ func _draw_hill() -> void:
 		r.seed = layout_seed + 31
 		for i in 22:
 			var a := r.randf() * TAU
-			_hill_rocks.append([Vector2(cos(a), sin(a)) * r.randf_range(230.0, 600.0), r.randf_range(6.0, 13.0)])
-	# Faint contour lines, wandering a little like real ground.
+			_hill_rocks.append([Vector2(cos(a), sin(a)) * r.randf_range(230.0, 640.0), r.randf_range(6.0, 13.0)])
 	var ci := 0
-	for rad in [215.0, 290.0, 365.0, 440.0, 515.0, 590.0]:
+	for rad in [215.0, 290.0, 365.0, 440.0, 515.0, 590.0, 665.0, 740.0]:
 		ci += 1
 		var line := PackedVector2Array()
 		for j in 97:
@@ -666,51 +670,8 @@ func _draw_hill() -> void:
 		var lit := clampf(1.0 - (rad - 140.0) / (LIGHT_RADIUS * 1.4), 0.0, 1.0) * fire_glow
 		draw_polyline(line, Color(0.0, 0.0, 0.0, 0.10), 3.0 * s, true)
 		draw_polyline(line, Color(0.85, 0.62, 0.42, 0.03 + 0.07 * lit), 1.5 * s, true)
-	# Beyond the crest: the night sky over far hills and lowland mist.
-	var crest := PackedVector2Array()
-	for k in 61:
-		var a := PI + PI * k / 60.0
-		var rr := HILL_CREST * (1.0 + 0.03 * sin(a * 4.0 + 1.0))
-		crest.append(proj(Vector2(cos(a), sin(a) * 1.0) * rr))
-	var l := crest[0]
-	var rgt := crest[crest.size() - 1]
-	var sky := crest.duplicate()
-	sky.append(rgt + Vector2(2000, 0))
-	sky.append(rgt + Vector2(2000, -3000))
-	sky.append(l + Vector2(-2000, -3000))
-	sky.append(l + Vector2(-2000, 0))
-	sky.reverse()
-	draw_colored_polygon(sky, Color("#0b0f1c"))
-	var top := crest[30].y
-	for layer in 3:
-		var base := top - (34.0 - layer * 13.0) * s
-		var hp := PackedVector2Array()
-		for k in 33:
-			var x := (-1100.0 + k * 2200.0 / 32.0) * s
-			var y := base - (12.0 + sin(k * 0.9 + layer * 2.1) * 8.0 + sin(k * 0.37 + layer) * 10.0) * s
-			# Far hills sit behind the crest, never over the hilltop.
-			var cy := _crest_y_at(crest, x)
-			hp.append(Vector2(x, minf(y, cy)))
-		for k in range(32, -1, -1):
-			var x := (-1100.0 + k * 2200.0 / 32.0) * s
-			hp.append(Vector2(x, _crest_y_at(crest, x)))
-		draw_colored_polygon(hp, Color("#111829").lerp(Color("#0d1222"), layer / 2.0))
-	for k in 7:
-		var mx := (-600.0 + k * 200.0 + sin(_t * 0.12 + k) * 40.0) * s
-		var my := _crest_y_at(crest, mx) - 10.0 * s
-		_ellipse_xy(Vector2(mx, my), 170 * s, 14 * s, Color(0.55, 0.65, 0.85, 0.05 + 0.025 * sin(_t * 0.35 + k)))
-	# Soften the crest: the ground darkens and rounds off as it rolls away.
-	for k in 6:
-		var band := PackedVector2Array()
-		for p in crest:
-			band.append(p + Vector2(0, (4.0 + k * 7.0) * s))
-		draw_polyline(band, Color(0.04, 0.05, 0.09, 0.22 - k * 0.03), 9.0 * s, true)
-	draw_polyline(crest, Color(0.6, 0.7, 0.95, 0.10), 2.0 * s, true)   # moonlit rim
-	# Small rocks on the slope.
 	for rk in _hill_rocks:
 		var w: Vector2 = rk[0]
-		if w.y < 0.0 and w.length() > HILL_CREST - 30.0:
-			continue
 		var sz: float = rk[1] * s
 		var c := proj(w)
 		var lit := maxf(light_at(w) * fire_glow, 0.1)
@@ -719,20 +680,11 @@ func _draw_hill() -> void:
 		_ellipse_xy(c - Vector2(sz * 0.2, sz * 0.18), sz * 0.5, sz * 0.25, Color("#2e2a2a").lerp(Color("#a8927e"), lit))
 
 
-## Screen y of the crest line at screen x (it is drawn left to right).
-func _crest_y_at(crest: PackedVector2Array, x: float) -> float:
-	if x <= crest[0].x:
-		return crest[0].y
-	for k in range(1, crest.size()):
-		if x <= crest[k].x:
-			var t := (x - crest[k - 1].x) / maxf(crest[k].x - crest[k - 1].x, 0.001)
-			return lerpf(crest[k - 1].y, crest[k].y, t)
-	return crest[crest.size() - 1].y
-
-
 # ------------------------------------------------------------ drawing
 func _draw() -> void:
 	# Ground: rings from deep night to the warm lit dirt by the fire.
+	if stop == "hill":   # the slope falls away past the outer ring: all dark
+		draw_rect(Rect2(-4000, -4000, 8000, 8000), Color("#0a080b"))
 	var rings := 22
 	for k in rings:
 		var f := 1.0 - float(k) / rings          # 1 outer .. small inner
@@ -754,16 +706,14 @@ func _draw() -> void:
 			var mid := (p[k] + p[k - 1]) / 2.0
 			var lit := light_at(mid) * fire_glow
 			var col := Color("#17110f").lerp(Color("#7a5236"), clampf(lit, 0.0, 1.0))
-			col.a = (0.55 + 0.45 * lit) * _hill_trail_fade(mid)
-			if col.a < 0.02:
-				continue
+			col.a = 0.55 + 0.45 * lit
 			draw_line(proj(p[k - 1]), proj(p[k]), col, 46.0 * view_scale, true)
 			draw_circle(proj(p[k]), 23.0 * view_scale * Vector2(1, K).length() * 0.72, col)
 	# Grass tufts and pebbles, only seen where the light reaches.
 	for tf in _tufts:
 		var w: Vector2 = tf[0]
 		var lit := light_at(w) * fire_glow
-		if lit < 0.05 or (stop == "cliff" and w.y < Defs.cliff_edge_y(w.x) + 20.0) or _hill_trail_fade(w) < 0.5:
+		if lit < 0.05 or (stop == "cliff" and w.y < Defs.cliff_edge_y(w.x) + 20.0):
 			continue
 		var p := proj(w)
 		var s: float = tf[1] * view_scale
@@ -881,7 +831,8 @@ func _preview_range(face: String, i: int) -> float:
 
 
 func _ellipse(c: Vector2, r: float, col: Color) -> void:
-	_ellipse_xy(proj(c), r * view_scale, r * view_scale * K, col)
+	# On the hill a ring round the summit sits at one height: shift it down by it.
+	_ellipse_xy(proj(c) + Vector2(0, _drop(c.length() + r) - _drop(c.length())) * view_scale, r * view_scale, r * view_scale * K, col)
 
 
 func _ellipse_xy(c: Vector2, rx: float, ry: float, col: Color) -> void:
