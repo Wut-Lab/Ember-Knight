@@ -612,6 +612,9 @@ func _dist_at(i: int, f: float) -> float:
 ## 1-3 one-way forks. Each cuts across the gap between two neighbouring
 ## trails (or spiral arms), through the clear ring between the tile rows.
 func _build_forks(r: RandomNumberGenerator) -> void:
+	if stop == "lake":
+		_build_lake_branches(r)
+		return
 	var n := lane_count
 	var want := r.randi_range(Defs.FORKS_MIN, Defs.FORKS_MAX)
 	var order := range(n - 1 if stop == "cliff" else n)   # no gap across the drop
@@ -698,6 +701,79 @@ func _clear_of_tiles(pts: PackedVector2Array) -> bool:
 			if p.distance_to(t) < TILE_RADIUS + 22.0:
 				return false
 	return true
+
+
+## Lake forks: out on the water the crossing splits, and a branch curves off
+## to one side and runs on to the fire by itself (drawn as a dashed wake that
+## turns from water-blue to trail-brown as it comes ashore).
+func _build_lake_branches(r: RandomNumberGenerator) -> void:
+	var want := r.randi_range(1, 2)
+	var u := Vector2.from_angle(_lanes[0][0])
+	var sides := [1.0, -1.0] if r.randf() < 0.5 else [-1.0, 1.0]
+	var used_at := []
+	for sd in sides:
+		if links.size() >= want:
+			break
+		for attempt in 12:
+			var f1 := _f_at(r.randf_range(300.0, 430.0))
+			var p0 := _lane_pos(0, f1)
+			if not in_lake(p0) or absf(p0.x) > VIEW_FIT.x - 20.0:
+				continue
+			var too_close := false
+			for d in used_at:
+				if absf(d - p0.length()) < 70.0:
+					too_close = true
+			if too_close:
+				continue
+			var end := Vector2.from_angle(_lanes[0][0] + sd * 0.35) * (FIRE_RADIUS - 6.0)
+			var ctrl: Vector2 = p0 * 0.55 + u.orthogonal() * sd * r.randf_range(70.0, 120.0)
+			var pts := PackedVector2Array()
+			for k in 31:
+				var t := k / 30.0
+				pts.append(p0.lerp(ctrl, t).lerp(ctrl.lerp(end, t), t))
+			if not _clear_of_tiles(pts.slice(0, 27)) or not _clear_of_trails(pts):
+				continue
+			_add_lake_branch(f1, pts)
+			used_at.append(p0.length())
+			break
+
+
+func _clear_of_trails(pts: PackedVector2Array) -> bool:
+	for p in pts:
+		if p.length() < 140.0:
+			continue
+		for i in range(1, lane_count):
+			for q in paths[i]:
+				if p.distance_to(q) < 62.0:
+					return false
+		if _lane_dist(0, p) < 34.0 and p.distance_to(pts[0]) > 130.0:
+			return false
+		if not dock.is_empty() and Geometry2D.get_closest_point_to_segment(p, dock[0], dock[1]).distance_to(p) < 70.0:
+			return false
+	return true
+
+
+func _lane_dist(i: int, p: Vector2) -> float:
+	var best := INF
+	var pts := paths[i]
+	for k in range(1, pts.size()):
+		best = minf(best, Geometry2D.get_closest_point_to_segment(p, pts[k - 1], pts[k]).distance_to(p))
+	return best
+
+
+func _add_lake_branch(f1: float, pts: PackedVector2Array) -> void:
+	var route := PackedVector2Array()
+	var la := paths[0]
+	for k in int(f1 * _steps) + 1:
+		route.append(la[k])
+	route.append_array(pts)
+	paths.append(route)
+	var length := 0.0
+	for k in range(1, route.size()):
+		length += route[k].distance_to(route[k - 1])
+	path_lengths.append(length)
+	links.append({"from": 0, "to": -1, "at": _dist_at(0, f1), "path": paths.size() - 1,
+		"pts": pts, "gate": false, "cross": false, "cool": 0.0, "wake": true})
 
 
 ## The route a spirit takes down the fork: lane `from` up to the fork, the
@@ -1022,6 +1098,23 @@ func _draw_lake() -> void:
 		draw_circle(c, 1.8 * s, Color(0.9, 1.0, 0.6, 0.35 + 0.5 * glow))
 
 
+## A lake branch: a dashed line all the way to the fire, water-blue on the
+## lake, warming to the trail's brown over a short stretch once ashore.
+func _draw_wake(p: PackedVector2Array) -> void:
+	var blue := 1.0
+	for k in range(1, p.size()):
+		var mid := (p[k] + p[k - 1]) / 2.0
+		blue = 1.0 if in_lake(mid) else maxf(0.0, blue - 0.12)
+		if k % 2 == 1:
+			continue
+		var lit := light_at(mid) * fire_glow
+		var brown := Color("#3a2a1e").lerp(Color("#a8744a"), clampf(lit, 0.0, 1.0))
+		var dc := brown.lerp(Color(0.7, 0.82, 1.0), blue)
+		dc.a = lerpf(0.75, 0.3 + 0.25 * lit, blue)
+		draw_line(proj(p[k - 1]), proj(p[k]), Color(dc, dc.a * 0.35), 16.0 * view_scale, true)
+		draw_line(proj(p[k - 1]), proj(p[k]), dc, 7.0 * view_scale, true)
+
+
 func _draw_dock() -> void:
 	var s := view_scale
 	var a: Vector2 = dock[0]
@@ -1073,7 +1166,8 @@ func _draw() -> void:
 	# Trails, lighter packed dirt, fading into the dark.
 	var trails: Array = paths.slice(0, lane_count)
 	for L in links:
-		trails.append(L["pts"])
+		if not L.get("wake", false):
+			trails.append(L["pts"])
 	for p: PackedVector2Array in trails:
 		for k in range(1, p.size()):
 			var mid := (p[k] + p[k - 1]) / 2.0
@@ -1088,6 +1182,9 @@ func _draw() -> void:
 				continue
 			draw_line(proj(p[k - 1]), proj(p[k]), col, 46.0 * view_scale, true)
 			draw_circle(proj(p[k]), 23.0 * view_scale * Vector2(1, K).length() * 0.72, col)
+	for L in links:
+		if L.get("wake", false):
+			_draw_wake(L["pts"])
 	# Grass tufts and pebbles, only seen where the light reaches.
 	for tf in _tufts:
 		var w: Vector2 = tf[0]
