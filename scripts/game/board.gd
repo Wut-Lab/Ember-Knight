@@ -1165,6 +1165,9 @@ func _draw() -> void:
 		_draw_lake()
 	# Trails, lighter packed dirt, fading into the dark.
 	var trails: Array = paths.slice(0, lane_count)
+	if stop == "lake":   # the water crossing stays a dashed wake all the way in
+		trails.remove_at(0)
+		_draw_wake(paths[0])
 	for L in links:
 		if not L.get("wake", false):
 			trails.append(L["pts"])
