@@ -68,7 +68,7 @@ func _ready() -> void:
 				card.modulate.a = 0.45
 			else:
 				card.pressed.connect(func(): stop_chosen.emit(id))
-				if first_open == null:
+				if first_open == null or (Run.autoplay and Run.rng.randf() < 0.5):
 					first_open = card
 			col.add_child(card)
 			pair.append(card)

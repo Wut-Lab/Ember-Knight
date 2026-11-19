@@ -164,7 +164,13 @@ static func essence_for_lost_night(night_idx: int) -> int:
 # ------------------------------------------------------------ map stops
 const STOPS := {
 	"road": {"name": "Old Road", "desc": "A plain night on the road."},
+	"hill": {"name": "Hillside Clearing", "desc": "Camp on a hilltop. 2-3 trails spiral round the stagecoach."},
 }
+## Hillside Clearing: each trail wraps this far round the camp (degrees), and
+## spirits run faster down the long spirals.
+const HILL_WRAP_MIN := 200.0
+const HILL_WRAP_MAX := 270.0
+const HILL_SPEED := 1.6
 
 
 # ------------------------------------------------------------ road events

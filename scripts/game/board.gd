@@ -16,6 +16,7 @@ const FOUR_LANE_CHANCE := 0.5
 const SHAPES := ["straight", "wavy", "curved"]
 
 var view_scale := 0.85
+var stop := "road"                    ## map stop id; set by the battle
 var layout_seed := 0                  ## set by the battle (from Run.rng) before _ready
 var shapes: Array[String] = []        ## per lane: straight / wavy / curved
 var paths: Array[PackedVector2Array] = []
@@ -113,6 +114,8 @@ func _offset(shape: String, f: float, ph: float, dir: float) -> float:
 	match shape:
 		"wavy":
 			return sin(f * PI * 2.4 + ph) * deg_to_rad(11.0) * (1.0 - f * 0.7)
+		"spiral":
+			return dir * ph * (1.0 - f)   # ph holds the total wrap (radians)
 		"curved":
 			return dir * deg_to_rad(38.0) * pow(1.0 - f, 1.3)
 	return sin(f * PI * 0.9 + ph) * deg_to_rad(5.0) * (1.0 - f)
@@ -126,12 +129,21 @@ func _f_at(rad: float) -> float:
 func _build_layout() -> void:
 	var r := RandomNumberGenerator.new()
 	r.seed = layout_seed
+	var hill := stop == "hill"
 	var n := 4 if r.randf() < FOUR_LANE_CHANCE else 3
+	if hill:   # Hillside Clearing: 2-3 trails spiral round the camp, all the same way
+		n = 3 if r.randf() < 0.5 else 2
+	var wrap := deg_to_rad(r.randf_range(Defs.HILL_WRAP_MIN, Defs.HILL_WRAP_MAX))
+	var spin := -1.0 if r.randf() < 0.5 else 1.0
 	var min_gap := deg_to_rad(52.0 if n == 4 else 72.0)
 	var lanes := []   # [base angle, shape, phase, dir]
 	for attempt in 30:
 		lanes.clear()
 		var rot := r.randf() * TAU
+		if hill:
+			for i in n:
+				lanes.append([rot + TAU * i / n, "spiral", wrap, spin])
+			break
 		for i in n:
 			var shape: String = SHAPES[r.randi() % SHAPES.size()] if attempt < 25 else "straight"
 			lanes.append([rot + TAU * i / n + deg_to_rad(r.randf_range(-8.0, 8.0)), shape,
@@ -151,7 +163,7 @@ func _build_layout() -> void:
 	for L in lanes:
 		shapes.append(L[1])
 		var pts := PackedVector2Array()
-		var steps := 36
+		var steps := 72 if hill else 36
 		for k in steps + 1:
 			var f := float(k) / steps
 			var rad := lerpf(SPAWN_RADIUS, FIRE_RADIUS - 6.0, f)

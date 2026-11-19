@@ -86,6 +86,7 @@ func _ready() -> void:
 
 	board = Board.new()
 	board.layout_seed = Run.rng.randi()
+	board.stop = Run.current_stop()
 	_world.add_child(board)
 	_entities.y_sort_enabled = true
 	_world.add_child(_entities)
@@ -350,6 +351,8 @@ func _spawn(kind: String, lane := -1, hearty := false) -> void:
 		sp.size_k *= 1.2
 	if mod == "angry":
 		sp.speed *= Defs.ANGRY_SPEED
+	if board.stop == "hill":
+		sp.speed *= Defs.HILL_SPEED
 	sp.banished.connect(_on_banished)
 	sp.reached_fire.connect(_on_reached_fire)
 	spirits.append(sp)
