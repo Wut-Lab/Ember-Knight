@@ -46,7 +46,7 @@ func new_run() -> void:
 	shrine_curse = false
 	stop_options.clear()
 	for n in Defs.NIGHTS:
-		stop_options.append(Defs.STOPS.keys())
+		stop_options.append(roll_stop_options())
 
 
 
@@ -74,6 +74,16 @@ func kindle_heal() -> float:
 ## Flame healed at dawn (Hearth-Bound takes from it).
 func dawn_heal() -> float:
 	return Defs.DAWN_HEAL - (Defs.HEARTH_DAWN_PENALTY if has_oath("hearth_bound") else 0.0)
+
+
+## 2-3 camps drawn at random from the pool of stops (Defs.STOPS).
+func roll_stop_options() -> Array:
+	var ids: Array = Defs.STOPS.keys()
+	for i in range(ids.size() - 1, 0, -1):   # shuffle with the run's RNG
+		var j := rng.randi_range(0, i)
+		var t = ids[i]; ids[i] = ids[j]; ids[j] = t
+	var n := mini(ids.size(), rng.randi_range(Defs.STOP_CHOICES_MIN, Defs.STOP_CHOICES_MAX))
+	return ids.slice(0, n)
 
 
 func current_stop() -> String:
@@ -135,6 +145,8 @@ func load_run() -> bool:
 	flame = float(d["flame"])
 	max_flame = float(d["max_flame"])
 	stop_options = d["stop_options"]
+	while stop_options.size() < Defs.NIGHTS:   # saves from before the 7-night week
+		stop_options.append(roll_stop_options())
 	chosen_stops.assign(d["chosen_stops"])
 	spirits_banished = int(d["spirits_banished"])
 	nights_survived = int(d["nights_survived"])

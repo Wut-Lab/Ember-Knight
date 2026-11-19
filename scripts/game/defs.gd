@@ -167,6 +167,8 @@ const STOPS := {
 	"hill": {"name": "Hillside Clearing", "desc": "Camp on a hilltop. 3 trails spiral round the stagecoach."},
 	"cliff": {"name": "Cliff Edge", "desc": "A sheer drop behind camp. 2-3 trails, front and sides."},
 }
+const STOP_CHOICES_MIN := 2   ## camps offered each night, drawn from STOPS
+const STOP_CHOICES_MAX := 3
 ## Cliff Edge: the drop runs behind the stagecoach. Its edge sits this far
 ## behind the fire (world y) and bends away toward the sides.
 const CLIFF_EDGE_Y := -175.0
