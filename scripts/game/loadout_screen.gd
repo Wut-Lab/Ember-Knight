@@ -100,7 +100,7 @@ func _ready() -> void:
 ## Last night's dice if still owned, topped up from the bag.
 func _start_slots() -> Array:
 	var out := []
-	if Run.gates > 0:   # kept the gate kit last night
+	if Run.gates > 0 and Defs.has_forks(Run.current_stop()):   # kept the gate kit last night
 		out.append(GATE_KIT)
 	for id in Run.loadout:
 		if out.count(id) < Run.owned(id) and out.size() < Defs.LOADOUT_SIZE:
@@ -114,7 +114,7 @@ func _start_slots() -> Array:
 
 
 func _confirm() -> void:
-	if Run.autoplay and not GATE_KIT in _slots and Run.rng.randf() < 0.5:
+	if Run.autoplay and not GATE_KIT in _slots and Defs.has_forks(Run.current_stop()) and Run.rng.randf() < 0.5:
 		_slots[_slots.size() - 1] = GATE_KIT   # autoplay tries the trade half the time
 	if "" in _slots:
 		return
@@ -141,7 +141,7 @@ func _refresh() -> void:
 			_filter = f[0]
 			_refresh())
 		_filter_row.add_child(b)
-	if _filter == "":
+	if _filter == "" and Defs.has_forks(Run.current_stop()):
 		_grid.add_child(_gate_card())
 	for id in _bag_ids():
 		_grid.add_child(_bag_card(id))

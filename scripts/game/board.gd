@@ -189,7 +189,8 @@ func _build_layout() -> void:
 	for t in tiles:
 		tile_defense.append(null)
 	lane_count = n
-	_build_forks(r)
+	if Defs.has_forks(stop):
+		_build_forks(r)
 
 
 var _lanes := []
@@ -274,6 +275,8 @@ func _build_forks(r: RandomNumberGenerator) -> void:
 
 func _clear_of_tiles(pts: PackedVector2Array) -> bool:
 	for p in pts:
+		if Defs.COACH_ZONE.has_point(p):   # never hidden behind the stagecoach
+			return false
 		for t in tiles:
 			if p.distance_to(t) < TILE_RADIUS + 22.0:
 				return false
@@ -445,24 +448,16 @@ func _draw_forks(pulse: float) -> void:
 		var ac := Color("#ffd27a", 0.8)
 		draw_line(go, go - open.rotated(0.6) * 14 * s, ac, 4 * s, true)
 		draw_line(go, go - open.rotated(-0.6) * 14 * s, ac, 4 * s, true)
-		# Cooldown: a small flame above the gate fills up, then glows when ready.
+		# Cooldown: the ring round the fork burns fire-bright when the gate is
+		# ready, snuffs out when it's switched, then warms back up.
 		var ready := 1.0 - clampf(L["cool"] / Defs.GATE_COOLDOWN, 0.0, 1.0)
-		var fc := c - Vector2(0, 52 * s)
-		_flame(fc, 13 * s, Color(0.2, 0.15, 0.12, 0.8))
+		var hot := Color("#ff9a3c")
+		var rc := Color("#3b3532").lerp(Color("#a8582a"), ready * 0.85)
 		if ready >= 1.0:
-			_ellipse_xy(fc, 22 * s, 22 * s, Color(1, 0.7, 0.3, 0.12 + 0.12 * pulse))
-		_flame(fc + Vector2(0, 13 * s * (1.0 - ready) * 0.5), 13 * s * maxf(ready, 0.05),
-			Color("#ff9a3c") if ready >= 1.0 else Color("#b8642a"))
-
-
-func _flame(c: Vector2, r: float, col: Color) -> void:
-	var pts := PackedVector2Array()
-	for i in 24:
-		var a := TAU * i / 24.0
-		var y := sin(a)
-		var x := cos(a) * (1.0 - 0.35 * maxf(-y, 0.0))
-		pts.append(c + Vector2(x * r * 0.75, y * r * 0.8 - (r * 0.9 * maxf(-y, 0.0) ** 3)))
-	draw_colored_polygon(pts, col)
+			rc = hot
+			_ellipse_xy(c, 44 * s, 44 * s * K, Color(1, 0.6, 0.25, 0.10 + 0.10 * pulse))
+			_ring(c, 38 * s, 38 * s * K, Color(1, 0.7, 0.3, 0.25 + 0.2 * pulse), 9 * s)
+		_ring(c, 36 * s, 36 * s * K, rc, 4.5 * s)
 
 
 func _preview_range(face: String, i: int) -> float:

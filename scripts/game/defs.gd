@@ -164,7 +164,7 @@ static func essence_for_lost_night(night_idx: int) -> int:
 # ------------------------------------------------------------ map stops
 const STOPS := {
 	"road": {"name": "Old Road", "desc": "A plain night on the road."},
-	"hill": {"name": "Hillside Clearing", "desc": "Camp on a hilltop. 2-3 trails spiral round the stagecoach."},
+	"hill": {"name": "Hillside Clearing", "desc": "Camp on a hilltop. 2-3 trails spiral round the stagecoach.", "forks": false},
 }
 ## Hillside Clearing: each trail wraps this far round the camp (degrees), and
 ## spirits run faster down the long spirals.
@@ -183,6 +183,8 @@ const OUTER_TILE_R := 330.0
 const FORK_RADIUS := 258.0    ## road forks leave their trail this far out ...
 const MERGE_RADIUS := 222.0   ## ... and join the next trail here (between the tile rows)
 const GATES_PER_SLOT := 2
+## World area hidden behind the stagecoach art; no fork may run through it.
+const COACH_ZONE := Rect2(-130.0, -330.0, 290.0, 300.0)
 const GATE_COOLDOWN := 4.0
 
 
@@ -259,6 +261,11 @@ const SPAWN_GAP_MIN := 0.55
 
 static func spawn_gap(night: int, wave: int) -> float:
 	return maxf(SPAWN_GAP_MIN, SPAWN_GAP - SPAWN_GAP_PER_NIGHT * night - SPAWN_GAP_PER_WAVE * wave)
+
+
+## Does this stop's map get forks (and so gates)? Not the hill: too confusing.
+static func has_forks(stop: String) -> bool:
+	return STOPS.get(stop, {}).get("forks", true)
 
 
 static func spirit_hp_scale(night: int, stop: String) -> float:
