@@ -141,7 +141,7 @@ const SPIRITS := {
 		"chill_range": 120.0, "chill": 0.3},
 }
 
-const NIGHTS := 5
+const NIGHTS := 7   ## a week-long trip
 const WAVES_PER_NIGHT := 3
 const MAX_FLAME := 100.0
 const DAWN_HEAL := 20.0
@@ -149,7 +149,7 @@ const DAWN_HEAL := 20.0
 # ------------------------------------------------------------ essence
 ## Essence is kept between runs (Profile). At the end of a night survived:
 ## 1 per ESSENCE_PER_FLAME flame left, plus the night's number (night 1 gives
-## +1, night 5 gives +5). A lost night gives half the night's number, rounded
+## +1, night 7 gives +7). A lost night gives half the night's number, rounded
 ## down. Never less than 1 either way.
 const ESSENCE_PER_FLAME := 20.0
 
