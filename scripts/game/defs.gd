@@ -23,6 +23,9 @@ const DICE := {
 }
 
 ## Oaths: passives sworn for the rest of the run.
+## "face_mods" upgrade a die face: {face: {stat: amount}}. Numbers add to a
+## defense's stats; special keys (group_damage, heal, heal_chance) are read
+## where that face acts. See Run.face_mod().
 const OATHS := {
 	"shifting_embers": {
 		"name": "Oath of Shifting Embers",
@@ -35,6 +38,20 @@ const OATHS := {
 		"icon": "hearth",
 		"short": "Kindle heals +4 more, but dawn heals 10 less.",
 		"desc": "Char is bound to the campfire.\n\nEach Kindle die put on the fire heals 4 more flame (12 instead of 8), but dawn heals 10 less (10 instead of 20).\n\nPays off when you put plenty of Kindle dice on the fire.",
+	},
+	"bright_beacon": {
+		"name": "Oath of the Bright Beacon",
+		"icon": "beacon",
+		"short": "Guide Light also gives its group +1 damage.",
+		"desc": "Guide Lights burn brighter.\n\nDefenses in a Guide Light's group deal +1 damage, on top of the longer reach.",
+		"face_mods": {"guide": {"group_damage": 1.0}},
+	},
+	"healing_ash": {
+		"name": "Oath of the Healing Ash",
+		"icon": "ash_heal",
+		"short": "Unused Ashes may heal 3 flame.",
+		"desc": "Even cold ashes hold a little warmth.\n\nWhen a wave starts, each Ashes die you rolled has a 50% chance to heal 3 flame.",
+		"face_mods": {"ashes": {"heal": 3.0, "heal_chance": 0.5}},
 	},
 }
 const SHIFT_COST := 2.0

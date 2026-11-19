@@ -52,11 +52,16 @@ func level_up() -> void:
 ## This defense's stats at its current level (passives can adjust them here).
 func stats() -> Dictionary:
 	var st: Dictionary = Defs.DEFENSES[kind][level - 1].duplicate()
+	for stat in st:
+		if typeof(st[stat]) in [TYPE_FLOAT, TYPE_INT]:
+			st[stat] += Run.face_mod(kind, stat)
 	var g := guide_bonus()
 	if not g.is_empty():
 		st["range"] *= g["boost"]
 		if st.has("min"):
 			st["min"] *= g["min_mult"]
+		if st.has("damage"):
+			st["damage"] += Run.face_mod("guide", "group_damage")
 	return st
 
 

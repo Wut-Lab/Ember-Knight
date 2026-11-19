@@ -8,6 +8,8 @@ extends RefCounted
 ##   kindle -> star (Kindle Char)
 ##   shift  -> flame with a curved arrow (Oath of Shifting Embers)
 ##   hearth -> flame cradled in a heart (Hearth-Bound)
+##   beacon -> Guide Light lantern with a crown of rays (Bright Beacon)
+##   ash_heal -> ash heap with a small plus (Healing Ash)
 ##   essence -> blue orb with a flame (the Essence currency; `t` waves the flame)
 
 
@@ -35,6 +37,16 @@ static func draw(ci: CanvasItem, kind: String, c: Vector2, s: float, col: Color,
 			_guide(ci, c, s, col)
 		"ashes":
 			_ashes(ci, c, s, col)
+		"beacon":
+			_guide(ci, c + Vector2(0, s * 0.08), s * 0.85, col)
+			for a in [-0.3, -0.15, 0.0, 0.15, 0.3]:
+				var d := Vector2.from_angle(-PI * 0.5 + a * PI)
+				ci.draw_line(c + d * s * 0.36, c + d * s * 0.48, col, s * 0.05, true)
+		"ash_heal":
+			_ashes(ci, c + Vector2(-s * 0.08, s * 0.06), s * 0.9, col)
+			var p := c + Vector2(s * 0.26, -s * 0.24)
+			ci.draw_line(p - Vector2(s * 0.12, 0), p + Vector2(s * 0.12, 0), col, s * 0.07)
+			ci.draw_line(p - Vector2(0, s * 0.12), p + Vector2(0, s * 0.12), col, s * 0.07)
 
 
 ## Cinder Mortar: a stubby barrel tilted up with a cinder arcing out.

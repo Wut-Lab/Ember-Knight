@@ -238,6 +238,7 @@ func begin_wave() -> void:
 	_select(null)
 	_drop_lift()
 	_shift_ready = false
+	_warm_ashes()
 	for d in _dice:
 		if not d.placed:
 			d.placed = true  # unused dice fade back into the bag
@@ -448,6 +449,25 @@ func _add_fx(kind: String, at: Vector2, col: Color, r := 100.0, txt := "") -> vo
 	var f := Fx.new()
 	_fx.add_child(f)
 	f.setup(board, kind, at, col, r, txt)
+
+
+## Oath of the Healing Ash: each unused Ashes die may heal a little flame.
+func _warm_ashes() -> void:
+	var heal := Run.face_mod("ashes", "heal")
+	if heal <= 0.0:
+		return
+	var chance := Run.face_mod("ashes", "heal_chance")
+	var n := 0
+	for d in _dice:
+		if d.placed or d.face != "ashes":
+			continue
+		var at := Vector2(-40.0 + 40.0 * n, -60.0 - 22.0 * n)
+		n += 1
+		if Run.rng.randf() < chance:
+			Run.flame = minf(Run.max_flame, Run.flame + heal)
+			_add_fx("text", at, Color("#ffd27a"), 100.0, "+%d" % int(heal))
+		else:
+			_add_fx("text", at, Color("#8a8078"), 100.0, "fizzle")
 
 
 # ------------------------------------------------------------ dice placement

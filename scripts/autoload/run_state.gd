@@ -68,6 +68,15 @@ func has_oath(id: String) -> bool:
 	return id in oaths
 
 
+## Sum of one face_mods stat across all sworn Oaths (0 if none).
+func face_mod(face: String, stat: String) -> float:
+	var total := 0.0
+	for id in oaths:
+		var fm: Dictionary = Defs.OATHS.get(id, {}).get("face_mods", {})
+		total += float(fm.get(face, {}).get(stat, 0.0))
+	return total
+
+
 ## Flame healed by one Kindle die (Hearth-Bound adds to it).
 func kindle_heal() -> float:
 	return Defs.KINDLE_HEAL + (Defs.HEARTH_KINDLE_BONUS if has_oath("hearth_bound") else 0.0)
