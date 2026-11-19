@@ -179,17 +179,17 @@ func _build_layout() -> void:
 		path_lengths.append(length)
 	# A tile group sits between each pair of neighbouring lanes, centred in the gap.
 	for i in n:
-		var inner := _gap_mid(i, 168.0)
-		tiles.append(Vector2(cos(inner[0]), sin(inner[0])) * 168.0)
-		var outer := _gap_mid(i, 300.0)
+		var inner := _gap_mid(i, Defs.INNER_TILE_R)
+		tiles.append(Vector2(cos(inner[0]), sin(inner[0])) * Defs.INNER_TILE_R)
+		var outer := _gap_mid(i, Defs.OUTER_TILE_R)
 		var spread := minf(deg_to_rad(23.0), outer[1] / 2.0 - deg_to_rad(14.0))
 		for s in [-1.0, 1.0]:
 			var a: float = outer[0] + s * spread
-			tiles.append(Vector2(cos(a), sin(a)) * 300.0)
+			tiles.append(Vector2(cos(a), sin(a)) * Defs.OUTER_TILE_R)
 	for t in tiles:
 		tile_defense.append(null)
 	lane_count = n
-	_build_forks(r, hill)
+	_build_forks(r)
 
 
 var _lanes := []
@@ -235,10 +235,9 @@ func _dist_at(i: int, f: float) -> float:
 	return d
 
 
-## 1-3 one-way forks. On the road a fork cuts across the gap between two
-## neighbouring trails, out past the tiles; on the hill it is a shortcut
-## straight down the slope to the next spiral arm in.
-func _build_forks(r: RandomNumberGenerator, hill: bool) -> void:
+## 1-3 one-way forks. Each cuts across the gap between two neighbouring
+## trails (or spiral arms), through the clear ring between the tile rows.
+func _build_forks(r: RandomNumberGenerator) -> void:
 	var n := lane_count
 	var want := r.randi_range(Defs.FORKS_MIN, Defs.FORKS_MAX)
 	var order := range(n)
@@ -250,65 +249,27 @@ func _build_forks(r: RandomNumberGenerator, hill: bool) -> void:
 	for g in order:
 		if links.size() >= want:
 			break
-		var fk := []   # [from, to, f_from, f_to, connector pts]
-		if hill:
-			fk = _hill_fork(g, r)
-		else:
-			var a: int = g
-			var b: int = (g + 1) % n
-			if r.randf() < 0.5:
-				var t := a
-				a = b
-				b = t
-			var f1 := _f_at(Defs.FORK_RADIUS)
-			var f2 := _f_at(Defs.MERGE_RADIUS)
-			var a1 := _lane_angle(a, f1)
-			var b2 := _lane_angle(b, f2)
-			var delta := wrapf(b2 - a1, -PI, PI)
-			var pts := PackedVector2Array()
-			for k in 13:
-				var t := k / 12.0
-				var ang := a1 + delta * t
-				pts.append(Vector2(cos(ang), sin(ang)) * lerpf(Defs.FORK_RADIUS, Defs.MERGE_RADIUS, t))
-			fk = [a, b, f1, f2, pts]
-		if fk.is_empty() or not _clear_of_tiles(fk[4]):
+		var a: int = g
+		var b: int = (g + 1) % n
+		if r.randf() < 0.5:
+			var t := a
+			a = b
+			b = t
+		var f1 := _f_at(Defs.FORK_RADIUS)
+		var f2 := _f_at(Defs.MERGE_RADIUS)
+		var a1 := _lane_angle(a, f1)
+		var b2 := _lane_angle(b, f2)
+		# Sweep through gap g itself (lane g to lane g+1 runs the positive way).
+		var delta := wrapf(b2 - a1, 0.0, TAU) if a == g else -wrapf(a1 - b2, 0.0, TAU)
+		var pts := PackedVector2Array()
+		for k in 13:
+			var t := k / 12.0
+			var ang := a1 + delta * t
+			pts.append(Vector2(cos(ang), sin(ang)) * lerpf(Defs.FORK_RADIUS, Defs.MERGE_RADIUS, t))
+		var fk := [a, b, f1, f2, pts]   # from, to, f_from, f_to, connector
+		if not _clear_of_tiles(fk[4]):
 			continue
 		_add_fork(fk)
-
-
-## A hill fork: from arm i, straight down the slope to the next arm inward.
-func _hill_fork(i: int, r: RandomNumberGenerator) -> Array:
-	var best := []
-	var best_len := INF
-	for tries in 16:
-		var f1 := _f_at(r.randf_range(360.0, 520.0))
-		var p1 := _lane_pos(i, f1)
-		for b in lane_count:
-			if b == i:
-				continue
-			for k in 40:   # chords down the slope to points further in on arm b
-				var fb := lerpf(f1 + 0.08, 0.85, k / 39.0)
-				var p2 := _lane_pos(b, fb)
-				var d := p1.distance_to(p2)
-				if d >= best_len or d < 90.0:
-					continue
-				var pts := PackedVector2Array()
-				for j in 9:
-					pts.append(p1.lerp(p2, j / 8.0))
-				if _clear_of_tiles(pts) and _clear_of_lanes(pts, i, b):
-					best = [i, b, f1, fb, pts]
-					best_len = d
-	return best
-
-
-## The fork's middle mustn't run over another trail.
-func _clear_of_lanes(pts: PackedVector2Array, a: int, b: int) -> bool:
-	for j in range(2, pts.size() - 2):
-		for L in lane_count:
-			for q in paths[L]:
-				if q.distance_to(pts[j]) < 40.0:
-					return false
-	return true
 
 
 func _clear_of_tiles(pts: PackedVector2Array) -> bool:
