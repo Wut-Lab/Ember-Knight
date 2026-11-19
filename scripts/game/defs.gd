@@ -78,7 +78,7 @@ static func dawn_offerings(rng: RandomNumberGenerator, dice_owned: Array, oaths_
 	while out.size() < OFFERINGS and not pool.is_empty():
 		out.append(pool.pop_at(rng.randi() % pool.size()))
 	return out
-const REROLLS_PER_WAVE := 2
+const REROLLS_PER_WAVE := 1
 const MAX_LEVEL := 3
 
 ## Name, colour and tooltip for each die face.
@@ -274,11 +274,24 @@ static func roll_wave_mod(night: int, rng: RandomNumberGenerator) -> String:
 	return WAVE_MODS.keys()[rng.randi() % WAVE_MODS.size()]
 
 
+## Night curve: how far through the run's night ramp a night is, bent by
+## DIFF_K (1 = straight line; below 1 front-loads the ramp, above 1 back-loads it).
+## night is 0-based; returns 0 on night 1 and NIGHTS - 1 on the last night.
+## Every per-night step below scales by this instead of the raw night number.
+const DIFF_K := 0.95
+
+static func night_step(night: int) -> float:
+	if night <= 0:
+		return 0.0
+	var last := float(NIGHTS - 1)
+	return last * pow(minf(night / last, 1.0), DIFF_K)
+
+
 ## Spawn list for one wave: Array of spirit kinds. night/wave are 0-based.
 static func wave_spirits(night: int, wave: int, stop: String, rng: RandomNumberGenerator) -> Array:
-	var count := 5 + night * 2 + wave * 2
+	var count := floori(5 + night_step(night) * 2 + wave * 2 + 0.000001)
 	# Mist Wisps slip into night 1 from wave 2, thicker at misty stops (the lake).
-	var mist_chance := 0.15 + 0.05 * night
+	var mist_chance := 0.15 + 0.05 * night_step(night)
 	if night == 0:
 		mist_chance = [0.0, 0.1, 0.2][wave]
 	if night > 0 or wave > 0:   # some stops (the lake) breed more Mist Wisps
@@ -298,7 +311,7 @@ const SPAWN_GAP_PER_WAVE := 0.2
 const SPAWN_GAP_MIN := 0.55
 
 static func spawn_gap(night: int, wave: int) -> float:
-	return maxf(SPAWN_GAP_MIN, SPAWN_GAP - SPAWN_GAP_PER_NIGHT * night - SPAWN_GAP_PER_WAVE * wave)
+	return maxf(SPAWN_GAP_MIN, SPAWN_GAP - SPAWN_GAP_PER_NIGHT * night_step(night) - SPAWN_GAP_PER_WAVE * wave)
 
 
 ## Does this stop's map get forks (and so gates)? Set "forks": false on a stop to drop them.
@@ -307,5 +320,5 @@ static func has_forks(stop: String) -> bool:
 
 
 static func spirit_hp_scale(night: int, stop: String) -> float:
-	var s := 1.0 + 0.25 * night
+	var s := 1.0 + 0.25 * night_step(night)
 	return s
