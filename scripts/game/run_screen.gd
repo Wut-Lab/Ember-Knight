@@ -68,6 +68,7 @@ func _make_map() -> Control:
 
 func _on_stop_chosen(id: String) -> void:
 	Run.chosen_stops.append(id)
+	Run.layout_seed = Run.rng.randi()   # tonight's map, known before the loadout
 	_ambush = false
 	Run.shrine_curse = false
 	# Road events from night 2 on. Each rolls its own chance; at most one per night.

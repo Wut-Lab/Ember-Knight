@@ -21,7 +21,7 @@ const SHAPES := ["straight", "wavy", "curved"]
 
 var view_scale := 0.85
 var stop := "road"                    ## map stop id; set by the battle
-var layout_seed := 0                  ## set by the battle (from Run.rng) before _ready
+var layout_seed := 0                  ## set by the battle (Run.layout_seed) before _ready
 var shapes: Array[String] = []        ## per lane: straight / wavy / curved
 var paths: Array[PackedVector2Array] = []
 var path_lengths: Array[float] = []
@@ -224,6 +224,17 @@ func _gap_mid(i: int, rad: float) -> Array:
 	var a0: float = a[0] + _offset(a[1], f, a[2], a[3])
 	var gap := wrapf(b[0] + _offset(b[1], f, b[2], b[3]) - a0, 0.0, TAU)
 	return [a0 + gap / 2.0, gap]
+
+
+## How many forks a stop's map gets with this seed (for the loadout screen).
+static func fork_count(stop_id: String, seed_: int) -> int:
+	var b = load("res://scripts/game/board.gd").new()
+	b.stop = stop_id
+	b.layout_seed = seed_
+	b._build_layout()
+	var n: int = b.links.size()
+	b.free()
+	return n
 
 
 func _lane_angle(i: int, f: float) -> float:

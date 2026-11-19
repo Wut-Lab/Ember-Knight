@@ -17,6 +17,7 @@ var spirits_banished := 0
 var bonus_rerolls := 0         ## extra rerolls every wave (Ember Shrine)
 var shrine_seen := false       ## the Ember Shrine shows up once per run
 var gates := 1                ## gates Char can cobble tonight (Defs.GATES_FREE, +1 per traded slot)
+var layout_seed := 0           ## tonight's battle map, rolled when the stop is chosen
 var shrine_curse := false      ## tonight's spirits are tougher (Ember Shrine)
 var nights_survived := 0
 var rng := RandomNumberGenerator.new()

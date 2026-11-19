@@ -87,7 +87,7 @@ func _ready() -> void:
 	theme = Style.make_theme()
 
 	board = Board.new()
-	board.layout_seed = Run.rng.randi()
+	board.layout_seed = Run.layout_seed
 	board.stop = Run.current_stop()
 	_world.add_child(board)
 	_entities.y_sort_enabled = true
