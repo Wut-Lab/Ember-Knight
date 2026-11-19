@@ -166,7 +166,16 @@ const STOPS := {
 	"road": {"name": "Old Road", "desc": "A plain night on the road."},
 	"hill": {"name": "Hillside Clearing", "desc": "Camp on a hilltop. 3 trails spiral round the stagecoach."},
 	"cliff": {"name": "Cliff Edge", "desc": "A sheer drop behind camp. 2-3 trails, front and sides."},
+	"lake": {"name": "Quiet Lakeside", "desc": "Camp by a calm lake. Spirits drift across the water; mist rises.",
+		"mist_bonus": 0.15},
 }
+## Quiet Lakeside: a lake fills one side, its near shore this far from the fire.
+## Spirits crossing the water drift slower. 2-3 land trails + 1 water crossing.
+const LAKE_SHORE := 235.0
+const LAKE_RX := 380.0
+const LAKE_RY := 330.0
+const LAKE_WATER_SPEED := 0.6
+const LAKE_FOUR_LANE_CHANCE := 0.5
 const STOP_CHOICES_MIN := 2   ## camps offered each night, drawn from STOPS
 const STOP_CHOICES_MAX := 3
 ## Cliff Edge: the drop runs behind the stagecoach. Its edge sits this far
@@ -251,12 +260,12 @@ static func roll_wave_mod(night: int, rng: RandomNumberGenerator) -> String:
 ## Spawn list for one wave: Array of spirit kinds. night/wave are 0-based.
 static func wave_spirits(night: int, wave: int, stop: String, rng: RandomNumberGenerator) -> Array:
 	var count := 5 + night * 2 + wave * 2
-	# Mist Wisps slip into night 1 from wave 2, then drift thicker in the hollow.
+	# Mist Wisps slip into night 1 from wave 2, thicker at misty stops (the lake).
 	var mist_chance := 0.15 + 0.05 * night
 	if night == 0:
 		mist_chance = [0.0, 0.1, 0.2][wave]
-	if stop == "hollow" and night > 0:
-		mist_chance += 0.15
+	if night > 0 or wave > 0:   # some stops (the lake) breed more Mist Wisps
+		mist_chance += STOPS.get(stop, {}).get("mist_bonus", 0.0)
 	var out := []
 	for i in count:
 		out.append("mist_wisp" if rng.randf() < mist_chance else "wisp")

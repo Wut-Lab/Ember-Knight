@@ -70,7 +70,7 @@ func _process(delta: float) -> void:
 		queue_redraw()
 		return
 	var d0 := dist
-	dist += speed * (1.0 - slow) * delta
+	dist += speed * (1.0 - slow) * board.speed_at(world) * delta   # water slows them
 	path_idx = board.route(path_idx, d0, dist)   # forks: pick a way (or the gate's)
 	if dist >= board.path_lengths[path_idx]:
 		dead = true

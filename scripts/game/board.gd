@@ -41,6 +41,8 @@ func _ready() -> void:
 	var r := RandomNumberGenerator.new()
 	r.seed = 2024
 	_build_layout()
+	if Run.autoplay and stop == "lake":
+		print("  lake: side %d, %d tiles, dock %s" % [lake_side, tiles.size(), not dock.is_empty()])
 	if Run.autoplay:
 		print("  map: %d lanes %s, %d forks %s" % [lane_count, shapes, links.size(), links.map(func(L): return snappedf(maxf(absf(L["pts"][0].x) / VIEW_FIT_HILL.x, absf(L["pts"][0].y) / VIEW_FIT_HILL.y), 0.01))])
 	for i in 70:
@@ -134,6 +136,13 @@ func _offset(shape: String, f: float, ph: float, dir: float) -> float:
 	match shape:
 		"wavy":
 			return sin(f * PI * 2.4 + ph) * deg_to_rad(11.0) * (1.0 - f * 0.7)
+		"water":   # dead straight across the lake
+			return 0.0
+		"shore":   # hugs the lakeshore (ph picks the precomputed table)
+			var tb: PackedFloat32Array = _shore_tables[int(ph)]
+			var kf := clampf(f, 0.0, 1.0) * 36.0
+			var k := mini(int(kf), 35)
+			return lerpf(tb[k], tb[k + 1], kf - k)
 		"spiral":
 			return dir * ph * (1.0 - f)   # ph holds the total wrap (radians)
 		"curved":
@@ -150,7 +159,7 @@ func _build_layout() -> void:
 	var r := RandomNumberGenerator.new()
 	r.seed = layout_seed
 	for attempt in 30:   # a hill reshapes its spiral until a shortcut fits
-		for a in [paths, path_lengths, tiles, tile_defense, links, shapes]:
+		for a in [paths, path_lengths, tiles, tile_defense, links, shapes, dock]:
 			a.clear()
 		if not _build_once(r):
 			continue
@@ -161,6 +170,8 @@ func _build_layout() -> void:
 func _build_once(r: RandomNumberGenerator) -> bool:
 	if stop == "cliff":
 		return _build_cliff(r)
+	if stop == "lake":
+		return _build_lake(r)
 	var hill := stop == "hill"
 	var n := 4 if r.randf() < FOUR_LANE_CHANCE else 3
 	if hill:   # Hillside Clearing: 3 trails spiral round the camp, all the same way
@@ -322,7 +333,11 @@ func _flank_group(lane: int, side: float) -> bool:
 
 
 func _tile_spot_ok(p: Vector2) -> bool:
-	if Defs.COACH_ZONE.grow(10.0).has_point(p) or p.y < Defs.cliff_edge_y(p.x) + TILE_RADIUS + 25.0:
+	if Defs.COACH_ZONE.grow(10.0).has_point(p):
+		return false
+	if stop == "cliff" and p.y < Defs.cliff_edge_y(p.x) + TILE_RADIUS + 25.0:
+		return false
+	if stop == "lake" and _near_lake(p, TILE_RADIUS + 12.0):
 		return false
 	if absf(p.x) > VIEW_FIT.x - 10.0:
 		return false
@@ -334,6 +349,209 @@ func _tile_spot_ok(p: Vector2) -> bool:
 			if p.distance_to(q) < TILE_RADIUS + 34.0:
 				return false
 	return true
+
+
+# ------------------------------------------------------------ lake
+var lake_side := 1.0                 ## +1 lake on the right, -1 on the left
+var lake_c := Vector2.ZERO           ## lake centre (world)
+var _lake_ph := [0.0, 0.0]
+var dock: Array = []                 ## [start, end] world points, or empty
+var spirits_ref: Array = []          ## set by the battle, for reflections
+
+
+func _lake_r(ang: float) -> float:
+	return 1.0 + 0.06 * sin(3.0 * ang + _lake_ph[0]) + 0.04 * sin(5.0 * ang + _lake_ph[1])
+
+
+func in_lake(w: Vector2) -> bool:
+	if stop != "lake":
+		return false
+	var d := w - lake_c
+	var q := Vector2(d.x / Defs.LAKE_RX, d.y / Defs.LAKE_RY)
+	return q.length() < _lake_r(d.angle())
+
+
+func _near_lake(w: Vector2, margin: float) -> bool:
+	if in_lake(w):
+		return true
+	for k in 8:
+		if in_lake(w + Vector2.from_angle(TAU * k / 8.0) * margin):
+			return true
+	return false
+
+
+func lake_point(ang: float) -> Vector2:
+	return lake_c + Vector2(cos(ang) * Defs.LAKE_RX, sin(ang) * Defs.LAKE_RY) * _lake_r(ang)
+
+
+## Spirits drift slower over open water.
+func speed_at(w: Vector2) -> float:
+	return Defs.LAKE_WATER_SPEED if in_lake(w) else 1.0
+
+
+## Quiet Lakeside: a lake fills one side. Lane 0 crosses the water dead
+## straight; the trails either side of it run right along the shore, and with
+## 4 lanes one more comes from the far side. Land gaps get tile groups (two in
+## a wide gap); the shore gets just 1-2 tiles, grouped with the dock's one.
+func _build_lake(r: RandomNumberGenerator) -> bool:
+	lake_side = 1.0 if r.randf() < 0.5 else -1.0
+	lake_c = Vector2(lake_side * (Defs.LAKE_SHORE + Defs.LAKE_RX), r.randf_range(-40.0, 60.0))
+	_lake_ph = [r.randf() * TAU, r.randf() * TAU]
+	var n := 4 if r.randf() < Defs.LAKE_FOUR_LANE_CHANCE else 3
+	var water_a := (0.0 if lake_side > 0.0 else PI) + deg_to_rad(r.randf_range(-8.0, 8.0))
+	_shore_tables = [_shore_table(water_a, 1.0), _shore_table(water_a, -1.0)]
+	var lanes := []
+	var ok := false
+	for attempt in 40:
+		lanes.clear()
+		lanes.append([water_a, "water", 0.0, 1.0])
+		lanes.append([water_a, "shore", 0.0, 1.0])
+		if n == 4:
+			var shape: String = SHAPES[r.randi() % SHAPES.size()] if attempt < 30 else "straight"
+			lanes.append([water_a + PI + deg_to_rad(r.randf_range(-20.0, 20.0)), shape,
+				r.randf() * TAU, -1.0 if r.randf() < 0.5 else 1.0])
+		lanes.append([water_a, "shore", 1.0, 1.0])
+		ok = true
+		for k in 21:
+			var f := k / 20.0
+			var rad := lerpf(SPAWN_RADIUS, FIRE_RADIUS - 6.0, f)
+			for i in n:
+				var L: Array = lanes[i]
+				var a: float = L[0] + _offset(L[1], f, L[2], L[3])
+				if L[1] != "water" and _near_lake(Vector2.from_angle(a) * rad, 55.0):
+					ok = false
+				var M: Array = lanes[(i + 1) % n]
+				if wrapf(M[0] + _offset(M[1], f, M[2], M[3]) - a, 0.0, TAU) < deg_to_rad(38.0):
+					ok = false
+		if ok:
+			break
+	if not ok:
+		return false
+	_lanes = lanes
+	_steps = 36
+	for L in lanes:
+		shapes.append(L[1])
+		var pts := PackedVector2Array()
+		for k in _steps + 1:
+			var f := float(k) / _steps
+			var a: float = L[0] + _offset(L[1], f, L[2], L[3])
+			pts.append(Vector2.from_angle(a) * lerpf(SPAWN_RADIUS, FIRE_RADIUS - 6.0, f))
+		paths.append(pts)
+		var length := 0.0
+		for k in range(1, pts.size()):
+			length += pts[k].distance_to(pts[k - 1])
+		path_lengths.append(length)
+	lane_count = n
+	# Land gaps (between two land trails): a group of 3, or two in a wide gap.
+	for i in range(1, n - 1):
+		var g := _gap_mid(i, 330.0)
+		var centres := [0.5] if g[1] < deg_to_rad(160.0) else [0.3, 0.7]
+		for c in centres:
+			for want in [[[150.0, 175.0], [120.0, 210.0]], [[325.0, 400.0], [290.0, 430.0], [130.0, 205.0]],
+					[[325.0, 400.0], [290.0, 430.0], [130.0, 205.0]]]:
+				var placed := false
+				for rng_ in want:
+					if _place_in_gap(i, rng_[0], rng_[1], c, 0.2 if centres.size() > 1 else 0.44):
+						placed = true
+						break
+				if not placed:
+					return false
+	# The shore: 1-2 tiles between the water crossing and the shore trails,
+	# then the dock's tile; together they make the last group.
+	var want_shore := 1 if r.randf() < 0.5 else 2
+	var shore_gaps := [0, n - 1]
+	if r.randf() < 0.5:
+		shore_gaps.reverse()
+	var got := 0
+	for gi in shore_gaps:
+		if got < want_shore and _place_in_gap(gi, 140.0, 260.0, 0.5, 0.44):
+			got += 1
+	if got == 0:
+		return false
+	if not _build_dock(r):
+		return false
+	group_count = (tiles.size() + 2) / 3
+	for t in tiles:
+		tile_defense.append(null)
+	if Defs.has_forks(stop):
+		_build_forks(r)
+	return true
+
+
+var _shore_tables := []   ## per shore trail: angle offset from the crossing, per step
+
+
+## A trail hugging the shore: at each distance from the fire, the first angle
+## (turning away from the crossing) that clears the water by a trail's width.
+func _shore_table(water_a: float, sgn: float) -> PackedFloat32Array:
+	var out := PackedFloat32Array()
+	for k in 37:
+		var rad := lerpf(SPAWN_RADIUS, FIRE_RADIUS - 6.0, k / 36.0)
+		var d := 42.0
+		for step in range(0, 170, 1):
+			var a := water_a + sgn * deg_to_rad(step)
+			if not _near_lake(Vector2.from_angle(a) * rad, 58.0):
+				d = maxf(42.0, step)
+				break
+		out.append(sgn * deg_to_rad(d))
+	for pass_ in 3:   # smooth out the corners
+		var sm := out.duplicate()
+		for k in range(1, 36):
+			sm[k] = (out[k - 1] + out[k] * 2.0 + out[k + 1]) / 4.0
+		out = sm
+	return out
+
+
+## One tile in gap i (lane i to i+1), as near `centre` (fraction across the gap) as fits.
+func _place_in_gap(i: int, rad_lo: float, rad_hi: float, centre := 0.5, spread := 0.44) -> bool:
+	for rad in range(int(rad_lo), int(rad_hi) + 1, 15):
+		var g := _gap_mid(i, rad)
+		var a0: float = g[0] - g[1] / 2.0
+		for t in [0.0, 0.1, -0.1, 0.2, -0.2, 0.3, -0.3, 0.38, -0.38, 0.44, -0.44]:
+			if absf(t) > spread:
+				continue
+			var a: float = a0 + g[1] * (centre + t)
+			var p := Vector2.from_angle(a) * rad
+			if _tile_spot_ok(p):
+				tiles.append(p)
+				return true
+	return false
+
+
+## A short dock out into the lake beside the crossing, with one tile at its end.
+func _build_dock(r: RandomNumberGenerator) -> bool:
+	var u := Vector2.from_angle(_lanes[0][0])
+	var sides := [1.0, -1.0] if r.randf() < 0.5 else [-1.0, 1.0]
+	for sd in sides:
+		for dist_off in [108.0, 130.0, 90.0]:
+			var off: Vector2 = u.orthogonal() * sd * dist_off
+			var t0 := -1.0
+			for t in range(60, 500, 5):
+				if in_lake(off + u * t):
+					t0 = t
+					break
+			if t0 < 0.0:
+				continue
+			var a := off + u * (t0 + 62.0)
+			if absf(a.x) > VIEW_FIT.x - 40.0 or absf(a.y) > VIEW_FIT.y - 40.0 or Defs.COACH_ZONE.grow(40.0).has_point(a):
+				continue
+			var clear := true
+			for t in tiles:
+				if a.distance_to(t) < TILE_RADIUS * 2.2:
+					clear = false
+			for i in lane_count:
+				for q in paths[i]:
+					if a.distance_to(q) < TILE_RADIUS + 30.0:
+						clear = false
+					for k in 5:   # the planks stay clear of the trails too
+						if (off + u * (t0 - 10.0 + k * 25.0)).distance_to(q) < 52.0 + 26.0 and i > 0:
+							clear = false
+			if not clear:
+				continue
+			tiles.append(a)
+			dock = [off + u * (t0 - 10.0), off + u * (t0 + 108.0)]
+			return true
+	return false
 
 
 var _lanes := []
@@ -680,6 +898,159 @@ func _draw_hill() -> void:
 		_ellipse_xy(c - Vector2(sz * 0.2, sz * 0.18), sz * 0.5, sz * 0.25, Color("#2e2a2a").lerp(Color("#a8927e"), lit))
 
 
+# ------------------------------------------------------------ lake art
+var _pads: Array = []      ## lily pads: [world, size, has flower]
+var _reeds: Array = []     ## reed clumps: [world, height]
+var _ripples: Array = []   ## [world, phase]
+
+
+func _build_lake_art() -> void:
+	var r := RandomNumberGenerator.new()
+	r.seed = layout_seed + 53
+	for k in 64:
+		var a := TAU * k / 64.0
+		var shore := lake_point(a)
+		var by_dock := not dock.is_empty() and Geometry2D.get_closest_point_to_segment(shore, dock[0], dock[1]).distance_to(shore) < 75.0
+		if r.randf() < 0.45 and not by_dock:
+			_reeds.append([shore + (lake_c - shore).normalized() * r.randf_range(-6.0, 10.0), r.randf_range(16.0, 30.0)])
+		if r.randf() < 0.22:
+			var w := lake_c + (shore - lake_c) * r.randf_range(0.7, 0.9)
+			if not _near_water_path(w):
+				_pads.append([w, r.randf_range(9.0, 15.0), r.randf() < 0.3])
+	for k in 6:
+		var w := lake_c + Vector2(r.randf_range(-0.8, 0.8) * Defs.LAKE_RX, r.randf_range(-0.7, 0.7) * Defs.LAKE_RY)
+		if in_lake(w):
+			_ripples.append([w, r.randf()])
+
+
+func _near_water_path(w: Vector2) -> bool:
+	for p in paths:
+		for q in p:
+			if q.distance_to(w) < 40.0:
+				return true
+	return not dock.is_empty() and Geometry2D.get_closest_point_to_segment(w, dock[0], dock[1]).distance_to(w) < 70.0
+
+
+## A calm lake: dark still water with the moon and the campfire mirrored in
+## it, reeds and lily pads round the shore, slow ripples, a little dock, and
+## fireflies; spirits drifting over it leave a reflection and a wake.
+func _draw_lake() -> void:
+	if _reeds.is_empty():
+		_build_lake_art()
+	var s := view_scale
+	var shore := PackedVector2Array()
+	for k in 97:
+		shore.append(proj(lake_point(TAU * k / 96.0)))
+	# Muddy bank, then the water, deepening toward the middle.
+	var bank := PackedVector2Array()
+	for k in 97:
+		var a := TAU * k / 96.0
+		bank.append(proj(lake_c + (lake_point(a) - lake_c) * 1.05))
+	draw_colored_polygon(bank, Color("#1c1915").lerp(Color("#3a3024"), light_at(lake_point(PI if lake_side > 0 else 0.0)) * fire_glow * 0.8))
+	draw_colored_polygon(shore, Color("#0c1422"))
+	for k in 3:
+		var inner := PackedVector2Array()
+		for j in 97:
+			var a := TAU * j / 96.0
+			inner.append(proj(lake_c + (lake_point(a) - lake_c) * (0.82 - k * 0.2)))
+		draw_colored_polygon(inner, Color(0.02, 0.04, 0.08, 0.35))
+	# Moon on the water: a broken shimmering column.
+	var moon := lake_c + Vector2(-lake_side * Defs.LAKE_RX * 0.5, -Defs.LAKE_RY * 0.5)
+	for k in 9:
+		var w := moon + Vector2(sin(_t * 1.3 + k * 1.7) * 6.0, k * 26.0)
+		if not in_lake(w):
+			continue
+		var half := (34.0 - k * 2.5) * (0.7 + 0.3 * sin(_t * 2.1 + k))
+		var c := proj(w)
+		draw_line(c - Vector2(half * s, 0), c + Vector2(half * s, 0), Color(0.75, 0.82, 1.0, 0.16 - k * 0.012), 3.0 * s, true)
+	# The campfire's glow mirrored by the near shore.
+	var near := lake_point(PI if lake_side > 0 else 0.0)
+	for k in 6:
+		var w := near + Vector2(lake_side * (24.0 + k * 22.0), sin(_t * 1.7 + k) * 5.0)
+		var half := (26.0 - k * 3.0) * (0.75 + 0.25 * sin(_t * 3.0 + k * 2.0))
+		var c := proj(w)
+		draw_line(c - Vector2(half * s, 0), c + Vector2(half * s, 0), Color(1.0, 0.6, 0.25, (0.3 - k * 0.045) * fire_glow), 3.0 * s, true)
+	# Slow ripples.
+	for rp in _ripples:
+		var ph := fmod(_t * 0.25 + rp[1], 1.0)
+		var c := proj(rp[0])
+		_ring(c, (6.0 + ph * 40.0) * s, (6.0 + ph * 40.0) * s * K, Color(0.6, 0.72, 0.95, 0.14 * (1.0 - ph)), 1.5 * s)
+	# Wet edge of the shore.
+	for k in range(1, shore.size()):
+		var lit := light_at(lake_point(TAU * k / 96.0)) * fire_glow
+		draw_line(shore[k - 1], shore[k], Color(0.45, 0.5, 0.6, 0.12 + 0.3 * lit), 2.0 * s, true)
+	# Lily pads.
+	for pd in _pads:
+		var c := proj(pd[0])
+		var sz: float = pd[1] * s
+		var lit := maxf(light_at(pd[0]) * fire_glow, 0.15)
+		_ellipse_xy(c, sz, sz * K, Color("#16261a").lerp(Color("#3f6a3a"), lit))
+		draw_colored_polygon(PackedVector2Array([c, c + Vector2(sz, -sz * K * 0.35), c + Vector2(sz, sz * K * 0.35)]), Color("#0c1422"))
+		if pd[2]:
+			draw_circle(c - Vector2(sz * 0.2, sz * 0.3), sz * 0.3, Color(0.95, 0.85, 0.9, 0.35 + 0.5 * lit))
+	# The dock.
+	if not dock.is_empty():
+		_draw_dock()
+	# Reeds round the shore.
+	for rd in _reeds:
+		var c := proj(rd[0])
+		var h: float = rd[1] * s
+		var lit := maxf(light_at(rd[0]) * fire_glow, 0.12)
+		var col := Color("#1e2418").lerp(Color("#6d6a3a"), lit)
+		for b in 4:
+			var lean := (b - 1.5) * 0.18 + sin(_t * 0.8 + rd[0].x * 0.05) * 0.06
+			var tip := c + Vector2(sin(lean), -cos(lean)) * h * (0.75 + 0.1 * b)
+			draw_line(c + Vector2((b - 1.5) * 2.0 * s, 0), tip, col, 1.6 * s, true)
+			if b == 1:   # a cattail head
+				draw_line(tip + Vector2(0, h * 0.05), tip + Vector2(0, h * 0.25), Color("#3a2a1c").lerp(Color("#7a5232"), lit), 3.5 * s, true)
+	# Spirits on the water: a faint reflection and a wake.
+	for sp in spirits_ref:
+		if not is_instance_valid(sp) or sp.dead or not in_lake(sp.world):
+			continue
+		var c := proj(sp.world)
+		var col: Color = Defs.SPIRITS[sp.kind]["color"]
+		var sz: float = 15.0 * sp.size_k * s
+		_ellipse_xy(c + Vector2(0, sz * 1.6), sz * 0.8, sz * 0.5, Color(col, 0.16))
+		var ph := fmod(_t * 0.9 + sp.dist * 0.01, 1.0)
+		_ring(c + Vector2(0, sz * 0.6), sz * (1.0 + ph * 1.4), sz * (1.0 + ph * 1.4) * K, Color(0.7, 0.8, 1.0, 0.22 * (1.0 - ph)), 1.5 * s)
+	# Fireflies over the water.
+	for k in 10:
+		var w := lake_c + Vector2(sin(_t * 0.31 + k * 2.3) * Defs.LAKE_RX * 0.75, cos(_t * 0.23 + k * 1.1) * Defs.LAKE_RY * 0.6)
+		var c := proj(w) - Vector2(0, (18.0 + sin(_t + k) * 6.0) * s)
+		var glow := 0.5 + 0.5 * sin(_t * 2.3 + k * 1.9)
+		draw_circle(c, 5.0 * s, Color(0.85, 1.0, 0.45, 0.12 * glow))
+		draw_circle(c, 1.8 * s, Color(0.9, 1.0, 0.6, 0.35 + 0.5 * glow))
+
+
+func _draw_dock() -> void:
+	var s := view_scale
+	var a: Vector2 = dock[0]
+	var b: Vector2 = dock[1]
+	var u := (b - a).normalized()
+	var n := u.orthogonal() * 52.0
+	var lit := maxf(light_at((a + b) / 2.0) * fire_glow, 0.15)
+	var wood := Color("#3a2618").lerp(Color("#a0703f"), lit)
+	# Posts standing in the water.
+	for t in [0.35, 0.68, 1.0]:
+		for sd in [-1.0, 1.0]:
+			var w: Vector2 = a.lerp(b, t) + n * sd * 0.92
+			var c := proj(w)
+			if in_lake(w):
+				_ring(c + Vector2(0, 10 * s), 9 * s, 9 * s * K, Color(0.6, 0.72, 0.95, 0.18), 1.5 * s)
+			draw_line(c, c + Vector2(0, 12 * s), wood.darkened(0.5), 6 * s, true)
+	var deck := PackedVector2Array([proj(a + n), proj(b + n), proj(b - n), proj(a - n)])
+	var shadow := PackedVector2Array()
+	for p in deck:
+		shadow.append(p + Vector2(0, 7 * s))
+	draw_colored_polygon(shadow, Color(0, 0, 0, 0.35))
+	draw_colored_polygon(deck, wood)
+	var steps := int(a.distance_to(b) / 17.0)
+	for k in range(1, steps):
+		var w := a + u * k * 17.0
+		draw_line(proj(w + n), proj(w - n), wood.darkened(0.35), 1.5 * s, true)
+	draw_polyline(PackedVector2Array([proj(a + n), proj(b + n), proj(b - n), proj(a - n)]), wood.lightened(0.15), 1.5 * s, true)
+
+
 # ------------------------------------------------------------ drawing
 func _draw() -> void:
 	# Ground: rings from deep night to the warm lit dirt by the fire.
@@ -697,6 +1068,8 @@ func _draw() -> void:
 		_draw_cliff()
 	elif stop == "hill":
 		_draw_hill()
+	elif stop == "lake":
+		_draw_lake()
 	# Trails, lighter packed dirt, fading into the dark.
 	var trails: Array = paths.slice(0, lane_count)
 	for L in links:
@@ -707,13 +1080,19 @@ func _draw() -> void:
 			var lit := light_at(mid) * fire_glow
 			var col := Color("#17110f").lerp(Color("#7a5236"), clampf(lit, 0.0, 1.0))
 			col.a = 0.55 + 0.45 * lit
+			if stop == "lake" and in_lake(mid):   # crossing the water: a faint wake
+				if k % 2 == 0:
+					var dc := Color(0.7, 0.82, 1.0, 0.3 + 0.25 * lit)
+					draw_line(proj(p[k - 1]), proj(p[k]), Color(dc, dc.a * 0.35), 16.0 * view_scale, true)
+					draw_line(proj(p[k - 1]), proj(p[k]), dc, 7.0 * view_scale, true)
+				continue
 			draw_line(proj(p[k - 1]), proj(p[k]), col, 46.0 * view_scale, true)
 			draw_circle(proj(p[k]), 23.0 * view_scale * Vector2(1, K).length() * 0.72, col)
 	# Grass tufts and pebbles, only seen where the light reaches.
 	for tf in _tufts:
 		var w: Vector2 = tf[0]
 		var lit := light_at(w) * fire_glow
-		if lit < 0.05 or (stop == "cliff" and w.y < Defs.cliff_edge_y(w.x) + 20.0):
+		if lit < 0.05 or (stop == "cliff" and w.y < Defs.cliff_edge_y(w.x) + 20.0) or _near_lake(w, 14.0):
 			continue
 		var p := proj(w)
 		var s: float = tf[1] * view_scale

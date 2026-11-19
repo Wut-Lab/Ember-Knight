@@ -90,6 +90,7 @@ func _ready() -> void:
 	board = Board.new()
 	board.layout_seed = Run.layout_seed
 	board.stop = Run.current_stop()
+	board.spirits_ref = spirits   # the lake draws their reflections
 	_world.add_child(board)
 	_entities.y_sort_enabled = true
 	_world.add_child(_entities)
@@ -639,9 +640,9 @@ func _autoplay_step(delta: float) -> void:
 					best = i
 					break
 		if best == -1:
-			for k in board.tiles.size():  # inner tiles round the fire first
+			for k in board.group_count * 3:  # inner tiles round the fire first
 				var i: int = (k % board.group_count) * 3 + k / board.group_count
-				if board.tile_defense[i] == null:
+				if i < board.tiles.size() and board.tile_defense[i] == null:
 					best = i
 					break
 		if best != -1:
