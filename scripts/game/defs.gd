@@ -182,7 +182,8 @@ const INNER_TILE_R := 150.0
 const OUTER_TILE_R := 330.0
 const FORK_RADIUS := 258.0    ## road forks leave their trail this far out ...
 const MERGE_RADIUS := 222.0   ## ... and join the next trail here (between the tile rows)
-const GATES_PER_SLOT := 2
+const GATES_FREE := 1       ## every night Char has this many gates to cobble
+const GATES_PER_SLOT := 1   ## ... plus this many for a traded die slot
 ## World area hidden behind the stagecoach art; no fork may run through it.
 const COACH_ZONE := Rect2(-130.0, -330.0, 290.0, 300.0)
 const GATE_COOLDOWN := 4.0

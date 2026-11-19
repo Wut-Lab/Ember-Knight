@@ -100,7 +100,7 @@ func _ready() -> void:
 ## Last night's dice if still owned, topped up from the bag.
 func _start_slots() -> Array:
 	var out := []
-	if Run.gates > 0 and Defs.has_forks(Run.current_stop()):   # kept the gate kit last night
+	if Run.gates > Defs.GATES_FREE and Defs.has_forks(Run.current_stop()):   # kept the gate kit last night
 		out.append(GATE_KIT)
 	for id in Run.loadout:
 		if out.count(id) < Run.owned(id) and out.size() < Defs.LOADOUT_SIZE:
@@ -114,11 +114,11 @@ func _start_slots() -> Array:
 
 
 func _confirm() -> void:
-	if Run.autoplay and not GATE_KIT in _slots and Defs.has_forks(Run.current_stop()) and Run.rng.randf() < 0.5:
-		_slots[_slots.size() - 1] = GATE_KIT   # autoplay tries the trade half the time
+	if Run.autoplay and not GATE_KIT in _slots and Defs.has_forks(Run.current_stop()) and Run.rng.randf() < 0.25:
+		_slots[_slots.size() - 1] = GATE_KIT   # autoplay tries the trade now and then
 	if "" in _slots:
 		return
-	Run.gates = _slots.count(GATE_KIT) * Defs.GATES_PER_SLOT
+	Run.gates = Defs.GATES_FREE + _slots.count(GATE_KIT) * Defs.GATES_PER_SLOT
 	Run.loadout = _slots.filter(func(id): return id != GATE_KIT)
 	Run.apply_loadout()
 	AudioDirector.play_sfx("dice_roll", -6.0)
@@ -177,7 +177,7 @@ func _slot_button(i: int) -> Button:
 		var c := Vector2(85, 62)
 		if id == GATE_KIT:
 			_draw_gate(ci, c, 1.6)
-			_text(ci, "%d Gates" % Defs.GATES_PER_SLOT, Vector2(0, 132), 170, 18, Style.FG)
+			_text(ci, "+%d Gate" % Defs.GATES_PER_SLOT, Vector2(0, 132), 170, 18, Style.FG)
 		elif id == "":
 			for k in 16:  # dashed outline of an empty slot
 				var a0 := TAU * k / 16.0
@@ -211,7 +211,7 @@ func _gate_card() -> Button:
 	art.draw_fn = func(ci: CanvasItem):
 		_draw_gate(ci, Vector2(44, 58), 1.0)
 		_text(ci, "Cobble Gates", Vector2(82, 30), 116, 17, Style.FG, HORIZONTAL_ALIGNMENT_LEFT)
-		ci.draw_multiline_string(Style.BODY_MEDIUM, Vector2(82, 50), "Trade a slot for %d gates to steer spirits at forks." % Defs.GATES_PER_SLOT,
+		ci.draw_multiline_string(Style.BODY_MEDIUM, Vector2(82, 50), "You have %d gate. Trade a slot for +%d more." % [Defs.GATES_FREE, Defs.GATES_PER_SLOT],
 			HORIZONTAL_ALIGNMENT_LEFT, 112, 13, 3, Style.MUTE)
 		_text(ci, "In use" if used else "One slot max", Vector2(82, 98), 116, 15,
 			Style.ACCENT if used else Style.MUTE, HORIZONTAL_ALIGNMENT_LEFT)

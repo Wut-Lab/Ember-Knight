@@ -157,7 +157,7 @@ func _layout() -> void:
 func _start_prep() -> void:
 	phase = Phase.PREP
 	if wave == 0:
-		_gates_left = Run.gates
+		_gates_left = Run.gates if Defs.has_forks(Run.current_stop()) else 0
 	fighting = false
 	char_unit.set_mood("open")
 	_rerolls = Defs.REROLLS_PER_WAVE + Run.bonus_rerolls

@@ -16,7 +16,7 @@ var chosen_stops: Array[String] = []
 var spirits_banished := 0
 var bonus_rerolls := 0         ## extra rerolls every wave (Ember Shrine)
 var shrine_seen := false       ## the Ember Shrine shows up once per run
-var gates := 0                ## gates Char can cobble tonight (2 per loadout slot traded)
+var gates := 1                ## gates Char can cobble tonight (Defs.GATES_FREE, +1 per traded slot)
 var shrine_curse := false      ## tonight's spirits are tougher (Ember Shrine)
 var nights_survived := 0
 var rng := RandomNumberGenerator.new()
@@ -40,7 +40,7 @@ func new_run() -> void:
 	spirits_banished = 0
 	nights_survived = 0
 	bonus_rerolls = 0
-	gates = 0
+	gates = Defs.GATES_FREE
 	shrine_seen = false
 	shrine_curse = false
 	stop_options.clear()
