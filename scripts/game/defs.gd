@@ -165,7 +165,16 @@ static func essence_for_lost_night(night_idx: int) -> int:
 const STOPS := {
 	"road": {"name": "Old Road", "desc": "A plain night on the road."},
 	"hill": {"name": "Hillside Clearing", "desc": "Camp on a hilltop. 3 trails spiral round the stagecoach."},
+	"cliff": {"name": "Cliff Edge", "desc": "A sheer drop behind camp. 2-3 trails, front and sides."},
 }
+## Cliff Edge: the drop runs behind the stagecoach. Its edge sits this far
+## behind the fire (world y) and bends away toward the sides.
+const CLIFF_EDGE_Y := -175.0
+const CLIFF_BEND := 0.0009
+const CLIFF_THREE_LANE_CHANCE := 0.6
+
+static func cliff_edge_y(x: float) -> float:
+	return CLIFF_EDGE_Y - CLIFF_BEND * x * x
 ## Hillside Clearing: each trail wraps this far round the camp (degrees), and
 ## spirits run faster down the long spirals.
 const HILL_WRAP_MIN := 200.0

@@ -640,7 +640,7 @@ func _autoplay_step(delta: float) -> void:
 					break
 		if best == -1:
 			for k in board.tiles.size():  # inner tiles round the fire first
-				var i: int = (k % board.lane_count) * 3 + k / board.lane_count
+				var i: int = (k % board.group_count) * 3 + k / board.group_count
 				if board.tile_defense[i] == null:
 					best = i
 					break

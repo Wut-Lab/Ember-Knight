@@ -138,12 +138,15 @@ func _build_layout() -> void:
 	for attempt in 30:   # a hill reshapes its spiral until a shortcut fits
 		for a in [paths, path_lengths, tiles, tile_defense, links, shapes]:
 			a.clear()
-		_build_once(r)
+		if not _build_once(r):
+			continue
 		if not links.is_empty() or not Defs.has_forks(stop):
 			return
 
 
-func _build_once(r: RandomNumberGenerator) -> void:
+func _build_once(r: RandomNumberGenerator) -> bool:
+	if stop == "cliff":
+		return _build_cliff(r)
 	var hill := stop == "hill"
 	var n := 4 if r.randf() < FOUR_LANE_CHANCE else 3
 	if hill:   # Hillside Clearing: 3 trails spiral round the camp, all the same way
@@ -202,13 +205,127 @@ func _build_once(r: RandomNumberGenerator) -> void:
 	for t in tiles:
 		tile_defense.append(null)
 	lane_count = n
+	group_count = n
 	if Defs.has_forks(stop):
 		_build_forks(r)
+	return true
+
+
+## Cliff Edge: 2-3 trails fan in from the front and sides, none from behind
+## (the drop). Lanes run right to left so each gap sits between i and i+1.
+## Tile groups: one in each gap, plus one on the outer flank of each side trail.
+func _build_cliff(r: RandomNumberGenerator) -> bool:
+	var n := 3 if r.randf() < Defs.CLIFF_THREE_LANE_CHANCE else 2
+	var lanes := []
+	var ok := false
+	for attempt in 40:
+		lanes.clear()
+		var lo := deg_to_rad(r.randf_range(2.0, 30.0))
+		var hi := deg_to_rad(r.randf_range(150.0, 178.0))
+		if n == 2 and r.randf() < 0.5:   # two trails: sometimes front + one side
+			if r.randf() < 0.5:
+				lo = deg_to_rad(r.randf_range(65.0, 100.0))
+			else:
+				hi = deg_to_rad(r.randf_range(80.0, 115.0))
+		for i in n:
+			var base := lerpf(lo, hi, float(i) / (n - 1))
+			if n == 3 and i == 1:
+				base += deg_to_rad(r.randf_range(-15.0, 15.0))
+			var shape: String = SHAPES[r.randi() % SHAPES.size()] if attempt < 30 else "straight"
+			lanes.append([base, shape, r.randf() * TAU, -1.0 if r.randf() < 0.5 else 1.0])
+		ok = true
+		for k in 21:
+			var f := k / 20.0
+			var rad := lerpf(SPAWN_RADIUS, FIRE_RADIUS - 6.0, f)
+			for i in n:
+				var L: Array = lanes[i]
+				var a: float = L[0] + _offset(L[1], f, L[2], L[3])
+				var p := Vector2(cos(a), sin(a)) * rad
+				if rad > 120.0 and p.y < Defs.cliff_edge_y(p.x) + 70.0:
+					ok = false
+				if i + 1 < n:
+					var M: Array = lanes[i + 1]
+					var gap := wrapf(M[0] + _offset(M[1], f, M[2], M[3]) - a, -PI, PI)
+					if gap < deg_to_rad(48.0):
+						ok = false
+		if ok:
+			break
+	if not ok:
+		return false
+	_lanes = lanes
+	_steps = 36
+	for L in lanes:
+		shapes.append(L[1])
+		var pts := PackedVector2Array()
+		for k in _steps + 1:
+			var f := float(k) / _steps
+			var a: float = L[0] + _offset(L[1], f, L[2], L[3])
+			pts.append(Vector2(cos(a), sin(a)) * lerpf(SPAWN_RADIUS, FIRE_RADIUS - 6.0, f))
+		paths.append(pts)
+		var length := 0.0
+		for k in range(1, pts.size()):
+			length += pts[k].distance_to(pts[k - 1])
+		path_lengths.append(length)
+	lane_count = n
+	for i in n - 1:
+		var inner := _gap_mid(i, Defs.INNER_TILE_R)
+		tiles.append(Vector2(cos(inner[0]), sin(inner[0])) * Defs.INNER_TILE_R)
+		var outer := _gap_mid(i, Defs.OUTER_TILE_R)
+		var spread := minf(deg_to_rad(23.0), outer[1] / 2.0 - deg_to_rad(14.0))
+		for s in [-1.0, 1.0]:
+			var a: float = outer[0] + s * spread
+			tiles.append(Vector2(cos(a), sin(a)) * Defs.OUTER_TILE_R)
+	for side in [[0, -1.0], [n - 1, 1.0]]:
+		if not _flank_group(side[0], side[1]):
+			return false
+	group_count = tiles.size() / 3
+	for t in tiles:
+		tile_defense.append(null)
+	if Defs.has_forks(stop):
+		_build_forks(r)
+	return true
+
+
+## Three tiles on the open side of an outer cliff trail (toward the drop),
+## inner one first. False if they can't fit.
+func _flank_group(lane: int, side: float) -> bool:
+	for want in [[150.0, 210.0], [300.0, 380.0], [300.0, 380.0]]:
+		var placed := false
+		for rad in range(int(want[0]), int(want[1]) + 1, 15):
+			var base := _lane_angle(lane, _f_at(rad))
+			for step in range(8, 120, 4):
+				var a := base + side * deg_to_rad(step)
+				var p := Vector2(cos(a), sin(a)) * rad
+				if _tile_spot_ok(p):
+					tiles.append(p)
+					placed = true
+					break
+			if placed:
+				break
+		if not placed:
+			return false
+	return true
+
+
+func _tile_spot_ok(p: Vector2) -> bool:
+	if Defs.COACH_ZONE.grow(10.0).has_point(p) or p.y < Defs.cliff_edge_y(p.x) + TILE_RADIUS + 25.0:
+		return false
+	if absf(p.x) > VIEW_FIT.x - 10.0:
+		return false
+	for t in tiles:
+		if p.distance_to(t) < TILE_RADIUS * 2.3:
+			return false
+	for i in lane_count:
+		for q in paths[i]:
+			if p.distance_to(q) < TILE_RADIUS + 34.0:
+				return false
+	return true
 
 
 var _lanes := []
 var _steps := 36
 var lane_count := 0          ## real trails; paths past this index are fork routes
+var group_count := 0         ## tile groups of 3 (inner tile first)
 ## One-way forks. Each: from (lane), to (lane), at (dist on `from` where it forks),
 ## path (index of the route that takes the fork), pts (connector, for drawing),
 ## gate (Char has cobbled one here), cross (gate sends spirits down the fork),
@@ -265,8 +382,8 @@ func _dist_at(i: int, f: float) -> float:
 func _build_forks(r: RandomNumberGenerator) -> void:
 	var n := lane_count
 	var want := r.randi_range(Defs.FORKS_MIN, Defs.FORKS_MAX)
-	var order := range(n)
-	for i in range(n - 1, 0, -1):   # shuffle which gaps / arms get forks
+	var order := range(n - 1 if stop == "cliff" else n)   # no gap across the drop
+	for i in range(order.size() - 1, 0, -1):   # shuffle which gaps / arms get forks
 		var j := r.randi_range(0, i)
 		var t = order[i]
 		order[i] = order[j]
@@ -395,6 +512,125 @@ func link_at(local: Vector2) -> int:
 	return -1
 
 
+# ------------------------------------------------------------ cliff art
+var _rim: PackedVector2Array = []   ## jagged cliff edge, world points
+var _rocks: Array = []              ## [world pos, size, shape seed]
+var _ridge: PackedVector2Array = []
+var _pines: Array = []              ## [world x, height]
+
+
+func _build_cliff_art() -> void:
+	var r := RandomNumberGenerator.new()
+	r.seed = layout_seed + 77
+	_rim.clear()
+	var x := -1500.0
+	while x <= 1500.0:
+		var jag := r.randf_range(-9.0, 9.0) + sin(x * 0.013) * 10.0
+		_rim.append(Vector2(x, Defs.cliff_edge_y(x) + jag))
+		x += 22.0
+	_rocks.clear()
+	x = -900.0
+	while x <= 900.0:
+		var y := Defs.cliff_edge_y(x) + r.randf_range(4.0, 26.0)
+		_rocks.append([Vector2(x, y), r.randf_range(12.0, 30.0), r.randi()])
+		if r.randf() < 0.4:   # a smaller stone tucked beside it
+			_rocks.append([Vector2(x + r.randf_range(14.0, 30.0), y + r.randf_range(8.0, 22.0)), r.randf_range(6.0, 12.0), r.randi()])
+		x += r.randf_range(38.0, 80.0)
+	_ridge.clear()
+	_pines.clear()
+	x = -900.0
+	while x <= 900.0:
+		var y := minf(-395.0 + sin(x * 0.006 + 1.3) * 22.0 + sin(x * 0.019) * 18.0, Defs.cliff_edge_y(x) - 110.0)
+		_ridge.append(Vector2(x, y))
+		if r.randf() < 0.5:
+			_pines.append([x + r.randf_range(-10.0, 10.0), r.randf_range(26.0, 52.0)])
+		x += 30.0
+
+
+## Behind the stagecoach the ground ends at a rocky lip. Past it: a misty
+## chasm and, far across, a dark ridge of pines.
+func _draw_cliff() -> void:
+	if _rim.is_empty():
+		_build_cliff_art()
+	var s := view_scale
+	var far := -3000.0
+	# The chasm.
+	var void_pts := PackedVector2Array()
+	for p in _rim:
+		void_pts.append(proj(p))
+	void_pts.append(proj(Vector2(_rim[_rim.size() - 1].x, far)))
+	void_pts.append(proj(Vector2(_rim[0].x, far)))
+	draw_colored_polygon(void_pts, Color("#070a12"))
+	# Far ridge and pines, faintly moonlit.
+	var ridge_col := Color("#1a2335")
+	var rp := PackedVector2Array()
+	for p in _ridge:
+		rp.append(proj(p))
+	rp.append(proj(Vector2(_ridge[_ridge.size() - 1].x, far)))
+	rp.append(proj(Vector2(_ridge[0].x, far)))
+	draw_colored_polygon(rp, ridge_col)
+	for pn in _pines:
+		var bx: float = pn[0]
+		var by := proj(Vector2(bx, minf(-395.0 + sin(bx * 0.006 + 1.3) * 22.0 + sin(bx * 0.019) * 18.0, Defs.cliff_edge_y(bx) - 110.0)))
+		var h: float = pn[1] * s * K
+		var wdt := h * 0.42
+		draw_colored_polygon(PackedVector2Array([by + Vector2(-wdt, 2), by + Vector2(0, -h), by + Vector2(wdt, 2)]), ridge_col)
+	# Mist drifting in the chasm.
+	for k in 9:
+		var mx := -700.0 + k * 170.0 + sin(_t * 0.15 + k * 1.7) * 60.0
+		var my := Defs.cliff_edge_y(mx) - 80.0 - (k % 3) * 30.0
+		var a := 0.08 + 0.04 * sin(_t * 0.4 + k)
+		_ellipse_xy(proj(Vector2(mx, my)), 150.0 * s, 26.0 * s, Color(0.55, 0.65, 0.85, a))
+	# The rock face dropping away below the lip, fading into the dark.
+	for k in 5:
+		var band := PackedVector2Array()
+		var depth := 70.0 - k * 13.0
+		for p in _rim:
+			band.append(proj(p))
+		for j in range(_rim.size() - 1, -1, -1):
+			band.append(proj(_rim[j] + Vector2(0, -depth)))
+		var fc := Color("#3a2e28").lerp(Color("#070a12"), 1.0 - k / 4.0)
+		draw_colored_polygon(band, fc)
+	for j in range(0, _rim.size(), 2):   # cracks down the face
+		var p: Vector2 = _rim[j]
+		var lit := light_at(p) * fire_glow
+		var drop := 30.0 + float((j * 37) % 30)
+		draw_line(proj(p + Vector2(0, -4)), proj(p + Vector2(((j * 13) % 9) - 4.0, -drop)),
+			Color(0, 0, 0, 0.35 + 0.2 * lit), 2.0 * s, true)
+	# The lip itself: a lit rim of rock.
+	var lip := PackedVector2Array()
+	for p in _rim:
+		lip.append(proj(p))
+	for j in range(_rim.size() - 1, -1, -1):
+		lip.append(proj(_rim[j] + Vector2(0, 14.0)))
+	draw_colored_polygon(lip, Color("#2a2523").lerp(Color("#6a5a4c"), light_at(Vector2(0, Defs.CLIFF_EDGE_Y)) * fire_glow))
+	for k in range(1, _rim.size()):
+		var lit := light_at(_rim[k]) * fire_glow
+		draw_line(proj(_rim[k - 1]), proj(_rim[k]), Color("#3a3230").lerp(Color("#b08a66"), lit), 3.0 * s, true)
+	# Boulders along the edge.
+	for rk in _rocks:
+		var w: Vector2 = rk[0]
+		var sz: float = rk[1]
+		var rr := RandomNumberGenerator.new()
+		rr.seed = rk[2]
+		var lit := maxf(light_at(w) * fire_glow, 0.12)
+		var c := proj(w)
+		var poly := PackedVector2Array()
+		var top := PackedVector2Array()
+		for i in 7:
+			var a := PI + PI * i / 6.0
+			var rad := sz * rr.randf_range(0.75, 1.1) * s
+			poly.append(c + Vector2(cos(a) * rad, sin(a) * rad * 0.9))
+		poly.append(c + Vector2(sz * 0.9 * s, sz * 0.18 * s))
+		poly.append(c + Vector2(-sz * 0.9 * s, sz * 0.18 * s))
+		_ellipse_xy(c + Vector2(0, sz * 0.2 * s), sz * 1.05 * s, sz * 0.35 * s, Color(0, 0, 0, 0.35))
+		draw_colored_polygon(poly, Color("#2b2626").lerp(Color("#7c6c60"), lit))
+		for i in 4:
+			var a := PI * 1.2 + PI * 0.6 * i / 3.0
+			top.append(c + Vector2(cos(a) * sz * 0.6 * s, sin(a) * sz * 0.75 * s))
+		draw_polyline(top, Color("#3c3634").lerp(Color("#b59d86"), lit), 2.0 * s, true)
+
+
 # ------------------------------------------------------------ drawing
 func _draw() -> void:
 	# Ground: rings from deep night to the warm lit dirt by the fire.
@@ -406,6 +642,8 @@ func _draw() -> void:
 		lit = pow(lit, 1.4) * fire_glow
 		var col := Color("#0a080b").lerp(Color("#5e3d26"), clampf(lit, 0.0, 1.0))
 		_ellipse(Vector2.ZERO, rad, col)
+	if stop == "cliff":
+		_draw_cliff()
 	# Trails, lighter packed dirt, fading into the dark.
 	var trails: Array = paths.slice(0, lane_count)
 	for L in links:
@@ -422,7 +660,7 @@ func _draw() -> void:
 	for tf in _tufts:
 		var w: Vector2 = tf[0]
 		var lit := light_at(w) * fire_glow
-		if lit < 0.05:
+		if lit < 0.05 or (stop == "cliff" and w.y < Defs.cliff_edge_y(w.x) + 20.0):
 			continue
 		var p := proj(w)
 		var s: float = tf[1] * view_scale
