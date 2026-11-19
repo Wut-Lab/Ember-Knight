@@ -26,6 +26,8 @@ var _options: Array = []   ## tonight's camp buttons
 var _journey_btn: Button
 var _journey: PanelContainer
 var _dim: ColorRect
+var _leaders: Control      ## dotted lines from each Journey camp to its flame count
+var _leader_pairs: Array = []
 var _t := 0.0
 
 
@@ -131,6 +133,8 @@ func _process(delta: float) -> void:
 	_t += delta
 	_lines.queue_redraw()
 	_tracker.queue_redraw()
+	if _leaders:
+		_leaders.queue_redraw()
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -260,6 +264,27 @@ func _draw_tracker(ci: CanvasItem) -> void:
 
 
 # ------------------------------------------------------------ journey window
+## Faint glowing orange dots leading from each camp name to its flame count.
+func _draw_leaders(ci: CanvasItem) -> void:
+	for pair in _leader_pairs:
+		var name_l: Label = pair[0]
+		var num_l: Label = pair[1]
+		if not is_instance_valid(name_l) or not is_instance_valid(num_l):
+			continue
+		var font := name_l.get_theme_font("font")
+		var fs := name_l.get_theme_font_size("font_size")
+		var text_w := font.get_string_size(name_l.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+		var origin: Vector2 = (ci as Control).global_position
+		var y: float = name_l.global_position.y + name_l.size.y * 0.62 - origin.y
+		var x0: float = name_l.global_position.x + text_w + 12.0 - origin.x
+		var x1: float = num_l.global_position.x - 10.0 - origin.x
+		var x: float = x0
+		while x <= x1:
+			ci.draw_circle(Vector2(x, y), 4.0, Color(Style.ACCENT2, 0.12))   # glow
+			ci.draw_circle(Vector2(x, y), 1.6, Color(Style.ACCENT, 0.6))
+			x += 9.0
+
+
 ## Lists the nights already cleared and where Char camped.
 func _open_journey() -> void:
 	if _journey:
@@ -269,7 +294,8 @@ func _open_journey() -> void:
 	_dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(_dim)
 	_journey = PanelContainer.new()
-	_journey.custom_minimum_size = Vector2(560, 0)
+	_leader_pairs.clear()
+	_journey.custom_minimum_size = Vector2(600, 0)
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 14)
 	_journey.add_child(box)
@@ -313,9 +339,17 @@ func _open_journey() -> void:
 		sit.add_theme_constant_override("margin_bottom", 4)
 		sit.size_flags_vertical = Control.SIZE_SHRINK_END
 		sit.add_child(words)
+		_leader_pairs.append([b, num])
 		stat.add_child(num)
 		stat.add_child(sit)
 		grid.add_child(stat)
+	# Widen the name column so even the longest name gets a run of dots.
+	var widest := 0.0
+	for pair in _leader_pairs:
+		var l: Label = pair[0]
+		widest = maxf(widest, Style.BODY_FONT.get_string_size(l.text, HORIZONTAL_ALIGNMENT_LEFT, -1, 24).x)
+	if not _leader_pairs.is_empty():
+		(_leader_pairs[0][0] as Label).custom_minimum_size.x = widest + 64.0
 	box.add_child(grid)
 	var gap := Control.new()
 	gap.custom_minimum_size = Vector2(0, 10)
@@ -327,6 +361,11 @@ func _open_journey() -> void:
 	back.pressed.connect(_close_journey)
 	box.add_child(back)
 	add_child(_journey)
+	_leaders = DrawProxy.new()
+	_leaders.draw_fn = _draw_leaders
+	_leaders.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_leaders.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_leaders)
 	_journey.reset_size()
 	_journey.position = (size - _journey.size) / 2
 	back.grab_focus()
@@ -337,5 +376,7 @@ func _close_journey() -> void:
 		return
 	_journey.queue_free()
 	_dim.queue_free()
+	_leaders.queue_free()
 	_journey = null
+	_leaders = null
 	_journey_btn.grab_focus()
