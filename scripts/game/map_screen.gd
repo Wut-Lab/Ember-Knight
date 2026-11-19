@@ -145,6 +145,17 @@ func _cleared_card() -> PanelContainer:
 	var card := PanelContainer.new()
 	card.custom_minimum_size = CLEARED_SIZE
 	card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# Lit by the dawn: a faint white-to-yellow glow and a warm border.
+	var lit := StyleBoxFlat.new()
+	lit.bg_color = Color("#1d1a1f", 0.92)
+	lit.border_color = Color(1.0, 0.9, 0.62, 0.55)
+	lit.set_border_width_all(2)
+	lit.set_corner_radius_all(8)
+	lit.set_content_margin_all(36)
+	lit.anti_aliasing = true
+	lit.shadow_color = Color(1.0, 0.94, 0.72, 0.2)
+	lit.shadow_size = 26
+	card.add_theme_stylebox_override("panel", lit)
 	var box := VBoxContainer.new()
 	box.alignment = BoxContainer.ALIGNMENT_CENTER
 	box.add_theme_constant_override("separation", 8)
@@ -258,7 +269,7 @@ func _open_journey() -> void:
 	_dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(_dim)
 	_journey = PanelContainer.new()
-	_journey.custom_minimum_size = Vector2(480, 0)
+	_journey.custom_minimum_size = Vector2(560, 0)
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 14)
 	_journey.add_child(box)
@@ -270,9 +281,9 @@ func _open_journey() -> void:
 	h.add_theme_color_override("font_color", Style.ACCENT)
 	box.add_child(h)
 	var grid := GridContainer.new()
-	grid.columns = 2
-	grid.add_theme_constant_override("h_separation", 24)
-	grid.add_theme_constant_override("v_separation", 10)
+	grid.columns = 3
+	grid.add_theme_constant_override("h_separation", 28)
+	grid.add_theme_constant_override("v_separation", 12)
 	grid.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	for n in mini(Run.night, Run.chosen_stops.size()):
 		var a := Label.new()
@@ -285,7 +296,30 @@ func _open_journey() -> void:
 		b.text = Defs.STOPS.get(Run.chosen_stops[n], {}).get("name", Run.chosen_stops[n])
 		b.add_theme_font_size_override("font_size", 24)
 		grid.add_child(b)
+		# Flame left that dawn: the number in ember orange, the words muted.
+		var stat := HBoxContainer.new()
+		stat.add_theme_constant_override("separation", 6)
+		stat.alignment = BoxContainer.ALIGNMENT_END
+		var num := Label.new()
+		num.text = str(Run.night_flames[n]) if n < Run.night_flames.size() else "–"
+		num.add_theme_font_override("font", Style.BODY_MEDIUM)
+		num.add_theme_font_size_override("font_size", 24)
+		num.add_theme_color_override("font_color", Style.ACCENT)
+		var words := Label.new()
+		words.text = "flame left"
+		words.add_theme_font_size_override("font_size", 17)
+		words.add_theme_color_override("font_color", Style.MUTE)
+		var sit := MarginContainer.new()   # sit the small words on the number's baseline
+		sit.add_theme_constant_override("margin_bottom", 4)
+		sit.size_flags_vertical = Control.SIZE_SHRINK_END
+		sit.add_child(words)
+		stat.add_child(num)
+		stat.add_child(sit)
+		grid.add_child(stat)
 	box.add_child(grid)
+	var gap := Control.new()
+	gap.custom_minimum_size = Vector2(0, 10)
+	box.add_child(gap)
 	var back := Button.new()
 	back.text = "Back"
 	back.custom_minimum_size = Vector2(200, 54)

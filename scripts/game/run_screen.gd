@@ -117,6 +117,7 @@ func _on_night_over(survived: bool) -> void:
 	if not survived:
 		_end(false)
 		return
+	Run.night_flames.append(roundi(Run.flame))
 	if Run.night + 1 >= Defs.NIGHTS:
 		_end(true)
 		return

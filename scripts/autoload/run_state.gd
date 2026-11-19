@@ -20,6 +20,7 @@ var gates := 1                ## gates Char can cobble tonight (Defs.GATES_FREE,
 var layout_seed := 0           ## tonight's battle map, rolled when the stop is chosen
 var shrine_curse := false      ## tonight's spirits are tougher (Ember Shrine)
 var nights_survived := 0
+var night_flames: Array = []   ## flame left at the end of each night cleared
 var rng := RandomNumberGenerator.new()
 ## `-- --autoplay`: the game plays itself (for previews and balance checks).
 ## `-- --autoplay --quit-at-end` also prints the result and quits.
@@ -40,6 +41,7 @@ func new_run() -> void:
 	chosen_stops.clear()
 	spirits_banished = 0
 	nights_survived = 0
+	night_flames.clear()
 	bonus_rerolls = 0
 	gates = Defs.GATES_FREE
 	shrine_seen = false
@@ -111,6 +113,7 @@ func checkpoint() -> void:
 	_checkpoint["pool"] = pool.duplicate()
 	_checkpoint["loadout"] = loadout.duplicate()
 	_checkpoint["oaths"] = oaths.duplicate()
+	_checkpoint["night_flames"] = night_flames.duplicate()
 	for k in EXTRA_KEYS:
 		_checkpoint[k] = get(k)
 	# The RNG is saved too, so Save and Quit can't reroll anything (fog, ambush,
@@ -161,6 +164,7 @@ func load_run() -> bool:
 	loadout = Array(d.get("loadout", pool.slice(0, Defs.LOADOUT_SIZE)))
 	apply_loadout()
 	oaths = Array(d.get("oaths", []))
+	night_flames = Array(d.get("night_flames", []))
 	bonus_rerolls = int(d.get("bonus_rerolls", 0))
 	shrine_seen = bool(d.get("shrine_seen", false))
 	shrine_curse = false
