@@ -146,8 +146,8 @@ func _build_layout() -> void:
 func _build_once(r: RandomNumberGenerator) -> void:
 	var hill := stop == "hill"
 	var n := 4 if r.randf() < FOUR_LANE_CHANCE else 3
-	if hill:   # Hillside Clearing: 2-3 trails spiral round the camp, all the same way
-		n = 3 if r.randf() < 0.5 else 2
+	if hill:   # Hillside Clearing: 3 trails spiral round the camp, all the same way
+		n = 3
 	var wrap := deg_to_rad(r.randf_range(Defs.HILL_WRAP_MIN, Defs.HILL_WRAP_MAX))
 	var spin := -1.0 if r.randf() < 0.5 else 1.0
 	var min_gap := deg_to_rad(52.0 if n == 4 else 72.0)
