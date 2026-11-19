@@ -156,7 +156,14 @@ const SPIRITS := {
 	## Techy flanker: a hazy blue Wisp whose chill slows Char's attacks while it is near.
 	"mist_wisp": {"hp": 16.0, "speed": 56.0, "damage": 7.0, "size": 0.85, "color": Color("#8fb8ff"),
 		"chill_range": 120.0, "chill": 0.3},
+	## Elite, wave 3 only: a yellow Wisp in red crackle. Stops short of the fire and
+	## zaps it every zap_every seconds until banished. zap_range is from the fire's
+	## centre, kept under Char's shortest reach so he can always hit it.
+	"charged_wisp": {"hp": 40.0, "speed": 38.0, "damage": 3.0, "size": 1.2, "color": Color("#ffe36b"),
+		"zap_range": 80.0, "zap_every": 2.0},
 }
+## Charged Wisps in each night's wave 3 (nights 1..7). None on night 1.
+const CHARGED_PER_NIGHT := [0, 1, 1, 2, 2, 3, 3]
 
 const NIGHTS := 7   ## a week-long trip
 const WAVES_PER_NIGHT := 3
@@ -299,6 +306,13 @@ static func wave_spirits(night: int, wave: int, stop: String, rng: RandomNumberG
 	var out := []
 	for i in count:
 		out.append("mist_wisp" if rng.randf() < mist_chance else "wisp")
+	# Charged Wisps take spots in the back half of wave 3, so they come late.
+	if wave == WAVES_PER_NIGHT - 1:
+		var n: int = CHARGED_PER_NIGHT[mini(night, CHARGED_PER_NIGHT.size() - 1)]
+		var free := range(count / 2, count)
+		for j in mini(n, free.size()):
+			var at: int = free.pop_at(rng.randi() % free.size())
+			out[at] = "charged_wisp"
 	return out
 
 

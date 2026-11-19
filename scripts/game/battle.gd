@@ -368,6 +368,7 @@ func _spawn(kind: String, lane := -1, hearty := false) -> void:
 		sp.speed *= Defs.HILL_SPEED
 	sp.banished.connect(_on_banished)
 	sp.reached_fire.connect(_on_reached_fire)
+	sp.zapped.connect(_on_zapped)
 	spirits.append(sp)
 
 
@@ -380,6 +381,15 @@ func _on_banished(sp) -> void:
 
 func _on_reached_fire(sp) -> void:
 	spirits.erase(sp)
+	_hurt_fire(sp)
+
+
+## A Charged Wisp's zap: the same hurt as reaching the fire, but it stays.
+func _on_zapped(sp) -> void:
+	_hurt_fire(sp)
+
+
+func _hurt_fire(sp) -> void:
 	if phase == Phase.DONE:
 		return
 	Run.flame = maxf(0.0, Run.flame - sp.damage)

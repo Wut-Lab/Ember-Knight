@@ -6,6 +6,7 @@ extends Node2D
 
 signal banished(spirit)
 signal reached_fire(spirit)
+signal zapped(spirit)   ## a Charged Wisp hits the fire from range
 
 const Defs := preload("res://scripts/game/defs.gd")
 
@@ -21,6 +22,10 @@ var dist := 0.0
 var world := Vector2.ZERO
 var slow := 0.0            ## 0..1, set by the battle from nearby slowing defenses
 var dead := false
+var zap_range := 0.0       ## >0: stops this close to the fire and zaps it
+var zap_every := 2.0
+var _zap_t := 0.0
+var _arc := 0.0            ## time left on the visible zap arc
 
 var board
 var _t := 0.0
@@ -40,6 +45,9 @@ func setup(b, k: String, path: int, hp_scale: float) -> void:
 	damage = d["damage"]
 	size_k = d["size"]
 	base_color = d["color"]
+	zap_range = d.get("zap_range", 0.0)
+	zap_every = d.get("zap_every", 2.0)
+	_zap_t = zap_every * 0.5
 	_t = randf() * 10.0
 	world = board.path_point(path_idx, 0.0)
 	position = board.proj(world)
@@ -67,6 +75,16 @@ func _process(delta: float) -> void:
 		_death += delta
 		if _death > 0.35:
 			queue_free()
+		queue_redraw()
+		return
+	_arc = maxf(0.0, _arc - delta)
+	if zap_range > 0.0 and world.length() <= zap_range:
+		# In range: hold still and zap the fire.
+		_zap_t -= delta
+		if _zap_t <= 0.0:
+			_zap_t = zap_every
+			_arc = 0.18
+			zapped.emit(self)
 		queue_redraw()
 		return
 	var d0 := dist
@@ -98,8 +116,10 @@ func _draw() -> void:
 		col = col.lerp(Color.WHITE, 0.8)
 	# Faded glow: a soft radial falloff around the ball.
 	var mist := kind == "mist_wisp"
+	var charged := kind == "charged_wisp"
 	var gr: float = s * (3.4 if mist else 2.8) * pulse
-	draw_texture_rect(_glow_tex(), Rect2(-gr, -gr, gr * 2.0, gr * 2.0), false, Color(col, (0.4 if mist else 0.55) * alpha))
+	var glow_col := Color("#ff9a3c") if charged else col
+	draw_texture_rect(_glow_tex(), Rect2(-gr, -gr, gr * 2.0, gr * 2.0), false, Color(glow_col, (0.4 if mist else 0.7 if charged else 0.55) * alpha))
 	if mist:
 		# Haze: soft puffs drifting slowly around the ball.
 		for i in 5:
@@ -111,6 +131,8 @@ func _draw() -> void:
 	draw_circle(Vector2.ZERO, s, Color(col, (0.7 if mist else 0.95) * alpha))
 	draw_circle(Vector2(-s * 0.05, -s * 0.05), s * 0.78, Color(1, 1, 1, 0.25 * alpha))
 	draw_circle(Vector2(-s * 0.42, -s * 0.48), s * 0.2, Color(1, 1, 1, 0.7 * alpha))
+	if kind == "charged_wisp":
+		_draw_crackle(s, alpha)
 	# Two grumpy black eyes, glancing toward the fire: ovals with the top
 	# sliced off at a slant (low toward the middle) for a scowl.
 	var look: Vector2 = (-world).normalized() * s * 0.07
@@ -127,12 +149,50 @@ func _draw() -> void:
 			pts.append(c + p)
 		draw_colored_polygon(pts, ink)
 	draw_set_transform(Vector2.ZERO)
+	if _arc > 0.0 and not dead:
+		_draw_arc(Vector2(0, -s * 1.9 + bob), board.proj(Vector2.ZERO) - position, s, alpha)
 	# Health bar once hurt.
 	if hp < max_hp and not dead:
 		var w := s * 2.0
 		var y: float = -s * 3.4 + bob
 		draw_rect(Rect2(-w / 2, y, w, 4), Color(0, 0, 0, 0.6 * alpha))
 		draw_rect(Rect2(-w / 2, y, w * clampf(hp / max_hp, 0, 1), 4), Color(1.0, 0.7, 0.3, alpha))
+
+
+## Red crackle: short jagged bolts flicking around the ball, re-drawn every
+## 0.07s. They grow and brighten in the half second before a zap.
+func _draw_crackle(s: float, alpha: float) -> void:
+	var r := RandomNumberGenerator.new()
+	r.seed = int(_t / 0.07) * 7919 + get_instance_id()
+	var charge := 1.0
+	if zap_range > 0.0 and world.length() <= zap_range:
+		charge = 1.0 + clampf(1.0 - _zap_t / 0.5, 0.0, 1.0)
+	for i in 3:
+		# Each bolt hugs the surface: it creeps around the ball, hopping out and back.
+		var a := r.randf() * TAU
+		var dir := 1.0 if r.randf() < 0.5 else -1.0
+		var pts := PackedVector2Array()
+		for k in 4:
+			var rad := s * (0.95 + (r.randf_range(0.1, 0.35) * charge if k % 2 == 1 else 0.0))
+			pts.append(Vector2(cos(a), sin(a)) * rad)
+			a += dir * r.randf_range(0.18, 0.32)
+		draw_polyline(pts, Color(1.0, 0.25, 0.1, 0.35 * alpha), maxf(3.0, s * 0.22))
+		draw_polyline(pts, Color(1.0, 0.18, 0.1, 0.95 * alpha), maxf(1.5, s * 0.08))
+
+
+## The zap: a jagged red-white bolt from the ball to the fire.
+func _draw_arc(from: Vector2, to: Vector2, s: float, alpha: float) -> void:
+	var r := RandomNumberGenerator.new()
+	r.seed = int(_t / 0.05)
+	var pts := PackedVector2Array()
+	var n := 7
+	var side := (to - from).orthogonal().normalized()
+	for i in n + 1:
+		var f := float(i) / n
+		var j := 0.0 if i == 0 or i == n else r.randf_range(-1.0, 1.0) * s * 0.5
+		pts.append(from.lerp(to, f) + side * j)
+	draw_polyline(pts, Color(1.0, 0.3, 0.15, 0.8 * alpha), s * 0.22)
+	draw_polyline(pts, Color(1.0, 0.95, 0.8, alpha), maxf(1.5, s * 0.08))
 
 
 static var _glow: Texture2D
