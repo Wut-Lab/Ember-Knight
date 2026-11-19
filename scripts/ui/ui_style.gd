@@ -26,12 +26,23 @@ static func make_theme() -> Theme:
 	t.default_font = BODY_FONT
 	t.default_font_size = 24
 
-	var normal := _box(Color(CARD, 0.62), LINE, 1)
+	# Every button carries a faint white glow so it lifts off the dark scenery;
+	# the selected (hovered / focused / pressed) one swaps it for ember orange.
+	var normal := _box(Color(CARD, 0.62), Color(LINE.lightened(0.25)), 1)
+	normal.shadow_color = Color(1, 1, 1, 0.10)
+	normal.shadow_size = 10
 	var hover := _box(Color("#2b2128", 0.85), ACCENT, 2)
-	hover.shadow_color = Color(ACCENT2, 0.28)
+	hover.shadow_color = Color(ACCENT2, 0.32)
 	hover.shadow_size = 14
 	var pressed := _box(Color("#3a2420", 0.92), ACCENT2, 2)
+	pressed.shadow_color = Color(ACCENT2, 0.4)
+	pressed.shadow_size = 14
+	var disabled := _box(Color(CARD, 0.45), LINE, 1)
+	disabled.shadow_color = Color(1, 1, 1, 0.05)
+	disabled.shadow_size = 8
 	t.set_stylebox("normal", "Button", normal)
+	t.set_stylebox("disabled", "Button", disabled)
+	t.set_color("font_disabled_color", "Button", Color(MUTE, 0.6))
 	t.set_stylebox("hover", "Button", hover)
 	t.set_stylebox("focus", "Button", hover)
 	t.set_stylebox("pressed", "Button", pressed)
