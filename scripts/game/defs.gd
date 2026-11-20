@@ -162,10 +162,25 @@ const SPIRITS := {
 	"charged_wisp": {"hp": 40.0, "speed": 38.0, "damage": 3.0, "size": 1.2, "color": Color("#ffe36b"),
 		"zap_range": 80.0, "zap_every": 2.0},
 }
-## Charged Wisps in each night's wave 3 (nights 1..7). None on night 1.
+## Charged Wisps in a night's wave 3, indexed by the whole part of its
+## night_step (so each leg gets its own build-up). None on night 1.
 const CHARGED_PER_NIGHT := [0, 1, 1, 2, 2, 3, 3]
 
-const NIGHTS := 7   ## a week-long trip
+const NIGHTS := 12  ## the Long Road: 3 legs of 4 nights
+const LEGS := 3
+const NIGHTS_PER_LEG := 4
+## Each new leg starts this far up the night ramp. It's less than a full leg
+## (3 steps), so difficulty steps back a little when a leg begins.
+const LEG_RAMP := 1.75
+
+
+## Which leg (0-based) a 0-based night is in, and its place in that leg.
+static func leg_of(night: int) -> int:
+	return mini(night / NIGHTS_PER_LEG, LEGS - 1)
+
+
+static func night_in_leg(night: int) -> int:
+	return night - leg_of(night) * NIGHTS_PER_LEG
 const WAVES_PER_NIGHT := 3
 const MAX_FLAME := 100.0
 const DAWN_HEAL := 20.0
@@ -281,17 +296,20 @@ static func roll_wave_mod(night: int, rng: RandomNumberGenerator) -> String:
 	return WAVE_MODS.keys()[rng.randi() % WAVE_MODS.size()]
 
 
-## Night curve: how far through the run's night ramp a night is, bent by
-## DIFF_K (1 = straight line; below 1 front-loads the ramp, above 1 back-loads it).
-## night is 0-based; returns 0 on night 1 and NIGHTS - 1 on the last night.
+## Night curve: how far up the difficulty ramp a night is. Each leg ramps on
+## its own (0..3 inside a leg, bent by DIFF_K: 1 = straight line, below 1
+## front-loads it) and starts LEG_RAMP higher than the last leg did, so each
+## leg's 4th night is its peak and the next leg opens a step easier.
+## night is 0-based: legs run 0-3, 1.75-4.75, 3.5-6.5.
 ## Every per-night step below scales by this instead of the raw night number.
 const DIFF_K := 0.95
 
 static func night_step(night: int) -> float:
 	if night <= 0:
 		return 0.0
-	var last := float(NIGHTS - 1)
-	return last * pow(minf(night / last, 1.0), DIFF_K)
+	var last := float(NIGHTS_PER_LEG - 1)
+	var i := float(night_in_leg(night))
+	return leg_of(night) * LEG_RAMP + last * pow(minf(i / last, 1.0), DIFF_K)
 
 
 ## Spawn list for one wave: Array of spirit kinds. night/wave are 0-based.
@@ -308,7 +326,7 @@ static func wave_spirits(night: int, wave: int, stop: String, rng: RandomNumberG
 		out.append("mist_wisp" if rng.randf() < mist_chance else "wisp")
 	# Charged Wisps take spots in the back half of wave 3, so they come late.
 	if wave == WAVES_PER_NIGHT - 1:
-		var n: int = CHARGED_PER_NIGHT[mini(night, CHARGED_PER_NIGHT.size() - 1)]
+		var n: int = CHARGED_PER_NIGHT[mini(floori(night_step(night) + 0.000001), CHARGED_PER_NIGHT.size() - 1)]
 		var free := range(count / 2, count)
 		for j in mini(n, free.size()):
 			var at: int = free.pop_at(rng.randi() % free.size())

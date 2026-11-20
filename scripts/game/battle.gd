@@ -894,7 +894,7 @@ func _draw_ghost(ci: CanvasItem) -> void:
 func _update_hud() -> void:
 	_flame_bar.set_value(Run.flame, Run.max_flame)
 	var stop_name: String = Defs.STOPS[Run.current_stop()]["name"]
-	_night_label.text = "Night %d/%d" % [Run.night + 1, Defs.NIGHTS]
+	_night_label.text = "Leg %d · Night %d/%d" % [Defs.leg_of(Run.night) + 1, Run.night + 1, Defs.NIGHTS]
 	_wave_label.text = "%s  ·  Wave %d/%d" % [stop_name, mini(wave + 1, Defs.WAVES_PER_NIGHT), Defs.WAVES_PER_NIGHT]
 	if ambush:
 		_wave_label.text = "Fog Camp  ·  Ambush"

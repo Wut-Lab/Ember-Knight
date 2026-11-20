@@ -13,7 +13,8 @@ const Style := preload("res://scripts/ui/ui_style.gd")
 const ChoiceCard := preload("res://scripts/ui/choice_card.gd")
 const DrawProxy := preload("res://scripts/ui/draw_proxy.gd")
 
-const PIP_GAP := 74.0      ## distance between night pips
+const PIP_GAP := 54.0      ## distance between night pips
+const LEG_GAP := 34.0      ## extra space between legs
 const PIP_R := 9.0
 const OPTION_W := 300.0
 const CLEARED_SIZE := Vector2(360, 230)
@@ -229,22 +230,27 @@ static func _bezier(a: Vector2, b: Vector2, c: Vector2, d: Vector2, t: float) ->
 
 # ------------------------------------------------------------ night tracker
 func _place_top(top: Control) -> void:
-	var w := PIP_GAP * (Defs.NIGHTS - 1) + 40.0
+	var w := _pip_x(Defs.NIGHTS - 1) + 20.0
 	_tracker.size = Vector2(w, 64)
 	_tracker.position = Vector2((top.size.x - w) / 2, 0)
 	_journey_btn.reset_size()
 	_journey_btn.position = Vector2(_tracker.position.x + w + 36, 10)
 
 
+## x of a night's pip: evenly spaced, with a gap between legs.
+func _pip_x(n: int) -> float:
+	return 20.0 + PIP_GAP * n + LEG_GAP * Defs.leg_of(n)
+
+
 func _draw_tracker(ci: CanvasItem) -> void:
 	var y := 20.0
 	var x0 := 20.0
 	var font := Style.BODY_MEDIUM
-	ci.draw_line(Vector2(x0, y), Vector2(x0 + PIP_GAP * (Defs.NIGHTS - 1), y), Color(Style.LINE, 1.0), 2.0, true)
+	ci.draw_line(Vector2(x0, y), Vector2(_pip_x(Defs.NIGHTS - 1), y), Color(Style.LINE, 1.0), 2.0, true)
 	if Run.night > 0:
-		ci.draw_line(Vector2(x0, y), Vector2(x0 + PIP_GAP * Run.night, y), Color(Style.ACCENT2, 0.8), 3.0, true)
+		ci.draw_line(Vector2(x0, y), Vector2(_pip_x(Run.night), y), Color(Style.ACCENT2, 0.8), 3.0, true)
 	for n in Defs.NIGHTS:
-		var c := Vector2(x0 + PIP_GAP * n, y)
+		var c := Vector2(_pip_x(n), y)
 		var label_col := Style.MUTE
 		if n < Run.night:
 			ci.draw_circle(c, PIP_R, Style.ACCENT2)

@@ -157,7 +157,7 @@ func load_run() -> bool:
 	flame = float(d["flame"])
 	max_flame = float(d["max_flame"])
 	stop_options = d["stop_options"]
-	while stop_options.size() < Defs.NIGHTS:   # saves from before the 7-night week
+	while stop_options.size() < Defs.NIGHTS:   # saves from shorter runs
 		stop_options.append(roll_stop_options())
 	chosen_stops.assign(d["chosen_stops"])
 	spirits_banished = int(d["spirits_banished"])
