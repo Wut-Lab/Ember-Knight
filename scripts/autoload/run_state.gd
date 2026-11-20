@@ -27,6 +27,14 @@ var rng := RandomNumberGenerator.new()
 ## `-- --autoplay`: the game plays itself (for previews and balance checks).
 ## `-- --autoplay --quit-at-end` also prints the result and quits.
 var autoplay := "--autoplay" in OS.get_cmdline_user_args()
+## `-- --autoplay --speed=6` runs battles faster (balance checks only).
+var test_speed := 1.0
+
+
+func _init() -> void:
+	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with("--speed="):
+			test_speed = maxf(1.0, arg.trim_prefix("--speed=").to_float())
 
 
 func new_run() -> void:
