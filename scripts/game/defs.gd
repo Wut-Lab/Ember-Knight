@@ -322,18 +322,22 @@ const DAWN_HEAL := 20.0
 
 # ------------------------------------------------------------ essence
 ## Essence is kept between runs (Profile). At the end of a night survived:
-## 1 per ESSENCE_PER_FLAME flame left, plus the night's number (night 1 gives
-## +1, night 7 gives +7). A lost night gives half the night's number, rounded
-## down. Never less than 1 either way.
+## 1 per ESSENCE_PER_FLAME flame left, plus the leg's number (leg 1 gives +1
+## a night, leg 3 gives +3). Beating a leg's boss adds ESSENCE_PER_BOSS x the
+## leg's number. A lost night gives the leg's number. Never less than 1.
+## A full 12-night run earns roughly 80, close to the old 7-night pace per night.
 const ESSENCE_PER_FLAME := 20.0
+const ESSENCE_PER_BOSS := 5
 
 
 static func essence_for_night(flame: float, night_idx: int) -> int:
-	return maxi(1, floori(flame / ESSENCE_PER_FLAME) + night_idx + 1)
+	var leg := leg_of(night_idx) + 1
+	var boss := ESSENCE_PER_BOSS * leg if night_in_leg(night_idx) == NIGHTS_PER_LEG - 1 else 0
+	return maxi(1, floori(flame / ESSENCE_PER_FLAME) + leg + boss)
 
 
 static func essence_for_lost_night(night_idx: int) -> int:
-	return maxi(1, (night_idx + 1) / 2)
+	return leg_of(night_idx) + 1
 
 # ------------------------------------------------------------ map stops
 const STOPS := {
