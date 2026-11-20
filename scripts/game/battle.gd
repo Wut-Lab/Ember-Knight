@@ -101,6 +101,8 @@ var _dim: ColorRect
 func _ready() -> void:
 	if Run.autoplay and Run.test_speed > 1.0:
 		Engine.time_scale = Run.test_speed
+		Engine.physics_ticks_per_second = roundi(60 * Run.test_speed)
+		Engine.max_physics_steps_per_frame = 8 * ceili(Run.test_speed)
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	theme = Style.make_theme()
