@@ -72,6 +72,7 @@ const HONE := {
 	"mortar": {"damage": 1.0},
 	"vent": {"slow": 0.1},
 }
+const SLOW_CAP := 0.5   ## no defense slows spirits more than this (honed Vents)
 const QUICK_REWARDS := {
 	"second_wind": {"name": "Second Wind", "desc": "Heal 15 flame now."},
 	"spare_luck": {"name": "Spare Luck", "desc": "+2 rerolls for wave 3."},

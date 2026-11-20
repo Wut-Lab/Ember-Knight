@@ -55,6 +55,8 @@ func stats() -> Dictionary:
 	for stat in st:
 		if typeof(st[stat]) in [TYPE_FLOAT, TYPE_INT]:
 			st[stat] += Run.face_mod(kind, stat)
+	if st.has("slow"):
+		st["slow"] = minf(st["slow"], Defs.SLOW_CAP)
 	if battle.stoked and st.has("rate"):   # lull reward: Stoke
 		st["rate"] *= Defs.STOKE_RATE
 	var g := guide_bonus()
