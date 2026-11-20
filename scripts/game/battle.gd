@@ -250,6 +250,7 @@ func begin_wave() -> void:
 	if phase != Phase.PREP:
 		return
 	phase = Phase.FIGHT
+	_embers_this_wave = 0
 	fighting = true
 	_auto_begin = -1.0
 	_select(null)
@@ -519,12 +520,14 @@ func _on_banished(sp) -> void:
 	Run.spirits_banished += 1
 	_add_fx("poof", sp.world, Color("#bfc8ff"))
 	AudioDirector.play_sfx("pop", -6.0)
-	if Run.rng.randf() < Defs.EMBER_DROP_CHANCE:
+	if _embers_this_wave < Defs.EMBER_MAX_PER_WAVE and Run.rng.randf() < Defs.EMBER_DROP_CHANCE:
+		_embers_this_wave += 1
 		_drop_ember(sp.world)
 
 
 # ------------------------------------------------------------ ember drops
 var _embers: Array = []
+var _embers_this_wave := 0   ## drops so far this wave (capped)
 
 func _drop_ember(at: Vector2) -> void:
 	var e := EmberDrop.new()

@@ -273,6 +273,7 @@ const CHARGED_PER_NIGHT := [0, 1, 1, 2, 2, 3, 3]
 ## Ember Drop: a banished spirit may leave a coal; tap it to heal.
 const EMBER_DROP_CHANCE := 0.12
 const EMBER_HEAL := 5.0
+const EMBER_MAX_PER_WAVE := 5   ## so big late waves can't snowball the healing
 const EMBER_LIFE := 4.0   ## seconds before it fades away
 
 const NIGHTS := 12  ## the Long Road: 3 legs of 4 nights
