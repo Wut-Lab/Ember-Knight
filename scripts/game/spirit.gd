@@ -415,22 +415,20 @@ func _draw_helio() -> void:
 	var pulse := 1.0 + sin(_t * (7.0 if sear else 3.0)) * 0.06
 	var gr: float = s * (3.6 if sear else 3.0) * pulse
 	draw_texture_rect(_glow_tex(), Rect2(-gr, -gr, gr * 2.0, gr * 2.0), false, Color(1.0, 0.55, 0.12, (0.85 if sear else 0.65) * alpha))
-	# Dark orange wisps: curling tongues that drift out and fade.
+	# Dark orange sun rays: straight tapered spikes that shoot out from his rim,
+	# stretch, and fade, turning slowly with him.
 	for f in _flares:
 		var k: float = f[1] / f[2]
-		var a: float = f[0]
-		var pts := PackedVector2Array()
-		var out: float = s * (0.5 + (f[3] - 0.6) * k)   # the tip drifts outward
-		for i in 6:
-			var u := i / 5.0
-			var r: float = s * 0.9 + (out - s * 0.4) * u
-			var wob := sin(u * 5.0 + _t * 6.0 + f[0] * 3.0) * 0.12 * u
-			pts.append(Vector2(cos(a + wob), sin(a + wob)) * r)
+		var a: float = f[0] + _t * 0.15
+		var dir := Vector2(cos(a), sin(a))
+		var side := dir.orthogonal()
+		var tip: float = s * (1.15 + (f[3] - 0.7) * sqrt(k))   # shoots out fast, then eases
 		var fa := sin(k * PI) * alpha
-		for i in 5:   # tapers and fades toward the tip, like a wisp of flame
-			var u := 1.0 - i / 5.0
-			draw_line(pts[i], pts[i + 1], Color(0.95, 0.42, 0.08, 0.3 * u * fa), maxf(2.0, s * 0.2 * u), true)
-			draw_line(pts[i], pts[i + 1], Color(0.78, 0.27, 0.03, 0.85 * u * fa), maxf(1.0, s * 0.08 * u), true)
+		var w := s * 0.2
+		# Soft outer glow, then the ray itself, then a bright core line.
+		draw_colored_polygon(PackedVector2Array([dir * s * 0.85 + side * w * 1.8, dir * (tip + s * 0.15), dir * s * 0.85 - side * w * 1.8]), Color(1.0, 0.5, 0.1, 0.22 * fa))
+		draw_colored_polygon(PackedVector2Array([dir * s * 0.9 + side * w, dir * tip, dir * s * 0.9 - side * w]), Color(0.85, 0.33, 0.04, 0.9 * fa))
+		draw_line(dir * s * 0.95, dir * lerpf(s, tip, 0.7), Color(1.0, 0.65, 0.2, 0.7 * fa), maxf(1.0, s * 0.05), true)
 	draw_circle(Vector2.ZERO, s, Color(col, 0.97 * alpha))
 	draw_circle(Vector2(0, s * 0.1), s * 0.85, Color(1.0, 0.62, 0.15, 0.35 * alpha))
 	draw_circle(Vector2(-s * 0.08, -s * 0.1), s * 0.7, Color(1, 1, 0.85, 0.3 * alpha))
