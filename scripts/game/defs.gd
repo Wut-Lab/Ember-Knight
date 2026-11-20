@@ -10,7 +10,7 @@ const DIE_FACES := ["kindle", "torch", "vent", "mortar", "guide", "ashes"]
 ## The player starts every run with STARTING_DICE copies of the starter die.
 const STARTER_DIE := ["torch", "vent", "kindle", "kindle", "vent", "torch"]
 const STARTING_DICE := 3
-const LOADOUT_SIZE := 3   ## dice slots filled before each night
+const LOADOUT_SIZE := 3   ## dice slots on leg 1 (+1 per leg finished: Defs.dice_slots)
 
 ## Dice kinds the player can own. Opposite faces are i and 5 - i.
 const DICE := {
@@ -181,6 +181,21 @@ static func leg_of(night: int) -> int:
 
 static func night_in_leg(night: int) -> int:
 	return night - leg_of(night) * NIGHTS_PER_LEG
+
+
+## Finishing a leg (surviving its 4th night) gives +1 dice slot for the rest
+## of the run and puts this die in the bag, so there's always one to fill it.
+const LEG_REWARD_DIE := "ember"
+
+
+## Dice slots on a 0-based night: LOADOUT_SIZE, +1 per leg finished (3, 4, 5).
+static func dice_slots(night: int) -> int:
+	return LOADOUT_SIZE + leg_of(night)
+
+
+## Is this 0-based night the last of its leg (but not of the run)?
+static func ends_leg(night: int) -> bool:
+	return night_in_leg(night) == NIGHTS_PER_LEG - 1 and night < NIGHTS - 1
 const WAVES_PER_NIGHT := 3
 const MAX_FLAME := 100.0
 const DAWN_HEAL := 20.0

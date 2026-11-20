@@ -31,6 +31,13 @@ func _ready() -> void:
 	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	sub.add_theme_font_size_override("font_size", 22)
 	root.add_child(sub)
+	if Defs.ends_leg(Run.night):
+		var leg := Label.new()
+		leg.text = "Leg %d of the road complete!  +1 dice slot, and an %s joins your bag." % [Defs.leg_of(Run.night) + 1, Defs.DICE[Defs.LEG_REWARD_DIE]["name"]]
+		leg.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		leg.add_theme_font_size_override("font_size", 22)
+		leg.add_theme_color_override("font_color", Style.ACCENT)
+		root.add_child(leg)
 	var row := HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
 	row.add_theme_constant_override("separation", 22)

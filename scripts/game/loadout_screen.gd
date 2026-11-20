@@ -107,12 +107,12 @@ func _start_slots() -> Array:
 	if Run.gates > Defs.GATES_FREE and _forks > Defs.GATES_FREE:   # kept the gate kit last night
 		out.append(GATE_KIT)
 	for id in Run.loadout:
-		if out.count(id) < Run.owned(id) and out.size() < Defs.LOADOUT_SIZE:
+		if out.count(id) < Run.owned(id) and out.size() < Defs.dice_slots(Run.night):
 			out.append(id)
 	for id in Run.pool:
-		if out.size() < Defs.LOADOUT_SIZE and out.count(id) < Run.owned(id):
+		if out.size() < Defs.dice_slots(Run.night) and out.count(id) < Run.owned(id):
 			out.append(id)
-	while out.size() < Defs.LOADOUT_SIZE:
+	while out.size() < Defs.dice_slots(Run.night):
 		out.append("")
 	return out
 

@@ -122,6 +122,8 @@ func _on_night_over(survived: bool) -> void:
 		_end(true)
 		return
 	Run.flame = minf(Run.max_flame, Run.flame + Run.dawn_heal())
+	if Defs.ends_leg(Run.night):   # leg done: +1 slot from next night, plus a die to fill it
+		Run.pool.append(Defs.LEG_REWARD_DIE)
 	var d := DawnScreen.new()
 	d.continued.connect(_on_dawn_done)
 	_show(d)
