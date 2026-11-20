@@ -55,6 +55,66 @@ const OATHS := {
 	},
 }
 const SHIFT_COST := 2.0
+
+## Lull rewards: picked just before wave 3 of every night (not the fog ambush).
+## Each lull offers LULL_QUICK quick-use rewards (tonight only) and 1 permanent
+## one (rest of the run). Permanent rewards stack up to PERK_CAP picks each.
+const LULL_QUICK := 2
+const PERK_CAP := 3
+const LULL_HEAL := 15.0          ## Second Wind
+const LULL_REROLLS := 2          ## Spare Luck
+const STOKE_RATE := 1.25         ## Stoke: defenses fire this much faster
+const DEEP_EMBERS_FLAME := 10.0  ## Deep Embers: +max flame, and heals the same
+const HEARTHSTONE_HEAL := 5.0    ## Hearthstones: + dawn heal per pick
+## Hone: what one pick adds to a defense kind's stats. Add new damage faces here.
+const HONE := {
+	"torch": {"damage": 1.0},
+	"mortar": {"damage": 1.0},
+	"vent": {"slow": 0.1},
+}
+const QUICK_REWARDS := {
+	"second_wind": {"name": "Second Wind", "desc": "Heal 15 flame now."},
+	"spare_luck": {"name": "Spare Luck", "desc": "+2 rerolls for wave 3."},
+	"stoke": {"name": "Stoke", "desc": "Your defenses fire 25% faster in wave 3."},
+	"adjustment": {"name": "Adjustment", "desc": "Move one defense to another open tile, for free."},
+}
+const PERKS := {
+	"hone": {"name": "Hone", "desc": "%s: %s for the rest of the run."},
+	"steady_hand": {"name": "Steady Hand", "desc": "+1 reroll every wave for the rest of the run."},
+	"deep_embers": {"name": "Deep Embers", "desc": "+10 max flame, and heal 10."},
+	"hearthstones": {"name": "Hearthstones", "desc": "Dawn heals 5 more for the rest of the run."},
+}
+
+
+## Text for a Hone pick on one defense kind, e.g. "+1 damage".
+static func hone_text(kind: String) -> String:
+	var parts := []
+	for stat in HONE[kind]:
+		var v: float = HONE[kind][stat]
+		parts.append("+%d%% slow" % roundi(v * 100) if stat == "slow" else "+%s %s" % [str(v).trim_suffix(".0"), stat])
+	return ", ".join(parts)
+
+
+## One lull's offer: LULL_QUICK quick rewards + 1 permanent, as
+## {"type": "quick"|"perk", "id": ..., "kind": defense kind for Hone}.
+## quick_ok filters quick ids (Adjustment needs a defense and an open tile);
+## hone_kinds are the defense kinds on the board that Hone can still improve.
+static func lull_offer(rng: RandomNumberGenerator, perks: Dictionary, quick_ok: Array, hone_kinds: Array) -> Array:
+	var quick := quick_ok.duplicate()
+	var out := []
+	while out.size() < LULL_QUICK and not quick.is_empty():
+		out.append({"type": "quick", "id": quick.pop_at(rng.randi() % quick.size())})
+	var perm := []
+	for id in PERKS:
+		if id == "hone":
+			for k in hone_kinds:
+				if int(perks.get("hone_" + k, 0)) < PERK_CAP:
+					perm.append({"type": "perk", "id": "hone", "kind": k})
+		elif int(perks.get(id, 0)) < PERK_CAP:
+			perm.append({"type": "perk", "id": id})
+	if not perm.is_empty():
+		out.append(perm[rng.randi() % perm.size()])
+	return out
 const HEARTH_KINDLE_BONUS := 4.0
 const HEARTH_DAWN_PENALTY := 10.0
 

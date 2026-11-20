@@ -20,6 +20,7 @@ var gates := 1                ## gates Char can cobble tonight (Defs.GATES_FREE,
 var layout_seed := 0           ## tonight's battle map, rolled when the stop is chosen
 var shrine_curse := false      ## tonight's spirits are tougher (Ember Shrine)
 var nights_survived := 0
+var perks: Dictionary = {}       ## lull permanent rewards: id (or "hone_<kind>") -> times picked
 var night_flames: Array = []   ## flame left at the end of each night cleared
 var rng := RandomNumberGenerator.new()
 ## `-- --autoplay`: the game plays itself (for previews and balance checks).
@@ -43,6 +44,7 @@ func new_run() -> void:
 	nights_survived = 0
 	night_flames.clear()
 	bonus_rerolls = 0
+	perks = {}
 	gates = Defs.GATES_FREE
 	shrine_seen = false
 	shrine_curse = false
@@ -74,7 +76,25 @@ func face_mod(face: String, stat: String) -> float:
 	for id in oaths:
 		var fm: Dictionary = Defs.OATHS.get(id, {}).get("face_mods", {})
 		total += float(fm.get(face, {}).get(stat, 0.0))
+	if Defs.HONE.has(face):   # lull reward: Hone
+		total += float(Defs.HONE[face].get(stat, 0.0)) * int(perks.get("hone_" + face, 0))
 	return total
+
+
+func perk(id: String) -> int:
+	return int(perks.get(id, 0))
+
+
+## Applies a lull's permanent reward ({"id", "kind"}).
+func take_perk(o: Dictionary) -> void:
+	var key: String = "hone_" + o["kind"] if o["id"] == "hone" else o["id"]
+	perks[key] = perk(key) + 1
+	match o["id"]:
+		"steady_hand":
+			bonus_rerolls += 1
+		"deep_embers":
+			max_flame += Defs.DEEP_EMBERS_FLAME
+			flame = minf(max_flame, flame + Defs.DEEP_EMBERS_FLAME)
 
 
 ## Flame healed by one Kindle die (Hearth-Bound adds to it).
@@ -84,7 +104,8 @@ func kindle_heal() -> float:
 
 ## Flame healed at dawn (Hearth-Bound takes from it).
 func dawn_heal() -> float:
-	return Defs.DAWN_HEAL - (Defs.HEARTH_DAWN_PENALTY if has_oath("hearth_bound") else 0.0)
+	return Defs.DAWN_HEAL - (Defs.HEARTH_DAWN_PENALTY if has_oath("hearth_bound") else 0.0) \
+		+ Defs.HEARTHSTONE_HEAL * perk("hearthstones")
 
 
 ## 2-3 camps drawn at random from the pool of stops (Defs.STOPS).
@@ -122,6 +143,7 @@ func checkpoint() -> void:
 	_checkpoint["pool"] = pool.duplicate()
 	_checkpoint["loadout"] = loadout.duplicate()
 	_checkpoint["oaths"] = oaths.duplicate()
+	_checkpoint["perks"] = perks.duplicate()
 	_checkpoint["night_flames"] = night_flames.duplicate()
 	for k in EXTRA_KEYS:
 		_checkpoint[k] = get(k)
@@ -175,6 +197,7 @@ func load_run() -> bool:
 	oaths = Array(d.get("oaths", []))
 	night_flames = Array(d.get("night_flames", []))
 	bonus_rerolls = int(d.get("bonus_rerolls", 0))
+	perks = Dictionary(d.get("perks", {}))
 	shrine_seen = bool(d.get("shrine_seen", false))
 	shrine_curse = false
 	if d.has("rng_seed") and d.has("rng_state"):

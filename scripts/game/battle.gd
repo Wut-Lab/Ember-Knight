@@ -27,6 +27,7 @@ const Defense := preload("res://scripts/game/defense.gd")
 const CharUnit := preload("res://scripts/game/char_unit.gd")
 const Projectile := preload("res://scripts/game/projectile.gd")
 const Fx := preload("res://scripts/game/fx.gd")
+const ChoiceCard := preload("res://scripts/ui/choice_card.gd")
 const DieView := preload("res://scripts/game/die_view.gd")
 const Campfire := preload("res://scripts/title/campfire.gd")
 const CampProp := preload("res://scripts/game/camp_prop.gd")
@@ -66,6 +67,9 @@ var _hover := -1
 var _auto_begin := -1.0
 var _ap_timer := 1.2
 var _shift_ready := false  ## Oath of Shifting Embers: a move is available this prep
+var _shift_free := false   ## lull reward Adjustment: the next move costs nothing
+var _lull_rerolls := 0     ## lull reward Spare Luck: extra rerolls next prep
+var stoked := false        ## lull reward Stoke: defenses fire faster (read by Defense)
 var _lifted = null         ## the defense being moved, or null
 
 # HUD
@@ -162,7 +166,8 @@ func _start_prep() -> void:
 		_gates_left = Run.gates if Defs.has_forks(Run.current_stop()) else 0
 	fighting = false
 	char_unit.set_mood("open")
-	_rerolls = Defs.REROLLS_PER_WAVE + Run.bonus_rerolls
+	_rerolls = Defs.REROLLS_PER_WAVE + Run.bonus_rerolls + _lull_rerolls
+	_lull_rerolls = 0
 	var n: int = Run.dice.size()
 	for d in _dice:
 		d.queue_free()
@@ -180,7 +185,7 @@ func _start_prep() -> void:
 		_dice.append(d)
 	_select(null)
 	_lifted = null
-	_shift_ready = wave > 0 and Run.has_oath("shifting_embers") and not defenses.is_empty()
+	_shift_ready = (_shift_free or wave > 0 and Run.has_oath("shifting_embers")) and not defenses.is_empty()
 	_roll(true)
 	mod = "" if ambush else Defs.roll_wave_mod(Run.night, Run.rng)
 	_swarm_lane = Run.rng.randi() % board.lane_count if mod == "swarmy" else -1
@@ -200,7 +205,7 @@ func _start_prep() -> void:
 	if _gates_left > 0 and not board.links.is_empty():
 		_hint.text += "   Tap a glowing fork to cobble a gate (%d left)." % _gates_left
 	if _shift_ready:
-		_hint.text += "   Tap a defense to move it (−%d flame)." % roundi(Defs.SHIFT_COST)
+		_hint.text += "   " + _shift_hint()
 	_layout.call_deferred()
 
 
@@ -238,6 +243,7 @@ func begin_wave() -> void:
 	_select(null)
 	_drop_lift()
 	_shift_ready = false
+	_shift_free = false
 	_warm_ashes()
 	for d in _dice:
 		if not d.placed:
@@ -286,7 +292,101 @@ func _wave_cleared() -> void:
 		get_tree().create_timer(2.0).timeout.connect(func(): night_over.emit(true))
 	else:
 		_show_banner("Wave cleared")
-		get_tree().create_timer(1.1).timeout.connect(_start_prep)
+		var next := _show_lull if wave == Defs.WAVES_PER_NIGHT - 1 else _start_prep
+		get_tree().create_timer(1.1).timeout.connect(next)
+
+
+# ------------------------------------------------------------ the lull before wave 3
+## Pick 1 of LULL_QUICK quick-use rewards and 1 permanent one, then prep wave 3.
+func _show_lull() -> void:
+	var quick_ok := ["second_wind", "spare_luck", "stoke"]
+	if not defenses.is_empty() and board.tile_defense.has(null):
+		quick_ok.append("adjustment")
+	var hone_kinds := []
+	for df in defenses:
+		if Defs.HONE.has(df.kind) and not df.kind in hone_kinds:
+			hone_kinds.append(df.kind)
+	var offer := Defs.lull_offer(Run.rng, Run.perks, quick_ok, hone_kinds)
+	var layer := Control.new()
+	layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	layer.theme = Style.make_theme()
+	var dim := ColorRect.new()
+	dim.color = Color(0, 0, 0, 0.55)
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	layer.add_child(dim)
+	var root := VBoxContainer.new()
+	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	root.alignment = BoxContainer.ALIGNMENT_CENTER
+	root.add_theme_constant_override("separation", 14)
+	layer.add_child(root)
+	var h := Label.new()
+	h.text = "A Lull Before the Last Wave"
+	h.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	h.add_theme_font_override("font", Style.display_font())
+	h.add_theme_font_size_override("font_size", 48)
+	h.add_theme_color_override("font_color", Color("#ffd58f"))
+	root.add_child(h)
+	var sub := Label.new()
+	sub.text = "CHOOSE ONE"
+	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	sub.add_theme_color_override("font_color", Style.MUTE)
+	sub.add_theme_font_size_override("font_size", 16)
+	root.add_child(sub)
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 22)
+	root.add_child(row)
+	var cards := []
+	for o in offer:
+		var title: String
+		var desc: String
+		if o["type"] == "quick":
+			title = Defs.QUICK_REWARDS[o["id"]]["name"]
+			desc = "Quick use:  " + Defs.QUICK_REWARDS[o["id"]]["desc"]
+		elif o["id"] == "hone":
+			var kname: String = Defs.FACE_INFO[o["kind"]]["name"]
+			title = "Hone: " + kname
+			desc = "Permanent:  " + Defs.PERKS["hone"]["desc"] % [kname, Defs.hone_text(o["kind"])]
+		else:
+			title = Defs.PERKS[o["id"]]["name"]
+			desc = "Permanent:  " + Defs.PERKS[o["id"]]["desc"]
+		var card := ChoiceCard.make(title, desc, 260.0)
+		card.custom_minimum_size.y = 150
+		card.pressed.connect(func():
+			layer.queue_free()
+			_take_lull(o))
+		row.add_child(card)
+		cards.append(card)
+	add_child(layer)
+	if cards.is_empty():
+		layer.queue_free()
+		_start_prep()
+		return
+	cards[0].grab_focus.call_deferred()
+	if Run.autoplay:
+		var pick: Button = cards[Run.rng.randi() % cards.size()]
+		get_tree().create_timer(1.0).timeout.connect(pick.emit_signal.bind("pressed"))
+
+
+func _take_lull(o: Dictionary) -> void:
+	AudioDirector.play_sfx("chime", -4.0)
+	if Run.autoplay:
+		print("  lull: %s %s" % [o["id"], o.get("kind", "")])
+	if o["type"] == "perk":
+		Run.take_perk(o)
+	else:
+		match o["id"]:
+			"second_wind":
+				Run.flame = minf(Run.max_flame, Run.flame + Defs.LULL_HEAL)
+				_add_fx("ring", Vector2.ZERO, Color("#fff0b0"), 130.0)
+			"spare_luck":
+				_lull_rerolls = Defs.LULL_REROLLS
+			"stoke":
+				stoked = true
+			"adjustment":
+				_shift_free = true
+	_update_hud()
+	_start_prep()
 
 
 func _flame_out() -> void:
@@ -594,18 +694,18 @@ func _try_shift(tile: int) -> bool:
 		var df = board.tile_defense[tile]
 		if df == null:
 			return false
-		if Run.flame <= Defs.SHIFT_COST:
+		if Run.flame <= _shift_cost() and _shift_cost() > 0.0:
 			_hint.text = "Char's flame is too low to move a defense."
 			return true
 		_lifted = df
 		board.lift_tile = tile
-		_hint.text = "Tap an empty glowing tile to move the %s there (−%d flame).  Tap it again to cancel." % [
-			Defs.FACE_INFO[df.kind]["name"], roundi(Defs.SHIFT_COST)]
+		_hint.text = "Tap an empty glowing tile to move the %s there%s.  Tap it again to cancel." % [
+			Defs.FACE_INFO[df.kind]["name"], _cost_text()]
 		AudioDirector.play_sfx("tap", -8.0)
 		return true
 	if tile == _lifted.tile:
 		_drop_lift()
-		_hint.text = "Tap a defense to move it (−%d flame)." % roundi(Defs.SHIFT_COST)
+		_hint.text = _shift_hint()
 		return true
 	if not board.can_move_to(tile):
 		return false
@@ -614,13 +714,29 @@ func _try_shift(tile: int) -> bool:
 	board.tile_defense[df.tile] = null
 	board.tile_defense[tile] = df
 	df.move_to(tile)
-	Run.flame -= Defs.SHIFT_COST
-	_shift_ready = false
+	Run.flame -= _shift_cost()
+	if _shift_free:   # Adjustment used; the Oath's paid move is still there
+		_shift_free = false
+		_shift_ready = wave > 0 and Run.has_oath("shifting_embers")
+	else:
+		_shift_ready = false
 	_add_fx("ring", df.world, Color("#ffb238"), 60.0)
 	AudioDirector.play_sfx("place", -3.0)
 	_hint.text = "Moved.  Place your dice, then Fight!"
 	_update_hud()
 	return true
+
+
+func _shift_cost() -> float:
+	return 0.0 if _shift_free else Defs.SHIFT_COST
+
+
+func _cost_text() -> String:
+	return " (free)" if _shift_free else " (−%d flame)" % roundi(Defs.SHIFT_COST)
+
+
+func _shift_hint() -> String:
+	return "Tap a defense to move it%s." % _cost_text()
 
 
 func _drop_lift() -> void:
