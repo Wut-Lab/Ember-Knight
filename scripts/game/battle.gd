@@ -23,6 +23,8 @@ const EssenceTracker := preload("res://scripts/ui/essence_tracker.gd")
 const VolumeSliders := preload("res://scripts/ui/volume_sliders.gd")
 const Board := preload("res://scripts/game/board.gd")
 const EmberDrop := preload("res://scripts/game/ember_drop.gd")
+const BossBar := preload("res://scripts/game/boss_bar.gd")
+var _boss_bar
 const Spirit := preload("res://scripts/game/spirit.gd")
 const Defense := preload("res://scripts/game/defense.gd")
 const CharUnit := preload("res://scripts/game/char_unit.gd")
@@ -163,6 +165,8 @@ func _layout() -> void:
 		p.position = board.proj(p.world)
 	for d in defenses:
 		d.position = board.proj(d.world)
+	if _boss_bar:
+		_boss_bar.position = Vector2((s.x - _boss_bar.size.x) / 2.0, 62.0)
 	if _tray:
 		_tray.reset_size()
 		_tray.position = Vector2((s.x - _tray.size.x) / 2, s.y - _tray.size.y - 12)
@@ -540,6 +544,8 @@ func _spawn(kind: String, lane := -1, hearty := false):
 	if sp.boss:
 		AudioDirector.play_sfx(Defs.SPIRITS[kind].get("arrive_sfx", "charge_hum"), -4.0, 0.0)
 		AudioDirector.start_boss_music()
+		var bd: Dictionary = Defs.SPIRITS[kind]
+		_boss_bar.show_boss(sp, bd["name"], bd.get("bar_color", bd["color"]))
 		if Run.autoplay:
 			print("  boss: %s (%d hp)" % [kind, roundi(sp.max_hp)])
 	spirits.append(sp)
@@ -1040,6 +1046,8 @@ func _build_hud() -> void:
 	_flame_bar = FlameBar.new()
 	_flame_bar.position = Vector2(20, 18)
 	add_child(_flame_bar)
+	_boss_bar = BossBar.new()
+	add_child(_boss_bar)
 
 	var top := VBoxContainer.new()
 	top.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
