@@ -235,12 +235,22 @@ const SPIRITS := {
 		"size": 1.6, "color": Color("#f2c14e"), "dash_every": 3.0, "dash_time": 1.0, "dash_mult": 2.4,
 		"snuff_range": 190.0, "snuff_time": 3.0,
 		"blurb": "dashes past your defenses and snuffs them out for a few seconds", "arrive_sfx": "thief_arrive"},
+	## Boss: Helio, the Midnight Sun. A large, furious yellow Wisp in an orange glow.
+	## At each summon_at share of his trail he stops for summon_pause s and calls up
+	## 1-2 Midnight Sun Rays. Within burn_range of the fire he holds still, the camp
+	## glares bright, and the fire loses burn_dps a second (no hits) until he's banished.
+	"helio": {"name": "Helio, the Midnight Sun", "boss": true, "hp": 240.0, "speed": 26.0, "damage": 0.0,
+		"size": 2.8, "color": Color("#ffd23a"), "summon_at": [0.25, 0.5, 0.72], "summon_pause": 1.4,
+		"burn_range": 110.0, "burn_dps": 4.0,
+		"blurb": "calls up Midnight Sun Rays, then sears the fire from close by", "arrive_sfx": "helio_arrive"},
+	## Helio's minion: a small, quick, furious yellow Wisp. Light hits only.
+	"sun_ray": {"hp": 8.0, "speed": 88.0, "damage": 3.0, "size": 0.65, "color": Color("#ffe14d")},
 }
 
 # ------------------------------------------------------------ bosses
 ## The boss pool: each leg's boss on wave 3 of its last night is drawn from
 ## here at the start of a run (Run.bosses), never repeating until all are used.
-const BOSSES := ["dark_wisp", "lantern_thief"]
+const BOSSES := ["dark_wisp", "lantern_thief", "helio"]
 
 
 ## One boss per leg, shuffled; once the pool runs out it reshuffles, never

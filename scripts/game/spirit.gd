@@ -6,7 +6,8 @@ extends Node2D
 
 signal banished(spirit)
 signal reached_fire(spirit)
-signal zapped(spirit)   ## a Charged Wisp hits the fire from range
+signal zapped(spirit)
+signal summoned(spirit, count)   ## Helio calls up Midnight Sun Rays   ## a Charged Wisp hits the fire from range
 
 const Defs := preload("res://scripts/game/defs.gd")
 
@@ -37,6 +38,15 @@ var snuff_range := 0.0
 var snuff_time := 0.0
 var _dash_t := 0.0         ## counts up; dashing while it's past dash_every - dash_time
 var _trail: Array = []     ## recent screen positions while dashing (afterimages)
+var summon_at: Array = []  ## Helio: trail shares where he stops to call Rays
+var summon_pause := 0.0
+var burn_range := 0.0      ## >0 (Helio): holds here and sears the fire steadily
+var burn_dps := 0.0
+var _summon_i := 0
+var _pause_t := 0.0        ## time left on a summoning stop
+var _rage_t := 0.0         ## time left on an angry shake
+var _rage_cd := 2.0
+var _flares: Array = []    ## Helio's dark orange wisps: [angle, age, life, len]
 
 var board
 var _t := 0.0
@@ -67,6 +77,10 @@ func setup(b, k: String, path: int, hp_scale: float) -> void:
 	dash_mult = d.get("dash_mult", 1.0)
 	snuff_range = d.get("snuff_range", 0.0)
 	snuff_time = d.get("snuff_time", 0.0)
+	summon_at = d.get("summon_at", [])
+	summon_pause = d.get("summon_pause", 0.0)
+	burn_range = d.get("burn_range", 0.0)
+	burn_dps = d.get("burn_dps", 0.0)
 	_zap_t = zap_every * 0.5
 	_t = randf() * 10.0
 	world = board.path_point(path_idx, 0.0)
@@ -82,6 +96,18 @@ func _bob_k() -> float:
 ## (up and down on screen).
 func aura_center() -> Vector2:
 	return world + Vector2(0, -dim_bob * (_bob_k() * 0.5 + 0.5))
+
+
+## Helio: close enough to sear the fire?
+func burning() -> bool:
+	return burn_range > 0.0 and not dead and world.length() <= burn_range
+
+
+## Start partway down a trail (Rays rise from Helio's spot).
+func place_at(d: float) -> void:
+	dist = d
+	world = board.path_point(path_idx, dist)
+	position = board.proj(world)
 
 
 ## Lantern Thief: mid-dash right now?
@@ -123,6 +149,11 @@ func _process(delta: float) -> void:
 			zapped.emit(self)
 		queue_redraw()
 		return
+	if burn_range > 0.0:
+		_helio_tick(delta)
+		if burning() or _pause_t > 0.0:
+			queue_redraw()
+			return
 	var d0 := dist
 	var burst := 1.0
 	if dash_every > 0.0:
@@ -150,7 +181,34 @@ func _process(delta: float) -> void:
 	queue_redraw()
 
 
+## Helio's moods: flares, angry shakes, summoning stops.
+func _helio_tick(delta: float) -> void:
+	for f in _flares:
+		f[1] += delta
+	_flares = _flares.filter(func(f): return f[1] < f[2])
+	if randf() < delta * (5.0 if burning() else 2.2):   # semi-frequent dark orange wisps
+		_flares.append([randf() * TAU, 0.0, randf_range(0.6, 1.0), randf_range(1.6, 2.4)])
+	_rage_t = maxf(0.0, _rage_t - delta)
+	_rage_cd -= delta
+	if _rage_cd <= 0.0:
+		_rage_cd = randf_range(2.5, 4.5) * (0.5 if burning() else 1.0)
+		_rage_t = 0.6
+	if _pause_t > 0.0:
+		var was := _pause_t
+		_pause_t -= delta
+		if was > summon_pause * 0.5 and _pause_t <= summon_pause * 0.5:
+			summoned.emit(self, 1 + Run.rng.randi() % 2)
+		return
+	if not burning() and _summon_i < summon_at.size() and progress() >= summon_at[_summon_i]:
+		_summon_i += 1
+		_pause_t = summon_pause
+		_rage_t = summon_pause   # shakes while calling them up
+
+
 func _draw() -> void:
+	if burn_range > 0.0:
+		_draw_helio()
+		return
 	if dim_range > 0.0:
 		_draw_dark()
 		return
@@ -204,6 +262,9 @@ func _draw() -> void:
 			p.y = maxf(p.y, cut)
 			pts.append(c + p)
 		draw_colored_polygon(pts, ink)
+	if kind == "sun_ray":   # furious brows
+		for side in [-1.0, 1.0]:
+			draw_line(Vector2(side * s * 0.62, -s * 0.36) + look, Vector2(side * s * 0.08, -s * 0.08) + look, ink, maxf(2.0, s * 0.16))
 	draw_set_transform(Vector2.ZERO)
 	if _arc > 0.0 and not dead:
 		_draw_arc(Vector2(0, -s * 1.9 + bob), board.proj(Vector2.ZERO) - position, s, alpha)
@@ -332,6 +393,66 @@ func _draw_thief() -> void:
 		var y: float = -s * 3.6 + bob
 		draw_rect(Rect2(-w / 2, y, w, 6), Color(0, 0, 0, 0.7 * alpha))
 		draw_rect(Rect2(-w / 2, y, w * clampf(hp / max_hp, 0, 1), 6), Color(col, alpha))
+
+
+## Helio, the Midnight Sun: a big yellow ball in an orange glow, dark orange
+## wisps curling off him, furious slanted eyes under heavy brows. He shakes with
+## rage now and then (all through a summoning stop, and more often when searing).
+func _draw_helio() -> void:
+	var s: float = 15.0 * size_k * board.view_scale
+	var alpha := _fade_in * (1.0 - _death / 0.35)
+	var bob: float = sin(_t * 2.2) * 3.0 * board.view_scale
+	var shake := Vector2.ZERO
+	if _rage_t > 0.0 and not dead:
+		shake = Vector2(randf_range(-1, 1), randf_range(-1, 1)) * s * 0.07
+	var col := base_color
+	if _flash > 0.0:
+		col = col.lerp(Color.WHITE, 0.8)
+	var sear := burning()
+	_oval(Vector2(0, 2), s * 0.75, s * 0.22, Color(0, 0, 0, 0.3 * alpha))
+	var grow := 1.0 + _death * 2.0
+	draw_set_transform(Vector2(0, -s * 1.7 + bob) + shake, 0.0, Vector2.ONE * grow)
+	var pulse := 1.0 + sin(_t * (7.0 if sear else 3.0)) * 0.06
+	var gr: float = s * (3.6 if sear else 3.0) * pulse
+	draw_texture_rect(_glow_tex(), Rect2(-gr, -gr, gr * 2.0, gr * 2.0), false, Color(1.0, 0.55, 0.12, (0.85 if sear else 0.65) * alpha))
+	# Dark orange wisps: curling tongues that drift out and fade.
+	for f in _flares:
+		var k: float = f[1] / f[2]
+		var a: float = f[0]
+		var pts := PackedVector2Array()
+		var out: float = s * (0.5 + (f[3] - 0.6) * k)   # the tip drifts outward
+		for i in 6:
+			var u := i / 5.0
+			var r: float = s * 0.9 + (out - s * 0.4) * u
+			var wob := sin(u * 5.0 + _t * 6.0 + f[0] * 3.0) * 0.12 * u
+			pts.append(Vector2(cos(a + wob), sin(a + wob)) * r)
+		var fa := sin(k * PI) * alpha
+		for i in 5:   # tapers and fades toward the tip, like a wisp of flame
+			var u := 1.0 - i / 5.0
+			draw_line(pts[i], pts[i + 1], Color(0.95, 0.42, 0.08, 0.3 * u * fa), maxf(2.0, s * 0.2 * u), true)
+			draw_line(pts[i], pts[i + 1], Color(0.78, 0.27, 0.03, 0.85 * u * fa), maxf(1.0, s * 0.08 * u), true)
+	draw_circle(Vector2.ZERO, s, Color(col, 0.97 * alpha))
+	draw_circle(Vector2(0, s * 0.1), s * 0.85, Color(1.0, 0.62, 0.15, 0.35 * alpha))
+	draw_circle(Vector2(-s * 0.08, -s * 0.1), s * 0.7, Color(1, 1, 0.85, 0.3 * alpha))
+	draw_circle(Vector2(-s * 0.42, -s * 0.48), s * 0.18, Color(1, 1, 1, 0.7 * alpha))
+	# Extra angry eyes: glowing red slits under heavy V brows, glaring at the fire.
+	var look: Vector2 = (-world).normalized() * s * 0.06
+	var ink := Color(0.18, 0.05, 0.02, alpha)
+	for side in [-1.0, 1.0]:
+		var c := Vector2(side * s * 0.36, s * 0.05) + look
+		var eye := PackedVector2Array([c + Vector2(-side * s * 0.05, -s * 0.06), c + Vector2(side * s * 0.26, -s * 0.2),
+			c + Vector2(side * s * 0.22, s * 0.1), c + Vector2(-side * s * 0.06, s * 0.08)])
+		draw_colored_polygon(eye, ink)
+		draw_circle(c + Vector2(side * s * 0.08, -s * 0.01), s * 0.06, Color(1.0, 0.25, 0.1, alpha))
+		draw_line(Vector2(side * s * 0.75, -s * 0.5) + look, Vector2(side * s * 0.06, -s * 0.12) + look, ink, maxf(3.0, s * 0.15))
+	# A scowling mouth.
+	draw_polyline(PackedVector2Array([Vector2(-s * 0.3, s * 0.52), Vector2(0, s * 0.4), Vector2(s * 0.3, s * 0.52)]), ink, maxf(2.0, s * 0.08), true)
+	draw_set_transform(Vector2.ZERO)
+	if not dead:
+		var w := s * 2.6
+		var y: float = -s * 3.3 + bob
+		draw_rect(Rect2(-w / 2, y, w, 6), Color(0, 0, 0, 0.7 * alpha))
+		draw_rect(Rect2(-w / 2, y, w * clampf(hp / max_hp, 0, 1), 6), Color(1.0, 0.6, 0.15, alpha))
 
 
 ## Red crackle: short jagged bolts flicking around the ball, re-drawn every

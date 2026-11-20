@@ -568,6 +568,24 @@ def sfx_dark_arrive():
     return np.tanh(1.3 * out)
 
 
+def sfx_helio_arrive():
+    """Helio, the Midnight Sun appears: a blazing major chord swelling up through
+    a roaring, crackling flare, and a low angry rumble under it."""
+    dur = 2.0
+    n = int(dur * SR)
+    t = np.arange(n) / SR
+    env = np.clip(t / 0.9, 0, 1) ** 1.5 * np.clip((dur - t) / 0.7, 0, 1)
+    chord = sum(np.sin(2 * np.pi * f * (1 + 0.004 * np.sin(2 * np.pi * 5 * t)) * t) / (i + 1) ** 0.6
+                for i, f in enumerate([220, 277.2, 329.6, 440, 554.4]))
+    chord = np.tanh(1.4 * chord / np.abs(chord).max()) * env
+    roar = _noise(n, 300, 3000) * env
+    roar /= np.abs(roar).max()
+    crackle = (np.random.rand(n) < 0.004) * np.random.randn(n) * env
+    rumble = np.sin(2 * np.pi * 55 * t + 2 * np.sin(2 * np.pi * 7 * t)) * env
+    out = 0.5 * chord + 0.3 * roar + 0.5 * crackle + 0.35 * rumble
+    return np.tanh(1.2 * out)
+
+
 def sfx_thief_arrive():
     """The Lantern Thief appears: a sly rising whistle and a rattling lantern."""
     dur = 1.0
@@ -633,7 +651,7 @@ def write_sfx(only=None):
                      ("flare", sfx_flare), ("pop", sfx_pop), ("hurt", sfx_hurt), ("tap", sfx_tap),
                      ("chime", sfx_chime), ("wave", sfx_wave), ("button", sfx_button),
                      ("charge_hum", sfx_charge_hum), ("zap", sfx_zap), ("wind", sfx_wind),
-                     ("dark_arrive", sfx_dark_arrive), ("thief_arrive", sfx_thief_arrive),
+                     ("dark_arrive", sfx_dark_arrive), ("thief_arrive", sfx_thief_arrive), ("helio_arrive", sfx_helio_arrive),
                      ("dash", sfx_dash), ("snuff", sfx_snuff), ("ember_pickup", sfx_ember_pickup)]:
         if only and name not in only:
             continue

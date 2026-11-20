@@ -72,6 +72,9 @@ var _shift_free := false   ## lull reward Adjustment: the next move costs nothin
 var _lull_rerolls := 0     ## lull reward Spare Luck: extra rerolls next prep
 var stoked := false        ## lull reward Stoke: defenses fire faster (read by Defense)
 var boss_wave := false     ## this wave brings the leg's boss
+var _glare: ColorRect
+var _glare_k := 0.0
+var _sear_tick := 0.0
 var _boss_intro := false   ## the music has dropped out and the wind blown for the coming boss
 const BOSS_INTRO := 1.1    ## seconds of wind, without music, before a boss arrives
 var _lifted = null         ## the defense being moved, or null
@@ -110,6 +113,15 @@ func _ready() -> void:
 		mist.color = Color(0.72, 0.8, 0.95, 0.16)
 		mist.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		add_child(mist)
+
+	_glare = ColorRect.new()   # Helio's glare, faded in while he sears the fire
+	_glare.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_glare.color = Color(1, 1, 1, 0)
+	_glare.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var add := CanvasItemMaterial.new()
+	add.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+	_glare.material = add
+	add_child(_glare)
 
 	_campfire = Campfire.new()
 	_entities.add_child(_campfire)
@@ -474,6 +486,23 @@ func _process(delta: float) -> void:
 		if r > 0.0 and not sp.dead and sp.world.distance_to(char_unit.world) <= r:
 			chill = maxf(chill, Defs.SPIRITS[sp.kind]["chill"])
 	char_unit.chill = chill
+	# Helio near the fire: the camp glares bright and the fire burns away steadily.
+	var sear := 0.0
+	for sp in spirits:
+		if sp.burning():
+			sear += sp.burn_dps
+	_glare_k = move_toward(_glare_k, 1.0 if sear > 0.0 else 0.0, delta * 1.5)
+	_glare.color = Color(1.0, 0.85, 0.45, 0.22 * _glare_k)
+	if sear > 0.0 and phase != Phase.DONE:
+		Run.flame = maxf(0.0, Run.flame - sear * delta)
+		_sear_tick -= delta
+		if _sear_tick <= 0.0:
+			_sear_tick = 1.0
+			_flame_bar.flash()
+			_add_fx("ring", Vector2.ZERO, Color("#ffb238"), 90.0)
+		_update_hud()
+		if Run.flame <= 0.0:
+			_flame_out()
 	if _spawn_queue.is_empty() and spirits.is_empty():
 		_wave_cleared()
 
@@ -487,7 +516,7 @@ func dim_at(at: Vector2) -> float:
 	return dim
 
 
-func _spawn(kind: String, lane := -1, hearty := false) -> void:
+func _spawn(kind: String, lane := -1, hearty := false):
 	var sp := Spirit.new()
 	_entities.add_child(sp)
 	if lane < 0:
@@ -505,6 +534,7 @@ func _spawn(kind: String, lane := -1, hearty := false) -> void:
 	sp.banished.connect(_on_banished)
 	sp.reached_fire.connect(_on_reached_fire)
 	sp.zapped.connect(_on_zapped)
+	sp.summoned.connect(_on_summoned)
 	if sp.zap_range > 0.0:
 		AudioDirector.play_sfx("charge_hum", -5.0)
 	if sp.boss:
@@ -513,6 +543,18 @@ func _spawn(kind: String, lane := -1, hearty := false) -> void:
 		if Run.autoplay:
 			print("  boss: %s (%d hp)" % [kind, roundi(sp.max_hp)])
 	spirits.append(sp)
+	return sp
+
+
+## Helio stops and calls up Midnight Sun Rays from his spot.
+func _on_summoned(boss, count: int) -> void:
+	if phase == Phase.DONE:
+		return
+	_add_fx("ring", boss.world, Color("#ffb238"), 70.0)
+	AudioDirector.play_sfx("charge_hum", -6.0)
+	for i in count:
+		var r = _spawn("sun_ray", boss.path_idx)
+		r.place_at(maxf(0.0, boss.dist - 6.0 * i))
 
 
 func _on_banished(sp) -> void:
