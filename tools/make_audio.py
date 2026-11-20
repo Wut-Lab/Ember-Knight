@@ -613,6 +613,18 @@ def sfx_snuff():
     return out
 
 
+def sfx_ember_pickup():
+    """Ember Drop picked up: a soft warm whoosh rising into a bright little sparkle."""
+    out = np.zeros(int(0.5 * SR))
+    n = int(0.22 * SR)
+    t = np.arange(n) / SR
+    whoosh = _noise(n, 400, 2500) * np.sin(np.pi * t / 0.22) ** 2
+    _place(out, 0.5 * whoosh / np.abs(whoosh).max(), 0)
+    _place(out, 0.6 * _tone(392, 784, 0.25, 0.12), 0.02)      # warm rise
+    _place(out, 0.3 * bell(84, 0.6)[:int(0.4 * SR)], 0.12)    # sparkle on top
+    return out
+
+
 def write_sfx(only=None):
     global OUT
     base = OUT
@@ -622,7 +634,7 @@ def write_sfx(only=None):
                      ("chime", sfx_chime), ("wave", sfx_wave), ("button", sfx_button),
                      ("charge_hum", sfx_charge_hum), ("zap", sfx_zap), ("wind", sfx_wind),
                      ("dark_arrive", sfx_dark_arrive), ("thief_arrive", sfx_thief_arrive),
-                     ("dash", sfx_dash), ("snuff", sfx_snuff)]:
+                     ("dash", sfx_dash), ("snuff", sfx_snuff), ("ember_pickup", sfx_ember_pickup)]:
         if only and name not in only:
             continue
         mono = fn()

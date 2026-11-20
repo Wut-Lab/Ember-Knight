@@ -22,6 +22,7 @@ const Style := preload("res://scripts/ui/ui_style.gd")
 const EssenceTracker := preload("res://scripts/ui/essence_tracker.gd")
 const VolumeSliders := preload("res://scripts/ui/volume_sliders.gd")
 const Board := preload("res://scripts/game/board.gd")
+const EmberDrop := preload("res://scripts/game/ember_drop.gd")
 const Spirit := preload("res://scripts/game/spirit.gd")
 const Defense := preload("res://scripts/game/defense.gd")
 const CharUnit := preload("res://scripts/game/char_unit.gd")
@@ -419,6 +420,8 @@ func _process(delta: float) -> void:
 	board.gates_left = _gates_left if phase == Phase.PREP else 0
 	if Run.autoplay and phase == Phase.FIGHT:
 		_autoplay_gates(delta)
+	if Run.autoplay:
+		_autoplay_embers()
 	board.glow_face = _drag_die.face if _drag_die else (_selected.face if _selected else "")
 	board.shift_glow = _shift_ready and _selected == null and _drag_die == null
 	if _ghost:
@@ -516,6 +519,49 @@ func _on_banished(sp) -> void:
 	Run.spirits_banished += 1
 	_add_fx("poof", sp.world, Color("#bfc8ff"))
 	AudioDirector.play_sfx("pop", -6.0)
+	if Run.rng.randf() < Defs.EMBER_DROP_CHANCE:
+		_drop_ember(sp.world)
+
+
+# ------------------------------------------------------------ ember drops
+var _embers: Array = []
+
+func _drop_ember(at: Vector2) -> void:
+	var e := EmberDrop.new()
+	_fx.add_child(e)
+	e.setup(board, at)
+	e.tree_exited.connect(func(): _embers.erase(e))
+	_embers.append(e)
+	if Run.autoplay:   # the bot is a decent but not perfect collector
+		e.set_meta("ap_at", Defs.EMBER_LIFE - randf_range(0.8, 2.5) if randf() < 0.75 else -99.0)
+
+
+## Tap an ember: heal, a little burst, then it's gone.
+func _try_pick_ember(local: Vector2) -> bool:
+	if phase == Phase.DONE:
+		return false
+	for e in _embers:
+		if e.hit(local):
+			_pick_ember(e)
+			return true
+	return false
+
+
+func _pick_ember(e) -> void:
+	e.picked = true
+	Run.flame = minf(Run.max_flame, Run.flame + Defs.EMBER_HEAL)
+	_add_fx("ring", e.world, Color("#ffb238"), 40.0)
+	_add_fx("text", e.world, Color("#ffd27a"), 100.0, "+%d" % int(Defs.EMBER_HEAL))
+	AudioDirector.play_sfx("ember_pickup", -3.0)
+	_flame_bar.flash()
+	_update_hud()
+	e.queue_free()
+
+
+func _autoplay_embers() -> void:
+	for e in _embers.duplicate():
+		if not e.picked and e.life <= e.get_meta("ap_at", -99.0):
+			_pick_ember(e)
 
 
 func _on_reached_fire(sp) -> void:
@@ -901,7 +947,9 @@ func _unhandled_input(event: InputEvent) -> void:
 			_hover = _target_at(local, _selected.face) if _selected else -1
 	elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		local = board.get_global_transform_with_canvas().affine_inverse() * event.position
-		if _selected and phase == Phase.PREP:
+		if _try_pick_ember(local):   # embers first: they don't wait
+			get_viewport().set_input_as_handled()
+		elif _selected and phase == Phase.PREP:
 			if _try_place(_selected, local):
 				get_viewport().set_input_as_handled()
 		elif _tap_fork(board.link_at(local)):
