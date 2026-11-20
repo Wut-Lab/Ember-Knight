@@ -334,12 +334,7 @@ func _draw_dark() -> void:
 			pts.append(c + p)
 		draw_colored_polygon(pts, eye)
 	draw_set_transform(Vector2.ZERO)
-	# Boss health bar, always shown.
-	if not dead:
-		var w := s * 2.4
-		var y: float = y0 - s * 1.5
-		draw_rect(Rect2(-w / 2, y, w, 6), Color(0, 0, 0, 0.7 * alpha))
-		draw_rect(Rect2(-w / 2, y, w * clampf(hp / max_hp, 0, 1), 6), Color(lav, alpha))
+	# (Boss health shows in the HUD boss bar.)
 
 
 ## The Lantern Thief: a quick gold Wisp in a dark bandit's mask, with a pilfered
@@ -388,11 +383,6 @@ func _draw_thief() -> void:
 		var c := Vector2(side * s * 0.36, s * 0.09) + look
 		draw_colored_polygon(PackedVector2Array([c + Vector2(-s * 0.17, 0), c + Vector2(s * 0.17, -side * s * 0.05), c + Vector2(0, s * 0.08)]), Color("#fff6d8", alpha))
 	draw_set_transform(Vector2.ZERO)
-	if not dead:
-		var w := s * 2.6
-		var y: float = -s * 3.6 + bob
-		draw_rect(Rect2(-w / 2, y, w, 6), Color(0, 0, 0, 0.7 * alpha))
-		draw_rect(Rect2(-w / 2, y, w * clampf(hp / max_hp, 0, 1), 6), Color(col, alpha))
 
 
 ## Helio, the Midnight Sun: a big yellow ball in an orange glow, dark orange
@@ -446,11 +436,6 @@ func _draw_helio() -> void:
 	# A scowling mouth.
 	draw_polyline(PackedVector2Array([Vector2(-s * 0.3, s * 0.52), Vector2(0, s * 0.4), Vector2(s * 0.3, s * 0.52)]), ink, maxf(2.0, s * 0.08), true)
 	draw_set_transform(Vector2.ZERO)
-	if not dead:
-		var w := s * 2.6
-		var y: float = -s * 3.3 + bob
-		draw_rect(Rect2(-w / 2, y, w, 6), Color(0, 0, 0, 0.7 * alpha))
-		draw_rect(Rect2(-w / 2, y, w * clampf(hp / max_hp, 0, 1), 6), Color(1.0, 0.6, 0.15, alpha))
 
 
 ## Red crackle: short jagged bolts flicking around the ball, re-drawn every
