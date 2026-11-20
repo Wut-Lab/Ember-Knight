@@ -10,7 +10,10 @@ var life := Defs.EMBER_LIFE
 var picked := false
 var _t := 0.0
 var _hop := 0.0          ## 0..1 little bounce as it lands
-var _shape := PackedVector2Array()
+var _shape := PackedVector2Array()   ## per rim corner: (radius, height) factors
+var _ash := PackedVector2Array()     ## pale ash flecks on the top face
+const RIM := 8
+const SQUASH := 0.56                 ## the board's ground squash, for the 2.5D look
 
 
 func setup(b, at: Vector2) -> void:
@@ -18,10 +21,11 @@ func setup(b, at: Vector2) -> void:
 	world = at
 	position = board.proj(world)
 	_t = randf() * 10.0
-	# A lumpy coal outline, fixed for this ember.
-	for i in 9:
-		var a := TAU * i / 9.0
-		_shape.append(Vector2(cos(a) * randf_range(0.8, 1.15), sin(a) * randf_range(0.55, 0.75)))
+	# A lumpy coal, fixed for this ember: rim radii and per-corner heights.
+	for i in RIM:
+		_shape.append(Vector2(randf_range(0.82, 1.12), randf_range(0.85, 1.15)))
+	for i in 5:
+		_ash.append(Vector2(randf_range(-0.6, 0.6), randf_range(-0.5, 0.5)))
 
 
 ## Is a board-local point close enough to count as a tap on this ember?
@@ -47,38 +51,88 @@ func _draw() -> void:
 		alpha *= 0.35
 	var lift := -sin(_hop * PI) * 10.0 * s
 	var r := 8.0 * s
-	# Warm glow on the ground.
-	draw_texture_rect(_glow_tex(), Rect2(-r * 3.2, -r * 2.2 + lift * 0.3, r * 6.4, r * 4.4), false, Color(1.0, 0.45, 0.12, 0.45 * alpha))
-	draw_set_transform(Vector2(0, -r * 0.4 + lift))
-	# The charred coal: dark body, a lighter top, and glowing cracks.
-	var body := PackedVector2Array()
-	for p in _shape:
-		body.append(p * r)
-	draw_colored_polygon(body, Color(0.13, 0.1, 0.1, alpha))
+	var hc := r * 0.55                            # coal height
+	var pulse := 0.8 + 0.2 * sin(_t * 5.0) * sin(_t * 2.3 + 1.0)
+	# On the ground: a soft shadow under the coal, and its warm light around it.
+	draw_texture_rect(_glow_tex(), Rect2(-r * 3.4, -r * 3.4 * SQUASH, r * 6.8, r * 6.8 * SQUASH), false, Color(1.0, 0.42, 0.1, 0.4 * pulse * alpha))
+	_ellipse(Vector2(0, r * 0.08), r * 1.15, r * 1.15 * SQUASH * 0.8, Color(0, 0, 0, 0.45 * alpha))
+	draw_set_transform(Vector2(0, lift))
+	# The coal as a squat faceted lump: a bottom rim on the ground, a smaller
+	# top face raised by its height, and the side facets facing us between them.
+	var bot := PackedVector2Array()
 	var top := PackedVector2Array()
-	for p in _shape:
-		top.append(Vector2(p.x * 0.75, p.y * 0.6 - 0.18) * r)
-	draw_colored_polygon(top, Color(0.24, 0.19, 0.18, alpha))
-	var hot := Color(1.0, 0.5 + 0.15 * sin(_t * 9.0), 0.15, (0.75 + 0.25 * sin(_t * 5.0)) * alpha)
-	draw_polyline(PackedVector2Array([Vector2(-0.6, -0.05) * r, Vector2(-0.2, 0.12) * r, Vector2(0.1, -0.08) * r, Vector2(0.55, 0.1) * r]), hot, maxf(1.2, 0.18 * r))
+	for i in RIM:
+		var a := TAU * (i + 0.5) / RIM
+		var d := Vector2(cos(a), sin(a) * SQUASH)
+		bot.append(d * r * _shape[i].x)
+		top.append(d * r * _shape[i].x * 0.72 + Vector2(0, -hc * _shape[i].y))
+	for i in RIM:
+		var j := (i + 1) % RIM
+		var mid := (TAU * (i + 1.0) / RIM)
+		if sin(mid) < -0.05:
+			continue                              # back facets are hidden
+		var shade := 0.11 + 0.07 * clampf(-cos(mid - 0.6), 0.0, 1.0)   # lit from the upper left
+		var quad := PackedVector2Array([top[i], top[j], bot[j], bot[i]])
+		draw_colored_polygon(quad, Color(shade, shade * 0.88, shade * 0.85, alpha))
+		# Embers glowing through the cracks low on the front facets.
+		var glow := clampf(sin(mid), 0.0, 1.0) * pulse
+		draw_line(bot[i].lerp(top[i], 0.25), bot[j].lerp(top[j], 0.35), Color(1.0, 0.38, 0.08, 0.7 * glow * alpha), maxf(1.0, r * 0.1))
+	draw_colored_polygon(top, Color(0.2, 0.16, 0.15, alpha))
+	# Ashy rim on the top face's front edge.
+	var rim := PackedVector2Array()
+	for i in range(0, RIM / 2 + 1):
+		rim.append(top[i % RIM])
+	draw_polyline(rim, Color(0.62, 0.58, 0.55, 0.55 * alpha), maxf(1.0, r * 0.07))
+	# Glowing cracks across the top, hot yellow at their heart.
+	var cy := -hc
+	var crack := PackedVector2Array([Vector2(-0.5, 0.05), Vector2(-0.15, -0.12), Vector2(0.12, 0.08), Vector2(0.45, -0.06)])
+	var pts := PackedVector2Array()
+	for p in crack:
+		pts.append(Vector2(p.x * r, cy + p.y * r * SQUASH * 1.6))
+	draw_polyline(pts, Color(1.0, 0.45, 0.1, 0.85 * pulse * alpha), maxf(1.6, r * 0.2))
+	draw_polyline(pts, Color(1.0, 0.85, 0.4, pulse * alpha), maxf(1.0, r * 0.07))
+	for p in _ash:
+		_ellipse(Vector2(p.x * r * 0.6, cy + p.y * r * SQUASH * 0.7), r * 0.07, r * 0.05, Color(0.75, 0.72, 0.7, 0.6 * alpha))
 	# A slight flame dancing off the top: a short teardrop that sways and flickers.
 	var sway := sin(_t * 7.0) * 0.22 + sin(_t * 11.3) * 0.1
 	var h := r * (0.95 + 0.15 * sin(_t * 13.0))
-	var base := Vector2(r * 0.1, -r * 0.3)
-	for layer in [[1.0, Color(1.0, 0.45, 0.1, 0.85 * alpha)], [0.55, Color(1.0, 0.85, 0.35, 0.95 * alpha)]]:
+	var base := Vector2(r * 0.08, cy + r * 0.05)
+	for layer in [[1.0, Color(1.0, 0.45, 0.1, 0.85 * alpha)], [0.55, Color(1.0, 0.88, 0.45, 0.95 * alpha)]]:
 		var k: float = layer[0]
 		var left := PackedVector2Array()
 		var right := PackedVector2Array()
 		for i in 9:
 			var u := i / 8.0
-			var w := r * 0.4 * k * pow(sin(PI * minf(u * 1.25, 1.0) * 0.5 + PI * 0.5 * (1.0 if u > 0.8 else 0.0)), 1.0) * (1.0 - u)
+			var w := r * 0.36 * k * sin(PI * minf(u * 1.25, 1.0) * 0.5 + (PI * 0.5 if u > 0.8 else 0.0)) * (1.0 - u)
 			var x := sway * r * u * u
 			left.append(base + Vector2(x - w, -u * h * k))
 			right.append(base + Vector2(x + w, -u * h * k))
 		right.reverse()
 		left.append_array(right)
 		draw_colored_polygon(left, layer[1])
+	# Charged smoke: soft gray-to-white puffs curling up and away, with a
+	# few sparks riding them.
+	for i in 6:
+		var u := fmod(_t * 0.42 + i / 6.0, 1.0)
+		var curl := sin(_t * 1.7 + i * 2.1) * r * 0.5 * u + sin(u * 5.0 + i) * r * 0.25
+		var c := base + Vector2(curl + r * 0.3 * u, -r * 0.6 - u * r * 3.4)
+		var pr := r * (0.35 + 0.75 * u)
+		var grey := lerpf(0.5, 0.96, u)
+		var a := sin(PI * u) * 0.46 * alpha
+		draw_texture_rect(_glow_tex(), Rect2(c.x - pr, c.y - pr * 0.85, pr * 2.0, pr * 1.7), false, Color(grey, grey, grey * 1.02, a))
+	for i in 3:
+		var u := fmod(_t * 0.9 + i / 3.0, 1.0)
+		var c := base + Vector2(sin(_t * 3.0 + i * 2.0) * r * 0.4 * u, -r * 0.4 - u * r * 2.2)
+		draw_circle(c, maxf(1.0, r * 0.07 * (1.0 - u)), Color(1.0, 0.75, 0.3, (1.0 - u) * 0.9 * alpha))
 	draw_set_transform(Vector2.ZERO)
+
+
+func _ellipse(c: Vector2, rx: float, ry: float, col: Color) -> void:
+	var pts := PackedVector2Array()
+	for i in 20:
+		var a := TAU * i / 20.0
+		pts.append(c + Vector2(cos(a) * rx, sin(a) * ry))
+	draw_colored_polygon(pts, col)
 
 
 static var _glow: Texture2D
