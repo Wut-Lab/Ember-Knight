@@ -226,7 +226,7 @@ const SPIRITS := {
 	## Light defenses (LIGHT_DEFENSES) inside his dim_range fire dim slower. He
 	## bobs, and the dimming circle bobs with him (dim_bob world units, back and forth).
 	"dark_wisp": {"name": "Carl, the Dark Wisp", "boss": true,
-		"blurb": "dims Torches and Mortars near him: they fire slower", "hp": 220.0, "speed": 22.0, "damage": 40.0,
+		"blurb": "dims Torches and Mortars near him: they fire slower", "arrive_sfx": "dark_arrive", "hp": 220.0, "speed": 22.0, "damage": 40.0,
 		"size": 2.6, "color": Color("#16121f"), "dim_range": 170.0, "dim": 0.4, "dim_bob": 26.0},
 	## Boss: the Lantern Thief. A small, quick gold Wisp in a bandit's mask. Every
 	## dash_every seconds he dashes (dash_mult × speed for dash_time). While dashing
@@ -234,7 +234,7 @@ const SPIRITS := {
 	"lantern_thief": {"name": "The Lantern Thief", "boss": true, "hp": 150.0, "speed": 60.0, "damage": 30.0,
 		"size": 1.6, "color": Color("#f2c14e"), "dash_every": 3.0, "dash_time": 1.0, "dash_mult": 2.4,
 		"snuff_range": 190.0, "snuff_time": 3.0,
-		"blurb": "dashes past your defenses and snuffs them out for a few seconds"},
+		"blurb": "dashes past your defenses and snuffs them out for a few seconds", "arrive_sfx": "thief_arrive"},
 }
 
 # ------------------------------------------------------------ bosses

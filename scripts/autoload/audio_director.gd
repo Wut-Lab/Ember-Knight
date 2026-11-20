@@ -8,6 +8,9 @@ signal swell_changed(level: float)  ## 0 = calm fire, 1 = peak of a swell
 const MUSIC := preload("res://assets/audio/campfire_lullaby.ogg")
 ## Same key, tempo and length as MUSIC; plays in sync and fades in during waves.
 const TENSION := preload("res://assets/audio/campfire_tension.ogg")
+## Boss waves: a faster, heavier take on TENSION (its own 25s loop).
+const BOSS_MUSIC := preload("res://assets/audio/boss_theme.ogg")
+const BOSS_DB := -9.0   ## the boss loop is mixed hotter than the others
 const FIRE := preload("res://assets/audio/fire_crackle.ogg")
 const CRICKETS := preload("res://assets/audio/crickets.ogg")
 
@@ -29,6 +32,8 @@ var swell_level := 0.0
 var _music: AudioStreamPlayer
 var _tension: AudioStreamPlayer
 var _tense := false
+var _boss: AudioStreamPlayer
+var _boss_on := false
 var _fire: AudioStreamPlayer
 var _fire_layer: AudioStreamPlayer  ## same loop, other offset: thickens swells
 var _crickets: AudioStreamPlayer
@@ -42,7 +47,8 @@ var _sfx := {}
 var _sfx_pool: Array[AudioStreamPlayer] = []
 var _sfx_next := 0
 
-const SFX_NAMES := ["dice_roll", "place", "bolt", "flare", "pop", "hurt", "tap", "chime", "wave", "button", "charge_hum", "zap"]
+const SFX_NAMES := ["dice_roll", "place", "bolt", "flare", "pop", "hurt", "tap", "chime", "wave", "button", "charge_hum", "zap",
+	"wind", "dark_arrive", "thief_arrive", "dash", "snuff"]
 const SFX_VOICES := 12
 
 
@@ -55,6 +61,7 @@ func _ready() -> void:
 
 	_music = _make_player(MUSIC, "Music")
 	_tension = _make_player(TENSION, "Music")
+	_boss = _make_player(BOSS_MUSIC, "Music")
 	_crickets = _make_player(CRICKETS, "Effects")
 	_fire = _make_player(FIRE, "Fire")
 	_fire_layer = _make_player(FIRE, "Fire")
@@ -123,6 +130,36 @@ func set_tension(on: bool, seconds := 2.5) -> void:
 	_tense = on
 	_fade(_tension, MUSIC_DB if on else SILENT_DB, seconds)
 	_fade(_music, SILENT_DB if on else MUSIC_DB, seconds * (1.4 if on else 0.8))
+
+
+# ------------------------------------------------------------ boss waves
+## About a second before a boss arrives: the music drops away and wind blows by.
+func boss_intro() -> void:
+	_fade(_music, SILENT_DB, 0.35)
+	_fade(_tension, SILENT_DB, 0.35)
+	play_sfx("wind", -3.0, 0.0)
+
+
+## The boss is here: the boss music cuts in from the top.
+func start_boss_music() -> void:
+	_boss_on = true
+	_boss.play()
+	_boss.volume_db = BOSS_DB - 6.0
+	_fade(_boss, BOSS_DB, 0.25)
+
+
+## The boss wave is over (or the battle ended): the boss music fades out and
+## the normal music (or the wave music, if still tense) fades back in.
+func end_boss_music(seconds := 1.6) -> void:
+	if not _boss_on:
+		return
+	_boss_on = false
+	_fade(_boss, SILENT_DB, seconds)
+	get_tree().create_timer(seconds + 0.1).timeout.connect(func():
+		if not _boss_on:
+			_boss.stop())
+	if _music.playing:
+		_fade(_tension if _tense else _music, MUSIC_DB, seconds * 1.5)
 
 
 # ------------------------------------------------------------ menu swells

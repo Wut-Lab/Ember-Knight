@@ -71,6 +71,8 @@ var _shift_free := false   ## lull reward Adjustment: the next move costs nothin
 var _lull_rerolls := 0     ## lull reward Spare Luck: extra rerolls next prep
 var stoked := false        ## lull reward Stoke: defenses fire faster (read by Defense)
 var boss_wave := false     ## this wave brings the leg's boss
+var _boss_intro := false   ## the music has dropped out and the wind blown for the coming boss
+const BOSS_INTRO := 1.1    ## seconds of wind, without music, before a boss arrives
 var _lifted = null         ## the defense being moved, or null
 
 # HUD
@@ -128,6 +130,7 @@ func _ready() -> void:
 
 func _exit_tree() -> void:
 	AudioDirector.set_tension(false)
+	AudioDirector.end_boss_music(0.8)
 	Engine.time_scale = 1.0
 
 
@@ -189,6 +192,7 @@ func _start_prep() -> void:
 	_shift_ready = (_shift_free or wave > 0 and Run.has_oath("shifting_embers")) and not defenses.is_empty()
 	_roll(true)
 	boss_wave = not ambush and Defs.is_boss_wave(Run.night, wave)
+	_boss_intro = false
 	mod = "" if ambush or boss_wave else Defs.roll_wave_mod(Run.night, Run.rng)
 	_swarm_lane = Run.rng.randi() % board.lane_count if mod == "swarmy" else -1
 	_update_hud()
@@ -281,6 +285,7 @@ func _wave_cleared() -> void:
 		print("  night %d wave %d cleared  flame=%d  char_kindle=%d  defenses=%s" % [Run.night + 1, wave + 1, roundi(Run.flame), char_unit.kindle, desc])
 	fighting = false
 	AudioDirector.set_tension(false)
+	AudioDirector.end_boss_music()
 	wave += 1
 	if ambush:
 		phase = Phase.DONE
@@ -400,6 +405,7 @@ func _flame_out() -> void:
 	phase = Phase.DONE
 	fighting = false
 	AudioDirector.set_tension(false)
+	AudioDirector.end_boss_music()
 	char_unit.set_mood("hurt")
 	Profile.add_essence(Defs.essence_for_lost_night(Run.night))
 	_show_banner("Char's flame went out...")
@@ -433,6 +439,10 @@ func _process(delta: float) -> void:
 		return
 	if not _spawn_queue.is_empty():
 		_spawn_timer -= delta
+		if not _boss_intro and Defs.SPIRITS[_spawn_queue[0][0]].get("boss", false) and _spawn_timer <= BOSS_INTRO:
+			_boss_intro = true   # the music drops out and the wind blows by first
+			_spawn_timer = BOSS_INTRO
+			AudioDirector.boss_intro()
 		if _spawn_timer <= 0.0:
 			var e: Array = _spawn_queue.pop_front()
 			_spawn(e[0], e[1], e[2])
@@ -494,7 +504,8 @@ func _spawn(kind: String, lane := -1, hearty := false) -> void:
 	if sp.zap_range > 0.0:
 		AudioDirector.play_sfx("charge_hum", -5.0)
 	if sp.boss:
-		AudioDirector.play_sfx("charge_hum", -2.0)
+		AudioDirector.play_sfx(Defs.SPIRITS[kind].get("arrive_sfx", "charge_hum"), -4.0, 0.0)
+		AudioDirector.start_boss_music()
 		if Run.autoplay:
 			print("  boss: %s (%d hp)" % [kind, roundi(sp.max_hp)])
 	spirits.append(sp)

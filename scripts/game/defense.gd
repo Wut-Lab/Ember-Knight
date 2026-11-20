@@ -109,6 +109,7 @@ func _process(delta: float) -> void:
 func snuff(t: float) -> void:
 	if _snuffed <= 0.0:
 		_puff = 1.0
+		AudioDirector.play_sfx("snuff", -9.0)
 	_snuffed = maxf(_snuffed, t)
 
 

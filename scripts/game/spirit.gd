@@ -129,6 +129,8 @@ func _process(delta: float) -> void:
 		_dash_t += delta
 		if _dash_t >= dash_every:
 			_dash_t -= dash_every
+		if not dead and _dash_t >= dash_every - dash_time and _dash_t - delta < dash_every - dash_time:
+			AudioDirector.play_sfx("dash", -5.0)
 		if dashing():
 			burst = dash_mult
 			_trail.push_front(position)

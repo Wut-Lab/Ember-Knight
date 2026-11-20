@@ -6,6 +6,7 @@ Also renders the short sound effects in assets/audio/sfx/ (dice, defenses,
 UI button tap...).
 
 Run:  python3 tools/make_audio.py           (everything)
+      python3 tools/make_audio.py boss      (just the boss music)
       python3 tools/make_audio.py button    (just the named sound effects)
 Needs numpy and ffmpeg with libvorbis.
 """
@@ -526,6 +527,92 @@ def sfx_zap():
     return np.tanh(2.0 * out)
 
 
+def sfx_wind():
+    """Before a boss: a gust of wind blowing by (~1.3s) while the music drops out.
+    Noise through a band that sweeps up and back down, swelling in and out."""
+    dur = 1.3
+    n = int(dur * SR)
+    t = np.arange(n) / SR
+    out = np.zeros(n)
+    seg = int(0.05 * SR)
+    raw = rng.standard_normal(n + seg)
+    for k in range(0, n, seg // 2):   # overlapping windows, each with its own band
+        x = k / n
+        centre = 350 + 1500 * np.sin(np.pi * x) ** 1.5
+        w = fft_filter(raw[k:k + seg], lo=centre * 0.55, hi=centre * 1.6, slope=2)
+        win = np.hanning(len(w))
+        out[k:k + len(w)] += (w * win)[:max(0, n - k)]
+    gust = np.sin(np.pi * np.clip(t / dur, 0, 1)) ** 1.4
+    gust *= 1 + 0.25 * np.sin(2 * np.pi * 3.1 * t) * np.sin(np.pi * t / dur)   # a flutter mid-gust
+    low = fft_filter(rng.standard_normal(n), lo=60, hi=260) * 0.5
+    return (out / np.abs(out).max() + low / np.abs(low).max() * 0.3) * gust
+
+
+def sfx_dark_arrive():
+    """Carl, the Dark Wisp appears: a deep falling drone, a whispery swell and a
+    low boom."""
+    dur = 2.2
+    n = int(dur * SR)
+    t = np.arange(n) / SR
+    f = 82 * np.exp(-t * 0.18)
+    ph = 2 * np.pi * np.cumsum(f) / SR
+    drone = sum(np.sin(h * ph) / h ** 1.2 for h in range(1, 9))
+    drone = np.tanh(1.6 * drone / np.abs(drone).max())
+    drone *= np.clip(t / 0.5, 0, 1) * np.clip((dur - t) / 0.9, 0, 1)
+    whisper = _noise(n, 400, 2200)
+    whisper *= (np.clip(t / 0.9, 0, 1) ** 2) * np.exp(-np.clip(t - 0.9, 0, None) * 6)
+    whisper /= np.abs(whisper).max()
+    boom = _tone(90, 38, 1.3, 0.45)
+    out = 0.75 * drone + 0.35 * whisper
+    _place(out, 0.9 * boom, 0.85)
+    return np.tanh(1.3 * out)
+
+
+def sfx_thief_arrive():
+    """The Lantern Thief appears: a sly rising whistle and a rattling lantern."""
+    dur = 1.0
+    n = int(dur * SR)
+    t = np.arange(n) / SR
+    f = np.geomspace(700, 1500, n) * (1 + 0.02 * np.sin(2 * np.pi * 9 * t))
+    whistle = np.sin(2 * np.pi * np.cumsum(f) / SR) * np.clip(t / 0.08, 0, 1) * np.clip((0.55 - t) / 0.2, 0, 1)
+    out = 0.45 * whistle
+    for k in range(9):   # tinny lantern rattle
+        m = int(0.12 * SR)
+        tt = np.arange(m) / SR
+        fr = rng.uniform(2600, 4200)
+        ping = (np.sin(2 * np.pi * fr * tt) + 0.5 * np.sin(2 * np.pi * fr * 2.7 * tt)) * np.exp(-tt * 45)
+        _place(out, 0.3 * ping, 0.35 + k * 0.06 + rng.uniform(0, 0.02))
+    return out
+
+
+def sfx_dash():
+    """The Lantern Thief dashes: a quick rising-then-falling whoosh."""
+    dur = 0.45
+    n = int(dur * SR)
+    t = np.arange(n) / SR
+    out = np.zeros(n)
+    seg = int(0.03 * SR)
+    raw = rng.standard_normal(n + seg)
+    for k in range(0, n, seg // 2):
+        x = k / n
+        centre = 600 + 3200 * np.sin(np.pi * min(1.0, x * 1.4)) ** 2
+        w = fft_filter(raw[k:k + seg], lo=centre * 0.6, hi=centre * 1.5, slope=2) * np.hanning(seg)
+        out[k:k + seg] += w[:max(0, n - k)]
+    return out / np.abs(out).max() * np.sin(np.pi * t / dur) ** 0.8
+
+
+def sfx_snuff():
+    """A defense is snuffed out: a breathy puff, like blowing out a candle, and a
+    tiny falling sizzle."""
+    dur = 0.35
+    n = int(dur * SR)
+    puff = _noise(n, 150, 1400) * _env(n, 0.01, 0.07)
+    sizzle = _noise(n, 3000, 9000) * _env(n, 0.03, 0.12) * 0.4
+    tone = _tone(520, 240, dur, 0.1) * 0.25
+    out = puff / np.abs(puff).max() + sizzle / np.abs(sizzle).max() * 0.35 + tone
+    return out
+
+
 def write_sfx(only=None):
     global OUT
     base = OUT
@@ -533,7 +620,9 @@ def write_sfx(only=None):
     for name, fn in [("dice_roll", sfx_dice_roll), ("place", sfx_place), ("bolt", sfx_bolt),
                      ("flare", sfx_flare), ("pop", sfx_pop), ("hurt", sfx_hurt), ("tap", sfx_tap),
                      ("chime", sfx_chime), ("wave", sfx_wave), ("button", sfx_button),
-                     ("charge_hum", sfx_charge_hum), ("zap", sfx_zap)]:
+                     ("charge_hum", sfx_charge_hum), ("zap", sfx_zap), ("wind", sfx_wind),
+                     ("dark_arrive", sfx_dark_arrive), ("thief_arrive", sfx_thief_arrive),
+                     ("dash", sfx_dash), ("snuff", sfx_snuff)]:
         if only and name not in only:
             continue
         mono = fn()
@@ -542,10 +631,71 @@ def write_sfx(only=None):
     OUT = base
 
 
+# ---------------------------------------------------------------- boss music
+# The boss version: the Night Watch harmony and melody, 1.6x faster (bar = 1.5625 s),
+# with a driving harp ostinato on every eighth, a heavy heartbeat on every beat,
+# war-drum hits, a louder drone and trembling strings. 16 bars = 25 s loop.
+BOSS_FORM = P1 + P3
+BOSS_MELODY = MEL_A + MEL_B
+
+
+def war_drum(amp):
+    n = int(0.6 * SR)
+    t = np.arange(n) / SR
+    f = 55 + 90 * np.exp(-t / 0.02)
+    body = np.sin(2 * np.pi * np.cumsum(f) / SR) * np.exp(-t / 0.18)
+    skin = fft_filter(rng.standard_normal(n), lo=150, hi=1800) * np.exp(-t / 0.03)
+    skin *= 0.5 / (np.abs(skin).max() + 1e-9)
+    return amp * np.tanh(2.5 * (body + skin)) * np.minimum(1, t / 0.002)
+
+
+def make_boss_music():
+    bar_s = 2.5 / 1.6
+    e8 = bar_s / 6
+    n = int(len(BOSS_FORM) * bar_s * SR)
+    dry = np.zeros((2, n))
+    tt = np.arange(n) / SR
+    drone = 0.09 * (np.sin(2 * np.pi * 36.75 * tt) + 0.5 * np.sin(2 * np.pi * 73.5 * tt))
+    drone *= 1 + 0.3 * np.sin(2 * np.pi * tt / (bar_s * 2))
+    dry += np.stack([drone, drone])
+    for b, ch in enumerate(BOSS_FORM):
+        root, tones = TENSE_CH.get(ch) or CH[ch]
+        t0 = b * bar_s
+        pad = pad_chord(tones, bar_s) * 0.2
+        pad *= 1 + 0.45 * np.sin(2 * np.pi * 9.0 * np.arange(len(pad)) / SR)
+        add_wrap(dry, pan(pad, 0.0), int(t0 * SR))
+        for beat in (0, 3):   # heavy heartbeat, doubled with a sub thump
+            add_wrap(dry, pan(heartbeat(0.85), 0.0), int((t0 + beat * e8) * SR))
+        for k, a in ((0, 0.8), (2, 0.35), (3, 0.6), (5, 0.4)):
+            add_wrap(dry, pan(war_drum(a), -0.2 + 0.4 * (k % 2)), int((t0 + k * e8) * SR))
+        bass = pluck(mtof(root), 1.8, bright=0.35, amp=0.5)
+        add_wrap(dry, pan(bass, -0.1), int(t0 * SR))
+        r, third, fifth = tones
+        arp = [r, fifth, r + 12, third + 12, r + 12, fifth]
+        for k, m in enumerate(arp):
+            s = pluck(mtof(m), 1.4, bright=0.75, amp=0.32 * (1.0 if k in (0, 3) else 0.8))
+            add_wrap(dry, pan(s, -0.35 + 0.1 * (k % 3)), int((t0 + k * e8 + rng.normal(0, 0.004)) * SR))
+        pos = 0
+        for m, d in BOSS_MELODY[b]:
+            if m is not None:
+                s = recorder(TENSE_NOTE.get(m, m), d * e8 * 0.94, amp=0.2)
+                add_wrap(dry, pan(s, 0.25), int((t0 + pos * e8) * SR))
+                s2 = recorder(TENSE_NOTE.get(m, m) - 12, d * e8 * 0.94, amp=0.08)   # darker double
+                add_wrap(dry, pan(s2, -0.2), int((t0 + pos * e8) * SR))
+            pos += d
+    wet = circ_convolve(dry, reverb_ir(2.0, 2.0, 11, bright=4500))
+    mix = 0.85 * dry + 0.4 * wet
+    mix = np.stack([fft_filter(c, lo=30, hi=10000, slope=1) for c in mix])
+    return normalize(np.tanh(1.2 * mix / np.abs(mix).max()), -1.0)
+
+
 if __name__ == "__main__":
     import sys
     if sys.argv[1:] == ["tension"]:
         write_ogg("campfire_tension", make_music(tense=True))
+        sys.exit()
+    if sys.argv[1:] == ["boss"]:
+        write_ogg("boss_theme", make_boss_music())
         sys.exit()
     if len(sys.argv) > 1:  # e.g. `make_audio.py button` rebuilds just that effect
         write_sfx(sys.argv[1:])
@@ -554,4 +704,5 @@ if __name__ == "__main__":
     write_ogg("crickets", make_crickets(), q=5)
     write_ogg("campfire_lullaby", make_music())
     write_ogg("campfire_tension", make_music(tense=True))
+    write_ogg("boss_theme", make_boss_music())
     write_sfx()
