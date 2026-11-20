@@ -222,7 +222,26 @@ const SPIRITS := {
 	## centre, kept under Char's shortest reach so he can always hit it.
 	"charged_wisp": {"hp": 40.0, "speed": 38.0, "damage": 3.0, "size": 1.2, "color": Color("#ffe36b"),
 		"zap_range": 80.0, "zap_every": 2.0},
+	## Boss: Carl, the Dark Wisp. A big, slow black Wisp with a lavender glow.
+	## Light defenses (LIGHT_DEFENSES) inside his dim_range fire dim slower. He
+	## bobs, and the dimming circle bobs with him (dim_bob world units, back and forth).
+	"dark_wisp": {"name": "Carl, the Dark Wisp", "boss": true, "hp": 220.0, "speed": 22.0, "damage": 40.0,
+		"size": 2.6, "color": Color("#16121f"), "dim_range": 170.0, "dim": 0.4, "dim_bob": 26.0},
 }
+
+# ------------------------------------------------------------ bosses
+## The boss on wave 3 of each leg's last night. One boss for now; a random
+## pool comes later (see the blueprint).
+const BOSS := "dark_wisp"
+const BOSS_ESCORT := 0.5         ## the boss wave brings this share of a normal wave 3
+const BOSS_DAWN_HEAL := 30.0     ## extra dawn heal after beating a leg's boss
+## Light-based defenses: a Dark Wisp dims these (they fire slower near him).
+const LIGHT_DEFENSES := ["torch", "mortar"]
+
+
+## Is this the boss wave? Wave 3 of each leg's 4th night (0-based night/wave).
+static func is_boss_wave(night: int, wave: int) -> bool:
+	return night_in_leg(night) == NIGHTS_PER_LEG - 1 and wave == WAVES_PER_NIGHT - 1
 ## Charged Wisps in a night's wave 3, indexed by the whole part of its
 ## night_step (so each leg gets its own build-up). None on night 1.
 const CHARGED_PER_NIGHT := [0, 1, 1, 2, 2, 3, 3]
@@ -397,9 +416,15 @@ static func wave_spirits(night: int, wave: int, stop: String, rng: RandomNumberG
 		mist_chance = [0.0, 0.1, 0.2][wave]
 	if night > 0 or wave > 0:   # some stops (the lake) breed more Mist Wisps
 		mist_chance += STOPS.get(stop, {}).get("mist_bonus", 0.0)
+	var boss := is_boss_wave(night, wave)
+	if boss:   # a lighter escort, and the boss a third of the way in
+		count = maxi(2, roundi(count * BOSS_ESCORT))
 	var out := []
 	for i in count:
 		out.append("mist_wisp" if rng.randf() < mist_chance else "wisp")
+	if boss:
+		out.insert(count / 3, BOSS)
+		return out
 	# Charged Wisps take spots in the back half of wave 3, so they come late.
 	if wave == WAVES_PER_NIGHT - 1:
 		var n: int = CHARGED_PER_NIGHT[mini(floori(night_step(night) + 0.000001), CHARGED_PER_NIGHT.size() - 1)]

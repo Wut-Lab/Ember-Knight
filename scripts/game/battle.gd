@@ -70,6 +70,7 @@ var _shift_ready := false  ## Oath of Shifting Embers: a move is available this 
 var _shift_free := false   ## lull reward Adjustment: the next move costs nothing
 var _lull_rerolls := 0     ## lull reward Spare Luck: extra rerolls next prep
 var stoked := false        ## lull reward Stoke: defenses fire faster (read by Defense)
+var boss_wave := false     ## this wave brings the leg's boss
 var _lifted = null         ## the defense being moved, or null
 
 # HUD
@@ -187,11 +188,14 @@ func _start_prep() -> void:
 	_lifted = null
 	_shift_ready = (_shift_free or wave > 0 and Run.has_oath("shifting_embers")) and not defenses.is_empty()
 	_roll(true)
-	mod = "" if ambush else Defs.roll_wave_mod(Run.night, Run.rng)
+	boss_wave = not ambush and Defs.is_boss_wave(Run.night, wave)
+	mod = "" if ambush or boss_wave else Defs.roll_wave_mod(Run.night, Run.rng)
 	_swarm_lane = Run.rng.randi() % board.lane_count if mod == "swarmy" else -1
 	_update_hud()
 	if ambush:
 		_show_banner("Ambush in the fog!")
+	elif boss_wave:
+		_show_banner("Wave %d of %d  ·  %s approaches!" % [wave + 1, Defs.WAVES_PER_NIGHT, Defs.SPIRITS[Defs.BOSS]["name"]])
 	elif mod != "":
 		_show_banner("Wave %d of %d  ·  %s!" % [wave + 1, Defs.WAVES_PER_NIGHT, Defs.WAVE_MODS[mod]["name"]])
 	else:
@@ -200,6 +204,8 @@ func _start_prep() -> void:
 		_hint.text = "Tap a die to hold it, then tap a glowing tile.  Or drag it there.  Star dice go on the fire."
 	elif mod != "":
 		_hint.text = "%s: %s  Place your dice, then Fight!" % [Defs.WAVE_MODS[mod]["name"], Defs.WAVE_MODS[mod]["desc"]]
+	elif boss_wave:
+		_hint.text = "Boss wave!  %s dims Torches and Mortars near him: they fire slower.  Place your dice, then Fight!" % Defs.SPIRITS[Defs.BOSS]["name"].get_slice(",", 0)
 	else:
 		_hint.text = "Place your dice, then Fight!"
 	if _gates_left > 0 and not board.links.is_empty():
@@ -451,6 +457,15 @@ func _process(delta: float) -> void:
 		_wave_cleared()
 
 
+## How much a Dark Wisp dims light at this spot (0 = not at all). Strongest wins.
+func dim_at(at: Vector2) -> float:
+	var dim := 0.0
+	for sp in spirits:
+		if sp.dim > 0.0 and not sp.dead and at.distance_to(sp.aura_center()) <= sp.dim_range:
+			dim = maxf(dim, sp.dim)
+	return dim
+
+
 func _spawn(kind: String, lane := -1, hearty := false) -> void:
 	var sp := Spirit.new()
 	_entities.add_child(sp)
@@ -471,6 +486,10 @@ func _spawn(kind: String, lane := -1, hearty := false) -> void:
 	sp.zapped.connect(_on_zapped)
 	if sp.zap_range > 0.0:
 		AudioDirector.play_sfx("charge_hum", -5.0)
+	if sp.boss:
+		AudioDirector.play_sfx("charge_hum", -2.0)
+		if Run.autoplay:
+			print("  boss: %s (%d hp)" % [kind, roundi(sp.max_hp)])
 	spirits.append(sp)
 
 

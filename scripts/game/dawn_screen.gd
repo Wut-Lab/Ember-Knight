@@ -27,13 +27,14 @@ func _ready() -> void:
 	h.add_theme_color_override("font_color", Color("#ffd58f"))
 	root.add_child(h)
 	var sub := Label.new()
-	sub.text = "The spirits fade with the sunrise. Char's flame recovers (+%d)." % roundi(Run.dawn_heal())
+	var healed := Run.dawn_heal() + (Defs.BOSS_DAWN_HEAL if Defs.ends_leg(Run.night) else 0.0)
+	sub.text = "The spirits fade with the sunrise. Char's flame recovers (+%d)." % roundi(healed)
 	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	sub.add_theme_font_size_override("font_size", 22)
 	root.add_child(sub)
 	if Defs.ends_leg(Run.night):
 		var leg := Label.new()
-		leg.text = "Leg %d of the road complete!  +1 dice slot, and an %s joins your bag." % [Defs.leg_of(Run.night) + 1, Defs.DICE[Defs.LEG_REWARD_DIE]["name"]]
+		leg.text = "%s is banished!  Leg %d of the road complete:  +1 dice slot, and an %s joins your bag." % [Defs.SPIRITS[Defs.BOSS]["name"], Defs.leg_of(Run.night) + 1, Defs.DICE[Defs.LEG_REWARD_DIE]["name"]]
 		leg.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		leg.add_theme_font_size_override("font_size", 22)
 		leg.add_theme_color_override("font_color", Style.ACCENT)

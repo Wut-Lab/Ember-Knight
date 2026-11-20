@@ -16,6 +16,7 @@ var kind := ""
 var level := 1
 var tile := -1
 var world := Vector2.ZERO
+var _dimmed := 0.0   ## 0..1, eased: how dimmed by a Dark Wisp this looks
 var battle            ## the Battle node (targets, projectiles, passives)
 var board
 
@@ -57,6 +58,8 @@ func stats() -> Dictionary:
 			st[stat] += Run.face_mod(kind, stat)
 	if st.has("slow"):
 		st["slow"] = minf(st["slow"], Defs.SLOW_CAP)
+	if st.has("rate") and kind in Defs.LIGHT_DEFENSES:   # a Dark Wisp's dimming
+		st["rate"] *= 1.0 - battle.dim_at(world)
 	if battle.stoked and st.has("rate"):   # lull reward: Stoke
 		st["rate"] *= Defs.STOKE_RATE
 	var g := guide_bonus()
@@ -88,6 +91,10 @@ func _process(delta: float) -> void:
 	_t += delta
 	_pop = maxf(0.0, _pop - delta * 3.0)
 	_puff = maxf(0.0, _puff - delta * 1.5)
+	# Dimmed by a Dark Wisp: fade to a cold, dark purple-grey while inside his circle.
+	var dimmed: float = 1.0 if kind in Defs.LIGHT_DEFENSES and battle.dim_at(world) > 0.0 else 0.0
+	_dimmed = move_toward(_dimmed, dimmed, delta * 3.0)
+	modulate = Color.WHITE.lerp(Color(0.42, 0.38, 0.58), _dimmed)
 	queue_redraw()
 	if battle.fighting:
 		_act(delta, stats())

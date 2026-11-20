@@ -26,6 +26,10 @@ var zap_range := 0.0       ## >0: stops this close to the fire and zaps it
 var zap_every := 2.0
 var _zap_t := 0.0
 var _arc := 0.0            ## time left on the visible zap arc
+var boss := false
+var dim_range := 0.0       ## >0 (Dark Wisp): light defenses within this of aura_center() fire slower
+var dim := 0.0
+var dim_bob := 0.0
 
 var board
 var _t := 0.0
@@ -47,10 +51,25 @@ func setup(b, k: String, path: int, hp_scale: float) -> void:
 	base_color = d["color"]
 	zap_range = d.get("zap_range", 0.0)
 	zap_every = d.get("zap_every", 2.0)
+	boss = d.get("boss", false)
+	dim_range = d.get("dim_range", 0.0)
+	dim = d.get("dim", 0.0)
+	dim_bob = d.get("dim_bob", 0.0)
 	_zap_t = zap_every * 0.5
 	_t = randf() * 10.0
 	world = board.path_point(path_idx, 0.0)
 	position = board.proj(world)
+
+
+## Slow bob for the Dark Wisp: -1..1. His body and his dimming circle move with it.
+func _bob_k() -> float:
+	return sin(_t * 1.4)
+
+
+## Centre of the dimming circle: the boss's spot, bobbed back and forth on the ground
+## (up and down on screen).
+func aura_center() -> Vector2:
+	return world + Vector2(0, -dim_bob * (_bob_k() * 0.5 + 0.5))
 
 
 func progress() -> float:
@@ -101,6 +120,9 @@ func _process(delta: float) -> void:
 
 
 func _draw() -> void:
+	if dim_range > 0.0:
+		_draw_dark()
+		return
 	var s: float = 15.0 * size_k * board.view_scale
 	var bob: float = sin(_t * 3.0) * 4.0 * board.view_scale
 	var lit: float = board.light_at(world)
@@ -157,6 +179,72 @@ func _draw() -> void:
 		var y: float = -s * 3.4 + bob
 		draw_rect(Rect2(-w / 2, y, w, 4), Color(0, 0, 0, 0.6 * alpha))
 		draw_rect(Rect2(-w / 2, y, w * clampf(hp / max_hp, 0, 1), 4), Color(1.0, 0.7, 0.3, alpha))
+
+
+## Carl, the Dark Wisp: a big black ball with a faint lavender glow, white and
+## purple swirls that wrap around it every few seconds, and a dim circle on the
+## ground that bobs up and down with him.
+func _draw_dark() -> void:
+	var s: float = 15.0 * size_k * board.view_scale
+	var alpha := _fade_in * (1.0 - _death / 0.35)
+	var lav := Color("#b9a3ff")
+	# The dimming circle on the ground, centred on aura_center().
+	if not dead:
+		var c: Vector2 = aura_center()
+		var ring := PackedVector2Array()
+		for i in 49:
+			var a := TAU * i / 48.0
+			ring.append(board.proj(c + Vector2(cos(a), sin(a)) * dim_range) - position)
+		draw_colored_polygon(ring, Color(0.05, 0.02, 0.12, 0.28 * alpha))
+		draw_polyline(ring, Color(lav, 0.35 * alpha), 2.0, true)
+	# The body rides the same bob (screen up = back on the ground).
+	var lift: float = (board.proj(aura_center()) - position).y
+	var y0: float = -s * 1.9 + lift
+	_oval(Vector2(0, 2), s * 0.7, s * 0.2, Color(0, 0, 0, 0.35 * alpha))
+	var grow := 1.0 + _death * 2.0
+	draw_set_transform(Vector2(0, y0), 0.0, Vector2.ONE * grow)
+	var pulse := 1.0 + sin(_t * 2.0) * 0.05
+	var gr: float = s * 2.4 * pulse
+	draw_texture_rect(_glow_tex(), Rect2(-gr, -gr, gr * 2.0, gr * 2.0), false, Color(lav, 0.32 * alpha))
+	var body := Color(base_color, 0.97 * alpha)
+	if _flash > 0.0:
+		body = body.lerp(Color(lav, alpha), 0.6)
+	draw_circle(Vector2.ZERO, s, body)
+	draw_arc(Vector2.ZERO, s, 0, TAU, 48, Color(lav, 0.45 * alpha), 2.0, true)
+	draw_circle(Vector2(-s * 0.4, -s * 0.45), s * 0.13, Color(lav, 0.35 * alpha))
+	# Swirls: every ~4s, white and purple streaks wrap round him and fade.
+	var cyc := fmod(_t, 4.0) / 4.0
+	var sw := clampf(sin(cyc * PI) * 1.6 - 0.3, 0.0, 1.0)
+	if sw > 0.0:
+		for i in 2:
+			var col := Color.WHITE if i == 0 else Color("#9b6bff")
+			var rot := _t * 2.4 + PI * i
+			var pts := PackedVector2Array()
+			for j in 18:
+				var a := rot + j * 0.16
+				var r := s * (1.15 + 0.12 * sin(j * 0.5 + _t))
+				pts.append(Vector2(cos(a) * r, sin(a) * r * 0.45))
+			draw_polyline(pts, Color(col, 0.75 * sw * alpha), maxf(2.0, s * 0.09), true)
+	# Pale glowing eyes with the same scowl as every Wisp.
+	var look: Vector2 = (-world).normalized() * s * 0.07
+	var eye := Color("#e9e0ff", alpha)
+	for side in [-1.0, 1.0]:
+		var c := Vector2(side * s * 0.34, s * 0.08) + look
+		var pts := PackedVector2Array()
+		for i in 28:
+			var t := TAU * i / 28.0
+			var p := Vector2(cos(t) * s * 0.16, sin(t) * s * 0.22)
+			var cut := lerpf(-0.02, -0.26, (side * p.x / (s * 0.16) + 1.0) / 2.0) * s
+			p.y = maxf(p.y, cut)
+			pts.append(c + p)
+		draw_colored_polygon(pts, eye)
+	draw_set_transform(Vector2.ZERO)
+	# Boss health bar, always shown.
+	if not dead:
+		var w := s * 2.4
+		var y: float = y0 - s * 1.5
+		draw_rect(Rect2(-w / 2, y, w, 6), Color(0, 0, 0, 0.7 * alpha))
+		draw_rect(Rect2(-w / 2, y, w * clampf(hp / max_hp, 0, 1), 6), Color(lav, alpha))
 
 
 ## Red crackle: short jagged bolts flicking around the ball, re-drawn every
