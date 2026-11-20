@@ -55,7 +55,9 @@ func _draw() -> void:
 	var pulse := 0.8 + 0.2 * sin(_t * 5.0) * sin(_t * 2.3 + 1.0)
 	# On the ground: a soft shadow under the coal, and its warm light around it.
 	draw_texture_rect(_glow_tex(), Rect2(-r * 3.4, -r * 3.4 * SQUASH, r * 6.8, r * 6.8 * SQUASH), false, Color(1.0, 0.42, 0.1, 0.4 * pulse * alpha))
-	_ellipse(Vector2(0, r * 0.08), r * 1.15, r * 1.15 * SQUASH * 0.8, Color(0, 0, 0, 0.45 * alpha))
+	draw_texture_rect(_glow_tex(), Rect2(-r * 1.6, -r * 1.6 * SQUASH * 0.8 + r * 0.08, r * 3.2, r * 3.2 * SQUASH * 0.8), false, Color(0, 0, 0, 0.35 * alpha))
+	# A dusting of ash on the ground around the base, so the coal sits in it.
+	draw_texture_rect(_glow_tex(), Rect2(-r * 1.5, -r * 1.5 * SQUASH + r * 0.1, r * 3.0, r * 3.0 * SQUASH), false, Color(0.55, 0.5, 0.47, 0.22 * alpha))
 	draw_set_transform(Vector2(0, lift))
 	# The coal as a squat faceted lump: a bottom rim on the ground, a smaller
 	# top face raised by its height, and the side facets facing us between them.
@@ -71,18 +73,27 @@ func _draw() -> void:
 		var mid := (TAU * (i + 1.0) / RIM)
 		if sin(mid) < -0.05:
 			continue                              # back facets are hidden
-		var shade := 0.11 + 0.07 * clampf(-cos(mid - 0.6), 0.0, 1.0)   # lit from the upper left
+		var shade := 0.19 + 0.08 * clampf(-cos(mid - 0.6), 0.0, 1.0)   # lit from the upper left
 		var quad := PackedVector2Array([top[i], top[j], bot[j], bot[i]])
-		draw_colored_polygon(quad, Color(shade, shade * 0.88, shade * 0.85, alpha))
+		# Each facet warms toward the ground, where the glow bounces up into it.
+		var warm := Color(shade + 0.1 * pulse, shade * 0.8 + 0.02, shade * 0.7, alpha)
+		draw_polygon(quad, PackedColorArray([Color(shade, shade * 0.9, shade * 0.86, alpha), Color(shade, shade * 0.9, shade * 0.86, alpha), warm, warm]))
 		# Embers glowing through the cracks low on the front facets.
 		var glow := clampf(sin(mid), 0.0, 1.0) * pulse
-		draw_line(bot[i].lerp(top[i], 0.25), bot[j].lerp(top[j], 0.35), Color(1.0, 0.38, 0.08, 0.7 * glow * alpha), maxf(1.0, r * 0.1))
-	draw_colored_polygon(top, Color(0.2, 0.16, 0.15, alpha))
+		draw_line(bot[i].lerp(top[i], 0.25), bot[j].lerp(top[j], 0.35), Color(1.0, 0.42, 0.1, 0.55 * glow * alpha), maxf(1.0, r * 0.08))
+	draw_colored_polygon(top, Color(0.27, 0.23, 0.21, alpha))
+	# Ash dusts the top: paler toward its back, so it fades into the light.
+	var dust := PackedVector2Array()
+	for p in top:
+		dust.append(p.lerp(Vector2(0, -hc), 0.35))
+	draw_colored_polygon(dust, Color(0.45, 0.41, 0.38, 0.35 * alpha))
 	# Ashy rim on the top face's front edge.
 	var rim := PackedVector2Array()
 	for i in range(0, RIM / 2 + 1):
 		rim.append(top[i % RIM])
-	draw_polyline(rim, Color(0.62, 0.58, 0.55, 0.55 * alpha), maxf(1.0, r * 0.07))
+	draw_polyline(rim, Color(0.62, 0.58, 0.55, 0.3 * alpha), maxf(1.0, r * 0.06))
+	# Soften the silhouette: a faint warm haze over the coal's outline.
+	draw_texture_rect(_glow_tex(), Rect2(-r * 1.4, -hc - r * 0.9, r * 2.8, r * 2.2), false, Color(0.6, 0.35, 0.2, 0.12 * pulse * alpha))
 	# Glowing cracks across the top, hot yellow at their heart.
 	var cy := -hc
 	var crack := PackedVector2Array([Vector2(-0.5, 0.05), Vector2(-0.15, -0.12), Vector2(0.12, 0.08), Vector2(0.45, -0.06)])
