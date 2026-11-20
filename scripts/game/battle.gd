@@ -25,6 +25,9 @@ const Board := preload("res://scripts/game/board.gd")
 const EmberDrop := preload("res://scripts/game/ember_drop.gd")
 const BossBar := preload("res://scripts/game/boss_bar.gd")
 var _boss_bar
+const TOP := 78.0         ## the map's top edge, under the HUD
+const TOP_BOSS := 150.0   ## on a boss wave, the map eases down under the boss bar
+var _top := TOP
 const Spirit := preload("res://scripts/game/spirit.gd")
 const Defense := preload("res://scripts/game/defense.gd")
 const CharUnit := preload("res://scripts/game/char_unit.gd")
@@ -152,7 +155,7 @@ func _exit_tree() -> void:
 # ------------------------------------------------------------ layout
 func _layout() -> void:
 	var s := size
-	var top := 78.0
+	var top := _top
 	var tray_h := 150.0
 	var avail_h := s.y - top - tray_h
 	var fit: Vector2 = Board.VIEW_FIT_HILL if board.stop == "hill" else Board.VIEW_FIT
@@ -209,6 +212,9 @@ func _start_prep() -> void:
 	_shift_ready = (_shift_free or wave > 0 and Run.has_oath("shifting_embers")) and not defenses.is_empty()
 	_roll(true)
 	boss_wave = not ambush and Defs.is_boss_wave(Run.night, wave)
+	if boss_wave:   # the bar waits, dormant, from prep, so the room it takes is plain
+		var bd: Dictionary = Defs.SPIRITS[Run.boss_for(Run.night)]
+		_boss_bar.reserve(bd["name"], bd.get("bar_color", bd["color"]))
 	_boss_intro = false
 	mod = "" if ambush or boss_wave else Defs.roll_wave_mod(Run.night, Run.rng)
 	_swarm_lane = Run.rng.randi() % board.lane_count if mod == "swarmy" else -1
@@ -434,6 +440,23 @@ func _process(delta: float) -> void:
 	# The board's light follows the campfire's flicker.
 	board.fire_glow = 0.9 + 0.1 * sin(Time.get_ticks_msec() * 0.006) * sin(Time.get_ticks_msec() * 0.0017)
 	board.hover_tile = _hover
+	# Boss waves: ease the map down to make room for the boss bar.
+	var top_to := TOP_BOSS if boss_wave else TOP
+	if not is_equal_approx(_top, top_to):
+		_top = move_toward(_top, top_to, delta * 120.0)
+		_layout()
+	# The boss bar fades back while a die is in hand or something's under it.
+	if _boss_bar.visible:
+		var r: Rect2 = _boss_bar.bar_rect()
+		var under: bool = _drag_die != null or _selected != null
+		for sp in spirits:
+			if not sp.boss and r.grow(12).has_point(_world.position + sp.position - Vector2(0, 30)):
+				under = true
+				break
+		for e in _embers:
+			if r.grow(12).has_point(_world.position + e.position):
+				under = true
+		_boss_bar.dim(under)
 	board.gates_left = _gates_left if phase == Phase.PREP else 0
 	if Run.autoplay and phase == Phase.FIGHT:
 		_autoplay_gates(delta)

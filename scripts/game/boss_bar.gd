@@ -21,6 +21,25 @@ var _hit := 0.0
 var _in := 0.0              ## 0..1 slide-in
 var _dying := -1.0          ## >=0: breaking apart after the boss falls
 var _t := 0.0
+var _dormant := false       ## shown before the boss arrives: dim and still
+var _dim := 0.0             ## 0..1 fade-back while something is under the bar
+var _dim_to := 0.0
+
+
+## Before the boss arrives: the bar waits, dim, so the player sees the room it takes.
+func reserve(title: String, col: Color) -> void:
+	show_boss(null, title, col)
+	_dormant = true
+
+
+## Fade back to let the player see what's under the bar.
+func dim(on: bool) -> void:
+	_dim_to = 1.0 if on else 0.0
+
+
+## The bar's area in the parent's coordinates (name included).
+func bar_rect() -> Rect2:
+	return Rect2(position + Vector2((size.x - W) / 2.0 - 50.0, 8.0), Vector2(W + 100.0, H + 40.0))
 
 
 func _ready() -> void:
@@ -39,6 +58,7 @@ func show_boss(sp, title: String, col: Color) -> void:
 	_last = 1.0
 	_in = 0.0
 	_dying = -1.0
+	_dormant = false
 	visible = true
 
 
@@ -48,6 +68,10 @@ func _process(delta: float) -> void:
 	_t += delta
 	_in = minf(1.0, _in + delta / 0.6)
 	_hit = maxf(0.0, _hit - delta)
+	_dim = move_toward(_dim, _dim_to, delta * 4.0)
+	if _dormant:
+		queue_redraw()
+		return
 	var f := 0.0
 	if is_instance_valid(boss) and not boss.dead:
 		f = clampf(boss.hp / boss.max_hp, 0.0, 1.0)
@@ -75,8 +99,8 @@ func _draw() -> void:
 	var fade := 1.0 if _dying < 0.0 else clampf(1.0 - (_dying - 0.4) / 0.8, 0.0, 1.0)
 	var shake := Vector2(randf_range(-1, 1), randf_range(-1, 1)) * 3.0 * (_hit / 0.25)
 	var o := Vector2((size.x - W) / 2.0, 44.0 - (1.0 - ease) * 50.0) + shake
-	var a := ease * fade
-	var pulse := 0.5 + 0.5 * sin(_t * 2.6)
+	var a := ease * fade * (1.0 - 0.7 * _dim) * (0.4 if _dormant else 1.0)
+	var pulse := 0.0 if _dormant else 0.5 + 0.5 * sin(_t * 2.6)
 	var blood := Color("#e0303a")
 
 	# A dark red haze behind, breathing slowly.
