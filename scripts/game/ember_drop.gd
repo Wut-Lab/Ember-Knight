@@ -31,7 +31,7 @@ func setup(b, at: Vector2) -> void:
 ## Is a board-local point close enough to count as a tap on this ember?
 func hit(local: Vector2) -> bool:
 	var s: float = board.view_scale
-	return not picked and (local - (position + Vector2(0, -6.0 * s))).length() <= 24.0 * s
+	return not picked and (local - (position + Vector2(0, -6.0 * s))).length() <= 28.0 * s
 
 
 func _process(delta: float) -> void:
@@ -50,11 +50,14 @@ func _draw() -> void:
 	if life < 1.0 and fmod(life, 0.2) < 0.07:   # blink through the last second
 		alpha *= 0.35
 	var lift := -sin(_hop * PI) * 10.0 * s
-	var r := 8.0 * s
+	var r := 10.0 * s   # a touch bigger than a plain coal, so it's easy to spot
 	var hc := r * 0.55                            # coal height
 	var pulse := 0.8 + 0.2 * sin(_t * 5.0) * sin(_t * 2.3 + 1.0)
 	# On the ground: a soft shadow under the coal, and its warm light around it.
-	draw_texture_rect(_glow_tex(), Rect2(-r * 3.4, -r * 3.4 * SQUASH, r * 6.8, r * 6.8 * SQUASH), false, Color(1.0, 0.42, 0.1, 0.4 * pulse * alpha))
+	# A slight green aura so embers stand out on the board, then the coal's warm light.
+	var aura := 0.8 + 0.2 * sin(_t * 3.2)
+	draw_texture_rect(_glow_tex(), Rect2(-r * 2.6, -hc * 0.5 - r * 2.6 * 0.75, r * 5.2, r * 5.2 * 0.75), false, Color(0.25, 1.0, 0.5, 0.3 * aura * alpha))
+	draw_texture_rect(_glow_tex(), Rect2(-r * 2.0, -r * 2.0 * SQUASH, r * 4.0, r * 4.0 * SQUASH), false, Color(1.0, 0.42, 0.1, 0.3 * pulse * alpha))
 	draw_texture_rect(_glow_tex(), Rect2(-r * 1.6, -r * 1.6 * SQUASH * 0.8 + r * 0.08, r * 3.2, r * 3.2 * SQUASH * 0.8), false, Color(0, 0, 0, 0.35 * alpha))
 	# A dusting of ash on the ground around the base, so the coal sits in it.
 	draw_texture_rect(_glow_tex(), Rect2(-r * 1.5, -r * 1.5 * SQUASH + r * 0.1, r * 3.0, r * 3.0 * SQUASH), false, Color(0.55, 0.5, 0.47, 0.22 * alpha))

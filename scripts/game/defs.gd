@@ -271,7 +271,7 @@ static func is_boss_wave(night: int, wave: int) -> bool:
 const CHARGED_PER_NIGHT := [0, 1, 1, 2, 2, 3, 3]
 
 ## Ember Drop: a banished spirit may leave a coal; tap it to heal.
-const EMBER_DROP_CHANCE := 0.1
+const EMBER_DROP_CHANCE := 0.12
 const EMBER_HEAL := 5.0
 const EMBER_LIFE := 4.0   ## seconds before it fades away
 
