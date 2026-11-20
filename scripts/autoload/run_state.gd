@@ -20,6 +20,7 @@ var gates := 1                ## gates Char can cobble tonight (Defs.GATES_FREE,
 var layout_seed := 0           ## tonight's battle map, rolled when the stop is chosen
 var shrine_curse := false      ## tonight's spirits are tougher (Ember Shrine)
 var nights_survived := 0
+var bosses: Array = []         ## boss id per leg (Defs.roll_bosses), rolled at the start of a run
 var perks: Dictionary = {}       ## lull permanent rewards: id (or "hone_<kind>") -> times picked
 var night_flames: Array = []   ## flame left at the end of each night cleared
 var rng := RandomNumberGenerator.new()
@@ -45,6 +46,7 @@ func new_run() -> void:
 	night_flames.clear()
 	bonus_rerolls = 0
 	perks = {}
+	bosses = Defs.roll_bosses(rng)
 	gates = Defs.GATES_FREE
 	shrine_seen = false
 	shrine_curse = false
@@ -79,6 +81,12 @@ func face_mod(face: String, stat: String) -> float:
 	if Defs.HONE.has(face):   # lull reward: Hone
 		total += float(Defs.HONE[face].get(stat, 0.0)) * int(perks.get("hone_" + face, 0))
 	return total
+
+
+## The boss of the leg this 0-based night is in.
+func boss_for(n: int) -> String:
+	var leg := Defs.leg_of(n)
+	return bosses[leg] if leg < bosses.size() else Defs.BOSSES[0]
 
 
 func perk(id: String) -> int:
@@ -144,6 +152,7 @@ func checkpoint() -> void:
 	_checkpoint["loadout"] = loadout.duplicate()
 	_checkpoint["oaths"] = oaths.duplicate()
 	_checkpoint["perks"] = perks.duplicate()
+	_checkpoint["bosses"] = bosses.duplicate()
 	_checkpoint["night_flames"] = night_flames.duplicate()
 	for k in EXTRA_KEYS:
 		_checkpoint[k] = get(k)
@@ -198,11 +207,14 @@ func load_run() -> bool:
 	night_flames = Array(d.get("night_flames", []))
 	bonus_rerolls = int(d.get("bonus_rerolls", 0))
 	perks = Dictionary(d.get("perks", {}))
+	bosses = Array(d.get("bosses", []))
 	shrine_seen = bool(d.get("shrine_seen", false))
 	shrine_curse = false
 	if d.has("rng_seed") and d.has("rng_state"):
 		rng.seed = int(d["rng_seed"])
 		rng.state = int(d["rng_state"])
+	if bosses.size() < Defs.LEGS:   # saves from before the boss pool
+		bosses = Defs.roll_bosses(rng)
 	checkpoint()
 	return true
 

@@ -34,7 +34,7 @@ func _ready() -> void:
 	root.add_child(sub)
 	if Defs.ends_leg(Run.night):
 		var leg := Label.new()
-		leg.text = "%s is banished!  Leg %d of the road complete:  +1 dice slot, and an %s joins your bag." % [Defs.SPIRITS[Defs.BOSS]["name"], Defs.leg_of(Run.night) + 1, Defs.DICE[Defs.LEG_REWARD_DIE]["name"]]
+		leg.text = "%s is banished!  Leg %d of the road complete:  +1 dice slot, and an %s joins your bag." % [Defs.SPIRITS[Run.boss_for(Run.night)]["name"], Defs.leg_of(Run.night) + 1, Defs.DICE[Defs.LEG_REWARD_DIE]["name"]]
 		leg.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		leg.add_theme_font_size_override("font_size", 22)
 		leg.add_theme_color_override("font_color", Style.ACCENT)

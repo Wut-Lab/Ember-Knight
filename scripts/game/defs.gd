@@ -225,14 +225,38 @@ const SPIRITS := {
 	## Boss: Carl, the Dark Wisp. A big, slow black Wisp with a lavender glow.
 	## Light defenses (LIGHT_DEFENSES) inside his dim_range fire dim slower. He
 	## bobs, and the dimming circle bobs with him (dim_bob world units, back and forth).
-	"dark_wisp": {"name": "Carl, the Dark Wisp", "boss": true, "hp": 220.0, "speed": 22.0, "damage": 40.0,
+	"dark_wisp": {"name": "Carl, the Dark Wisp", "boss": true,
+		"blurb": "dims Torches and Mortars near him: they fire slower", "hp": 220.0, "speed": 22.0, "damage": 40.0,
 		"size": 2.6, "color": Color("#16121f"), "dim_range": 170.0, "dim": 0.4, "dim_bob": 26.0},
+	## Boss: the Lantern Thief. A small, quick gold Wisp in a bandit's mask. Every
+	## dash_every seconds he dashes (dash_mult × speed for dash_time). While dashing
+	## he snuffs every defense within snuff_range: it can't fire for snuff_time.
+	"lantern_thief": {"name": "The Lantern Thief", "boss": true, "hp": 150.0, "speed": 60.0, "damage": 30.0,
+		"size": 1.6, "color": Color("#f2c14e"), "dash_every": 3.0, "dash_time": 1.0, "dash_mult": 2.4,
+		"snuff_range": 190.0, "snuff_time": 3.0,
+		"blurb": "dashes past your defenses and snuffs them out for a few seconds"},
 }
 
 # ------------------------------------------------------------ bosses
-## The boss on wave 3 of each leg's last night. One boss for now; a random
-## pool comes later (see the blueprint).
-const BOSS := "dark_wisp"
+## The boss pool: each leg's boss on wave 3 of its last night is drawn from
+## here at the start of a run (Run.bosses), never repeating until all are used.
+const BOSSES := ["dark_wisp", "lantern_thief"]
+
+
+## One boss per leg, shuffled; once the pool runs out it reshuffles, never
+## putting the same boss on two legs in a row.
+static func roll_bosses(rng: RandomNumberGenerator) -> Array:
+	var out := []
+	var bag := []
+	while out.size() < LEGS:
+		if bag.is_empty():
+			bag = BOSSES.duplicate()
+		var pick: String = bag.pop_at(rng.randi() % bag.size())
+		if not out.is_empty() and pick == out[-1] and not bag.is_empty():
+			bag.append(pick)
+			pick = bag.pop_at(rng.randi() % (bag.size() - 1))
+		out.append(pick)
+	return out
 const BOSS_ESCORT := 0.5         ## the boss wave brings this share of a normal wave 3
 const BOSS_DAWN_HEAL := 30.0     ## extra dawn heal after beating a leg's boss
 ## Light-based defenses: a Dark Wisp dims these (they fire slower near him).
@@ -408,7 +432,7 @@ static func night_step(night: int) -> float:
 
 
 ## Spawn list for one wave: Array of spirit kinds. night/wave are 0-based.
-static func wave_spirits(night: int, wave: int, stop: String, rng: RandomNumberGenerator) -> Array:
+static func wave_spirits(night: int, wave: int, stop: String, rng: RandomNumberGenerator, boss_id := "dark_wisp") -> Array:
 	var count := floori(5 + night_step(night) * 2 + wave * 2 + 0.000001)
 	# Mist Wisps slip into night 1 from wave 2, thicker at misty stops (the lake).
 	var mist_chance := 0.15 + 0.05 * night_step(night)
@@ -423,7 +447,7 @@ static func wave_spirits(night: int, wave: int, stop: String, rng: RandomNumberG
 	for i in count:
 		out.append("mist_wisp" if rng.randf() < mist_chance else "wisp")
 	if boss:
-		out.insert(count / 3, BOSS)
+		out.insert(count / 3, boss_id)
 		return out
 	# Charged Wisps take spots in the back half of wave 3, so they come late.
 	if wave == WAVES_PER_NIGHT - 1:

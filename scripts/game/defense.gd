@@ -17,6 +17,7 @@ var level := 1
 var tile := -1
 var world := Vector2.ZERO
 var _dimmed := 0.0   ## 0..1, eased: how dimmed by a Dark Wisp this looks
+var _snuffed := 0.0  ## seconds left snuffed out by the Lantern Thief (can't fire)
 var battle            ## the Battle node (targets, projectiles, passives)
 var board
 
@@ -92,12 +93,23 @@ func _process(delta: float) -> void:
 	_pop = maxf(0.0, _pop - delta * 3.0)
 	_puff = maxf(0.0, _puff - delta * 1.5)
 	# Dimmed by a Dark Wisp: fade to a cold, dark purple-grey while inside his circle.
-	var dimmed: float = 1.0 if kind in Defs.LIGHT_DEFENSES and battle.dim_at(world) > 0.0 else 0.0
+	var was := _snuffed
+	_snuffed = maxf(0.0, _snuffed - delta)
+	if was > 0.0 and _snuffed == 0.0:
+		_pop = 0.6   # relit
+	var dimmed: float = 1.0 if _snuffed > 0.0 or kind in Defs.LIGHT_DEFENSES and battle.dim_at(world) > 0.0 else 0.0
 	_dimmed = move_toward(_dimmed, dimmed, delta * 3.0)
 	modulate = Color.WHITE.lerp(Color(0.42, 0.38, 0.58), _dimmed)
 	queue_redraw()
-	if battle.fighting:
+	if battle.fighting and _snuffed <= 0.0:
 		_act(delta, stats())
+
+
+## The Lantern Thief dashes past: no firing for t seconds.
+func snuff(t: float) -> void:
+	if _snuffed <= 0.0:
+		_puff = 1.0
+	_snuffed = maxf(_snuffed, t)
 
 
 ## Per-kind behaviour while a wave is on.

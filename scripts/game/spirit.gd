@@ -30,6 +30,13 @@ var boss := false
 var dim_range := 0.0       ## >0 (Dark Wisp): light defenses within this of aura_center() fire slower
 var dim := 0.0
 var dim_bob := 0.0
+var dash_every := 0.0      ## >0 (Lantern Thief): dashes every dash_every seconds
+var dash_time := 0.0
+var dash_mult := 1.0
+var snuff_range := 0.0
+var snuff_time := 0.0
+var _dash_t := 0.0         ## counts up; dashing while it's past dash_every - dash_time
+var _trail: Array = []     ## recent screen positions while dashing (afterimages)
 
 var board
 var _t := 0.0
@@ -55,6 +62,11 @@ func setup(b, k: String, path: int, hp_scale: float) -> void:
 	dim_range = d.get("dim_range", 0.0)
 	dim = d.get("dim", 0.0)
 	dim_bob = d.get("dim_bob", 0.0)
+	dash_every = d.get("dash_every", 0.0)
+	dash_time = d.get("dash_time", 0.0)
+	dash_mult = d.get("dash_mult", 1.0)
+	snuff_range = d.get("snuff_range", 0.0)
+	snuff_time = d.get("snuff_time", 0.0)
 	_zap_t = zap_every * 0.5
 	_t = randf() * 10.0
 	world = board.path_point(path_idx, 0.0)
@@ -70,6 +82,11 @@ func _bob_k() -> float:
 ## (up and down on screen).
 func aura_center() -> Vector2:
 	return world + Vector2(0, -dim_bob * (_bob_k() * 0.5 + 0.5))
+
+
+## Lantern Thief: mid-dash right now?
+func dashing() -> bool:
+	return dash_every > 0.0 and _dash_t >= dash_every - dash_time
 
 
 func progress() -> float:
@@ -107,7 +124,19 @@ func _process(delta: float) -> void:
 		queue_redraw()
 		return
 	var d0 := dist
-	dist += speed * (1.0 - slow) * board.speed_at(world) * delta   # water slows them
+	var burst := 1.0
+	if dash_every > 0.0:
+		_dash_t += delta
+		if _dash_t >= dash_every:
+			_dash_t -= dash_every
+		if dashing():
+			burst = dash_mult
+			_trail.push_front(position)
+		elif not _trail.is_empty():
+			_trail.pop_back()
+		if _trail.size() > 6:
+			_trail.pop_back()
+	dist += speed * burst * (1.0 - slow) * board.speed_at(world) * delta   # water slows them
 	path_idx = board.route(path_idx, d0, dist)   # forks: pick a way (or the gate's)
 	if dist >= board.path_lengths[path_idx]:
 		dead = true
@@ -122,6 +151,9 @@ func _process(delta: float) -> void:
 func _draw() -> void:
 	if dim_range > 0.0:
 		_draw_dark()
+		return
+	if dash_every > 0.0:
+		_draw_thief()
 		return
 	var s: float = 15.0 * size_k * board.view_scale
 	var bob: float = sin(_t * 3.0) * 4.0 * board.view_scale
@@ -245,6 +277,59 @@ func _draw_dark() -> void:
 		var y: float = y0 - s * 1.5
 		draw_rect(Rect2(-w / 2, y, w, 6), Color(0, 0, 0, 0.7 * alpha))
 		draw_rect(Rect2(-w / 2, y, w * clampf(hp / max_hp, 0, 1), 6), Color(lav, alpha))
+
+
+## The Lantern Thief: a quick gold Wisp in a dark bandit's mask, with a pilfered
+## lantern swinging below him. Mid-dash he leaves golden afterimages, and a ring
+## shows how far his snuffing reaches.
+func _draw_thief() -> void:
+	var s: float = 15.0 * size_k * board.view_scale
+	var alpha := _fade_in * (1.0 - _death / 0.35)
+	var bob: float = sin(_t * 5.0) * 3.0 * board.view_scale
+	var col := base_color
+	if _flash > 0.0:
+		col = col.lerp(Color.WHITE, 0.8)
+	var dash := dashing() and not dead
+	# Afterimages along the trail.
+	for i in _trail.size():
+		var off: Vector2 = _trail[i] - position
+		draw_circle(off + Vector2(0, -s * 1.9), s * (0.9 - i * 0.1), Color(col, 0.22 * (1.0 - i / 6.0) * alpha))
+	if dash:   # snuff reach on the ground
+		var ring := PackedVector2Array()
+		for i in 41:
+			var a := TAU * i / 40.0
+			ring.append(board.proj(world + Vector2(cos(a), sin(a)) * snuff_range) - position)
+		draw_polyline(ring, Color(col, 0.35 * alpha), 2.0, true)
+	_oval(Vector2(0, 2), s * 0.7, s * 0.2, Color(0, 0, 0, 0.3 * alpha))
+	var grow := 1.0 + _death * 2.0
+	# Leans forward when dashing.
+	draw_set_transform(Vector2(0, -s * 1.9 + bob), 0.25 if dash else 0.0, Vector2.ONE * grow)
+	var gr: float = s * (3.2 if dash else 2.6)
+	draw_texture_rect(_glow_tex(), Rect2(-gr, -gr, gr * 2.0, gr * 2.0), false, Color(col, 0.55 * alpha))
+	# Stolen lantern swinging under him.
+	var sw := sin(_t * 4.0) * 0.4
+	var lp := Vector2(sin(sw), cos(sw)) * s * 1.35
+	draw_line(Vector2(0, s * 0.8), lp, Color(0.2, 0.15, 0.1, alpha), 2.0, true)
+	draw_rect(Rect2(lp + Vector2(-s * 0.18, 0), Vector2(s * 0.36, s * 0.42)), Color(0.25, 0.18, 0.1, alpha))
+	draw_circle(lp + Vector2(0, s * 0.21), s * 0.12, Color("#fff0b0", alpha))
+	draw_circle(Vector2.ZERO, s, Color(col, 0.95 * alpha))
+	draw_circle(Vector2(-s * 0.42, -s * 0.48), s * 0.2, Color(1, 1, 1, 0.6 * alpha))
+	# Bandit's mask: a dark band across the eyes, tails flapping behind.
+	var mask := Color(0.12, 0.08, 0.1, alpha)
+	draw_rect(Rect2(-s, -s * 0.12, s * 2.0, s * 0.42), mask)
+	var flap := sin(_t * 9.0) * s * 0.1
+	draw_colored_polygon(PackedVector2Array([Vector2(s * 0.9, -s * 0.05), Vector2(s * 1.55, -s * 0.2 + flap), Vector2(s * 1.5, s * 0.15 + flap), Vector2(s * 0.9, s * 0.25)]), mask)
+	# Narrow sly eyes in the mask.
+	var look: Vector2 = (-world).normalized() * s * 0.06
+	for side in [-1.0, 1.0]:
+		var c := Vector2(side * s * 0.36, s * 0.09) + look
+		draw_colored_polygon(PackedVector2Array([c + Vector2(-s * 0.17, 0), c + Vector2(s * 0.17, -side * s * 0.05), c + Vector2(0, s * 0.08)]), Color("#fff6d8", alpha))
+	draw_set_transform(Vector2.ZERO)
+	if not dead:
+		var w := s * 2.6
+		var y: float = -s * 3.6 + bob
+		draw_rect(Rect2(-w / 2, y, w, 6), Color(0, 0, 0, 0.7 * alpha))
+		draw_rect(Rect2(-w / 2, y, w * clampf(hp / max_hp, 0, 1), 6), Color(col, alpha))
 
 
 ## Red crackle: short jagged bolts flicking around the ball, re-drawn every

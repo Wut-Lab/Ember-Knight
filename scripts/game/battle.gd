@@ -195,7 +195,7 @@ func _start_prep() -> void:
 	if ambush:
 		_show_banner("Ambush in the fog!")
 	elif boss_wave:
-		_show_banner("Wave %d of %d  ·  %s approaches!" % [wave + 1, Defs.WAVES_PER_NIGHT, Defs.SPIRITS[Defs.BOSS]["name"]])
+		_show_banner("Wave %d of %d  ·  %s approaches!" % [wave + 1, Defs.WAVES_PER_NIGHT, Defs.SPIRITS[Run.boss_for(Run.night)]["name"]])
 	elif mod != "":
 		_show_banner("Wave %d of %d  ·  %s!" % [wave + 1, Defs.WAVES_PER_NIGHT, Defs.WAVE_MODS[mod]["name"]])
 	else:
@@ -205,7 +205,8 @@ func _start_prep() -> void:
 	elif mod != "":
 		_hint.text = "%s: %s  Place your dice, then Fight!" % [Defs.WAVE_MODS[mod]["name"], Defs.WAVE_MODS[mod]["desc"]]
 	elif boss_wave:
-		_hint.text = "Boss wave!  %s dims Torches and Mortars near him: they fire slower.  Place your dice, then Fight!" % Defs.SPIRITS[Defs.BOSS]["name"].get_slice(",", 0)
+		var bd: Dictionary = Defs.SPIRITS[Run.boss_for(Run.night)]
+		_hint.text = "Boss wave!  %s %s.  Place your dice, then Fight!" % [bd["name"].get_slice(",", 0), bd["blurb"]]
 	else:
 		_hint.text = "Place your dice, then Fight!"
 	if _gates_left > 0 and not board.links.is_empty():
@@ -254,7 +255,7 @@ func begin_wave() -> void:
 	for d in _dice:
 		if not d.placed:
 			d.placed = true  # unused dice fade back into the bag
-	var kinds: Array = Defs.ambush_spirits(Run.night) if ambush else Defs.wave_spirits(Run.night, wave, Run.current_stop(), Run.rng)
+	var kinds: Array = Defs.ambush_spirits(Run.night) if ambush else Defs.wave_spirits(Run.night, wave, Run.current_stop(), Run.rng, Run.boss_for(Run.night))
 	# Each queue entry: [kind, lane (-1 = random), hearty]
 	_spawn_queue = []
 	for k in kinds:
@@ -446,6 +447,12 @@ func _process(delta: float) -> void:
 			if st.get("slow", 0.0) > 0.0 and d.world.distance_to(sp.world) <= st["range"]:
 				slow = maxf(slow, st["slow"])
 		sp.slow = slow
+	# A dashing Lantern Thief snuffs out every defense he passes.
+	for sp in spirits:
+		if sp.dashing() and not sp.dead:
+			for d in defenses:
+				if d.world.distance_to(sp.world) <= sp.snuff_range:
+					d.snuff(sp.snuff_time)
 	# Mist Wisps near Char slow its attacks (strongest wins, no stacking).
 	var chill := 0.0
 	for sp in spirits:
