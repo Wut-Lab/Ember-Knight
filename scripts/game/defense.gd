@@ -59,6 +59,12 @@ func stats() -> Dictionary:
 			st[stat] += Run.face_mod(kind, stat)
 	if kind == "torch" and Run.has_oath("gathered_flame"):
 		st["damage"] += Run.owned(Defs.GATHERED_FLAME_DIE)
+	if kind == "mortar" and Run.has_oath("decimation"):
+		var vents := 0
+		for o in battle.defenses:
+			if is_instance_valid(o) and o.kind == "vent":
+				vents += o.level
+		st["min"] *= 1.0 - minf(Defs.DECIMATION_CAP, Defs.DECIMATION_PER_VENT * vents)
 	if st.has("slow"):
 		st["slow"] = minf(st["slow"], Defs.SLOW_CAP)
 	if st.has("rate") and kind in Defs.LIGHT_DEFENSES:   # a Dark Wisp's dimming

@@ -23,6 +23,8 @@ const DICE := {
 	## Torch+ places a Torch at level 2 (or adds two levels): one die doing
 	## the work of two.
 	"blazing": {"name": "Blazing Die", "faces": ["torch+", "torch", "kindle", "ashes", "torch", "torch+"]},
+	## Two blanks pay for three "+" faces: strong but swingy.
+	"bombardment": {"name": "Bombardment Die", "faces": ["mortar+", "ashes", "vent+", "kindle", "ashes", "mortar+"]},
 }
 
 ## A "+" face ("torch+") acts as its base face but adds two levels at once.
@@ -80,8 +82,17 @@ const OATHS := {
 		"short": "Torches deal +1 damage per Torchbearer Die you own.",
 		"desc": "Every flame you carry feeds the others.\n\nEach Torch deals +1 damage for every Torchbearer Die in your bag (up to +3 with 3 copies).",
 	},
+	"decimation": {
+		"name": "Oath of Decimation",
+		"rarity": "uncommon",
+		"icon": "mortar",
+		"short": "Mortars reach closer: -10% minimum range per Steam Vent level.",
+		"desc": "Vents hold the spirits close; the Mortars learn to drop shells right on them.\n\nEach Cinder Mortar's minimum range shrinks 10% for every Steam Vent level on the map (up to 50%).",
+	},
 }
 const GATHERED_FLAME_DIE := "torch"   ## the die Gathered Flame counts
+const DECIMATION_PER_VENT := 0.10   ## Mortar min range cut per Steam Vent level
+const DECIMATION_CAP := 0.5         ## at most this much of the min range is cut
 const SHIFT_COST := 2.0
 
 ## Lull rewards: picked just before wave 3 of every night (not the fog ambush).
