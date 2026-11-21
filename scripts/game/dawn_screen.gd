@@ -1,6 +1,7 @@
 extends Control
-## Dawn after a night survived: the flame recovers, then the player picks one
-## of three Dawn Offerings (a new die or an Oath) and the road goes on.
+## Dawn after a night survived: the flame recovers, then the player takes one
+## of two dice and swears one of two Oaths (or skips either for a little flame),
+## and the road goes on.
 
 signal continued
 
@@ -39,55 +40,126 @@ func _ready() -> void:
 		leg.add_theme_font_size_override("font_size", 22)
 		leg.add_theme_color_override("font_color", Style.ACCENT)
 		root.add_child(leg)
+	_root = root
+	_row("A NEW DIE  ·  TAKE ONE", "die", Defs.dawn_dice(Run.rng, Run.pool))
+	_row("AN OATH  ·  SWEAR ONE", "oath", Defs.dawn_oaths(Run.rng, Run.oaths, Run.night))
+	_status = Label.new()
+	_status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_status.add_theme_color_override("font_color", Style.MUTE)
+	_status.add_theme_font_size_override("font_size", 20)
+	root.add_child(_status)
+	_update_status()
+	if not _rows.is_empty():
+		_rows[0]["cards"][0].grab_focus.call_deferred()
+	_check_done()
+	if Run.autoplay:
+		get_tree().create_timer(1.2).timeout.connect(_auto_pick.bind("die"))
+		get_tree().create_timer(2.0).timeout.connect(_auto_pick.bind("oath"))
+
+
+var _root: VBoxContainer
+var _status: Label
+var _rows := []        ## [{kind, cards: [Button], done}]
+var _left := 0         ## rows still to choose in
+
+
+## One row of offerings (2 cards) plus a Skip card worth SKIP_FLAME flame.
+func _row(title: String, kind: String, ids: Array) -> void:
+	var lab := Label.new()
+	lab.text = title if not ids.is_empty() else ("NO DICE LEFT TO OFFER" if kind == "die" else "NO OATHS LEFT TO SWEAR")
+	lab.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lab.add_theme_color_override("font_color", Style.MUTE)
+	lab.add_theme_font_size_override("font_size", 16)
+	_root.add_child(lab)
+	if ids.is_empty():
+		return
 	var row := HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.add_theme_constant_override("separation", 22)
+	row.add_theme_constant_override("separation", 18)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	root.add_child(row)
-	var pick := Label.new()
-	pick.text = "DAWN OFFERINGS  ·  CHOOSE ONE"
-	pick.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	pick.add_theme_color_override("font_color", Style.MUTE)
-	pick.add_theme_font_size_override("font_size", 16)
-	root.add_child(pick)
-	root.move_child(pick, row.get_index())
-	var first: Button = null
-	for o in Defs.dawn_offerings(Run.rng, Run.pool, Run.oaths):
+	_root.add_child(row)
+	var r := {"kind": kind, "cards": [], "ids": ids, "done": false}
+	for id in ids:
 		var card: Button
-		if o["type"] == "die":
-			card = ChoiceCard.make(Defs.DICE[o["id"]]["name"], "New die:  " + _tally(Defs.DICE[o["id"]]["faces"]), 280.0)
+		if kind == "die":
+			card = ChoiceCard.make(Defs.DICE[id]["name"], "New die:  " + _tally(Defs.DICE[id]["faces"]), 300.0)
 		else:
-			card = ChoiceCard.make(Defs.OATHS[o["id"]]["name"], "Oath:  " + Defs.OATHS[o["id"]]["short"], 280.0)
-		card.custom_minimum_size.y = 150
-		card.pressed.connect(_take.bind(o))
+			var o: Dictionary = Defs.OATHS[id]
+			var rar: Dictionary = Defs.RARITY[o.get("rarity", "common")]
+			card = ChoiceCard.make(o["name"], "%s Oath:  %s" % [rar["name"], o["short"]], 300.0)
+			_tint(card, rar["color"])
+		card.custom_minimum_size.y = 118
+		card.pressed.connect(_choose.bind(r, card, id))
 		row.add_child(card)
-		if first == null:
-			first = card
-	var status := Label.new()
-	status.text = "Flame %d / %d" % [roundi(Run.flame), roundi(Run.max_flame)]
-	status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	status.add_theme_color_override("font_color", Style.MUTE)
-	status.add_theme_font_size_override("font_size", 20)
-	root.add_child(status)
-	if first == null:   # nothing left to offer
-		pick.text = "NO OFFERINGS LEFT"
-		first = ChoiceCard.make("Onward", "The road goes on.", 280.0)
-		first.pressed.connect(func():
-			AudioDirector.play_sfx("chime", -4.0)
-			continued.emit())
-		row.add_child(first)
-	first.grab_focus.call_deferred()
-	if Run.autoplay:
-		get_tree().create_timer(1.6).timeout.connect(first.emit_signal.bind("pressed"))
+		r["cards"].append(card)
+	var skip := ChoiceCard.make("Skip", "+%d flame" % roundi(Defs.SKIP_FLAME), 170.0)
+	skip.custom_minimum_size.y = 118
+	skip.pressed.connect(_choose.bind(r, skip, ""))
+	row.add_child(skip)
+	r["cards"].append(skip)
+	_rows.append(r)
+	_left += 1
 
 
-func _take(o: Dictionary) -> void:
-	if o["type"] == "die":
-		Run.pool.append(o["id"])
+## Colour an Oath card's title by its rarity.
+func _tint(card: Button, col: Color) -> void:
+	var t: Label = card.get_child(0).get_child(0)
+	t.add_theme_color_override("font_color", col)
+
+
+func _choose(r: Dictionary, card: Button, id: String) -> void:
+	if r["done"]:
+		return
+	r["done"] = true
+	_left -= 1
+	if id == "":
+		Run.flame = minf(Run.max_flame, Run.flame + Defs.SKIP_FLAME)
+	elif r["kind"] == "die":
+		Run.pool.append(id)
 	else:
-		Run.oaths.append(o["id"])
+		Run.oaths.append(id)
+	for c in r["cards"]:   # the taken card stays lit; the rest fade
+		c.disabled = true
+		c.modulate = Color(1, 1, 1, 1.0 if c == card else 0.35)
 	AudioDirector.play_sfx("chime", -4.0)
-	continued.emit()
+	_update_status()
+	for o in _rows:   # move focus to the next open row
+		if not o["done"]:
+			o["cards"][0].grab_focus()
+			break
+	_check_done()
+
+
+func _check_done() -> void:
+	if _left > 0:
+		return
+	_left = -1
+	get_tree().create_timer(0.7 if not _rows.is_empty() else 1.4).timeout.connect(func(): continued.emit())
+
+
+func _update_status() -> void:
+	_status.text = "Flame %d / %d" % [roundi(Run.flame), roundi(Run.max_flame)]
+
+
+## Autoplay: skip when flame is low; otherwise build on dice already owned and
+## take the rarest Oath.
+func _auto_pick(kind: String) -> void:
+	for r in _rows:
+		if r["kind"] != kind or r["done"]:
+			continue
+		var ids: Array = r["ids"]
+		var best := 0
+		if Run.flame < Run.max_flame * 0.3:
+			best = ids.size()   # the Skip card
+		elif kind == "die":
+			for i in ids.size():
+				if Run.owned(ids[i]) > Run.owned(ids[best]):
+					best = i
+		else:
+			for i in ids.size():
+				if Defs.RARITY_ORDER.find(Defs.OATHS[ids[i]].get("rarity", "common")) > Defs.RARITY_ORDER.find(Defs.OATHS[ids[best]].get("rarity", "common")):
+					best = i
+		r["cards"][best].emit_signal("pressed")
 
 
 static func _tally(faces: Array) -> String:

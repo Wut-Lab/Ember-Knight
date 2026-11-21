@@ -262,8 +262,12 @@ func _bag_card(id: String) -> Button:
 			Icons.draw(ci, f, Vector2(x + 9, 54), 20.0, Color(Defs.FACE_INFO[f]["color"]))
 			_text(ci, "%d" % n, Vector2(x + 19, 61), 16, 16, Style.FG, HORIZONTAL_ALIGNMENT_LEFT)
 			x += 36.0
-		_text(ci, "In use %d / %d" % [used, have], Vector2(82, 92), 116, 15,
+		_text(ci, "In use %d  ·  %d left" % [used, have - used], Vector2(82, 86), 116, 15,
 			Style.ACCENT if used > 0 else Style.MUTE, HORIZONTAL_ALIGNMENT_LEFT)
+		# Copies owned against the cap: a die leaves the Dawn Offerings at MAX_DIE_COPIES.
+		var capped := have >= Defs.MAX_DIE_COPIES
+		_text(ci, ("Owned %d / %d" % [have, Defs.MAX_DIE_COPIES]) if have <= Defs.MAX_DIE_COPIES else "Owned %d" % have,
+			Vector2(82, 104), 116, 15, Style.MUTE.lerp(Style.ACCENT, 0.5) if capped else Style.MUTE, HORIZONTAL_ALIGNMENT_LEFT)
 	b.add_child(art)
 	return b
 

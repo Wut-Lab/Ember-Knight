@@ -178,7 +178,6 @@ static func lull_offer(rng: RandomNumberGenerator, perks: Dictionary, quick_ok: 
 const HEARTH_KINDLE_BONUS := 4.0
 const HEARTH_DAWN_PENALTY := 10.0
 
-const OFFERINGS := 3   ## Dawn Offerings shown after each night survived
 
 
 const MAX_DIE_COPIES := 3   ## a die kind leaves the offerings once owned this many times
@@ -186,18 +185,75 @@ const MAX_DIE_COPIES := 3   ## a die kind leaves the offerings once owned this m
 
 ## Up to three different Dawn Offerings: {"type": "die"|"oath", "id": ...}.
 ## Dice owned MAX_DIE_COPIES times and Oaths already sworn are left out.
-static func dawn_offerings(rng: RandomNumberGenerator, dice_owned: Array, oaths_owned: Array) -> Array:
+## Dawn: two dice and two Oaths are offered; the player takes one of each, or
+## skips either for SKIP_FLAME flame.
+const DAWN_DICE := 2
+const DAWN_OATHS := 2
+const SKIP_FLAME := 4.0
+## Oath rarity. Weights are used from the third dawn on; the first dawn offers
+## Commons only, the second Commons and Uncommons. A Unique can still slip into
+## those early dawns with UNIQUE_EARLY_CHANCE, for the odd god run.
+const RARITY := {
+	"common": {"name": "Common", "color": Color("#d9d0c4"), "weight": 55},
+	"uncommon": {"name": "Uncommon", "color": Color("#8fd17f"), "weight": 28},
+	"rare": {"name": "Rare", "color": Color("#7fb2ff"), "weight": 14},
+	"unique": {"name": "Unique", "color": Color("#ffb238"), "weight": 3},
+}
+const RARITY_ORDER := ["common", "uncommon", "rare", "unique"]
+const UNIQUE_EARLY_CHANCE := 0.02
+
+## Up to DAWN_DICE die kinds, leaving out any owned MAX_DIE_COPIES times.
+static func dawn_dice(rng: RandomNumberGenerator, dice_owned: Array) -> Array:
 	var pool := []
 	for id in DICE:
 		if dice_owned.count(id) < MAX_DIE_COPIES:
-			pool.append({"type": "die", "id": id})
-	for id in OATHS:
-		if not id in oaths_owned:
-			pool.append({"type": "oath", "id": id})
+			pool.append(id)
 	var out := []
-	while out.size() < OFFERINGS and not pool.is_empty():
+	while out.size() < DAWN_DICE and not pool.is_empty():
 		out.append(pool.pop_at(rng.randi() % pool.size()))
 	return out
+
+## Up to DAWN_OATHS unsworn Oaths, each slot rolling a rarity for the dawn
+## after night `night_idx` (0-based). If no Oath of the rolled rarity is left,
+## the next rarity down is tried, then any.
+static func dawn_oaths(rng: RandomNumberGenerator, oaths_owned: Array, night_idx: int) -> Array:
+	var left := []
+	for id in OATHS:
+		if not id in oaths_owned:
+			left.append(id)
+	var out := []
+	while out.size() < DAWN_OATHS and not left.is_empty():
+		var tier := oath_rarity_roll(rng, night_idx)
+		var pick := ""
+		for k in range(RARITY_ORDER.find(tier), -1, -1):
+			var of_tier := left.filter(func(id): return OATHS[id].get("rarity", "common") == RARITY_ORDER[k])
+			if not of_tier.is_empty():
+				pick = of_tier[rng.randi() % of_tier.size()]
+				break
+		if pick == "":
+			pick = left[rng.randi() % left.size()]
+		left.erase(pick)
+		out.append(pick)
+	return out
+
+static func oath_rarity_roll(rng: RandomNumberGenerator, night_idx: int) -> String:
+	if night_idx < 2:
+		if rng.randf() < UNIQUE_EARLY_CHANCE:
+			return "unique"
+		if night_idx == 0:
+			return "common"
+		var w0: int = RARITY["common"]["weight"] + RARITY["uncommon"]["weight"]
+		return "common" if rng.randi() % w0 < RARITY["common"]["weight"] else "uncommon"
+	var total := 0
+	for r in RARITY_ORDER:
+		total += RARITY[r]["weight"]
+	var roll := rng.randi() % total
+	for r in RARITY_ORDER:
+		roll -= RARITY[r]["weight"]
+		if roll < 0:
+			return r
+	return "common"
+
 const REROLLS_PER_WAVE := 1
 const MAX_LEVEL := 3
 
