@@ -1,4 +1,6 @@
 extends Node2D
+
+const Defs := preload("res://scripts/game/defs.gd")
 ## An ember bolt (from a lantern) or a flame bolt (from Char). Homes in on its
 ## target; if the target is gone, it fizzles where the target was.
 
@@ -43,8 +45,12 @@ func _process(delta: float) -> void:
 		if splash > 0.0:
 			for sp in battle.spirits_in_range(_aim, splash):
 				sp.hit(damage)
+				if style == "mortar" and Run.has_oath("crossfire"):
+					sp.scorch_t = Defs.CROSSFIRE_SCORCH
 			battle.ring_fx(_aim, splash, Color("#e0603a"))
 		elif is_instance_valid(target) and not target.dead:
+			if style == "torch" and target.scorch_t > 0.0:   # Oath of Crossfire
+				damage *= Defs.CROSSFIRE_TORCH
 			target.hit(damage)
 			if style == "char" and target.dead:
 				battle.char_kill(target.world)

@@ -37,6 +37,8 @@ const DICE := {
 	"ashen_vent": {"name": "Ashen Vent Die", "faces": ["vent++", "ashes", "ashes", "vent+", "ashes", "ashes"]},
 	## Mason Die: Ember Walls hold spirits where the Mortars can land on them.
 	"mason": {"name": "Mason Die", "faces": ["wall", "mortar", "wall+", "ashes", "mortar", "wall"]},
+	## Wayfinder Die: Guide Lights with Torches to light and a Wall to hold the line.
+	"wayfinder": {"name": "Wayfinder Die", "faces": ["guide", "torch", "guide", "wall", "torch", "ashes"]},
 	"bombardment": {"name": "Bombardment Die", "faces": ["mortar+", "ashes", "vent+", "kindle", "ashes", "mortar+"]},
 }
 
@@ -145,6 +147,13 @@ const OATHS := {
 		"short": "Char's kills have a 33% chance to heal 5.",
 		"desc": "What Char burns away feeds his flame.\n\nEach spirit Char banishes himself has a 33% chance to heal 5 flame.",
 	},
+	"crossfire": {
+		"rarity": "uncommon",
+		"name": "Oath of Crossfire",
+		"icon": "mortar",
+		"short": "Mortars +1 damage; their hits scorch spirits for Torches.",
+		"desc": "Lob them in, then pick them off.\n\nCinder Mortars deal +1 damage. Spirits hit by a Mortar are scorched for 2s, and Torches deal 30% more damage to scorched spirits.",
+	},
 	"gathered_flame": {
 		"rarity": "rare",
 		"name": "Oath of the Gathered Flame",
@@ -185,6 +194,9 @@ const WARM_COALS_BONUS := 2.0    ## Oath of Warm Coals: + Ember Drop heal
 const STURDY_WALL := 1.25        ## Oath of Sturdy Stones: Ember Wall hp x
 const IMMORTAL_CHANCE := 0.33    ## Oath of the Immortals: chance a Char kill heals
 const IMMORTAL_HEAL := 5.0
+const CROSSFIRE_MORTAR := 1.0    ## Oath of Crossfire: + Mortar damage
+const CROSSFIRE_SCORCH := 2.0    ## ... seconds a Mortar hit scorches a spirit
+const CROSSFIRE_TORCH := 1.3     ## ... Torch damage x vs scorched spirits
 const PINE_HEAL := 3.0           ## Pine Log: flame healed
 const PINE_TORCH_RANGE := 0.10   ## Pine Log: + Torch range per log this wave (stacks)
 ## Forest Friend's dryad (scripts/game/dryad.gd).

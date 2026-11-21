@@ -61,6 +61,8 @@ func stats() -> Dictionary:
 		st["range"] *= 1.0 + Defs.PINE_TORCH_RANGE * battle.pine_logs
 	if kind == "torch" and Run.has_oath("gathered_flame"):
 		st["damage"] += Run.owned(Defs.GATHERED_FLAME_DIE)
+	if kind == "mortar" and Run.has_oath("crossfire"):
+		st["damage"] += Defs.CROSSFIRE_MORTAR
 	if kind == "mortar" and Run.has_oath("decimation"):
 		var vents := 0
 		for o in battle.defenses:

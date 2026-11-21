@@ -22,6 +22,7 @@ var path_idx := 0
 var dist := 0.0
 var world := Vector2.ZERO
 var slow := 0.0            ## 0..1, set by the battle from nearby slowing defenses
+var scorch_t := 0.0        ## Oath of Crossfire: time left scorched by a Mortar (Torches hit harder)
 var vine_t := 0.0          ## time left wrapped in the Forest Friend's vines
 var dead := false
 var zap_range := 0.0       ## >0: stops this close to the fire and zaps it
@@ -133,6 +134,7 @@ func hit(amount: float) -> void:
 func _process(delta: float) -> void:
 	_t += delta
 	_flash = maxf(0.0, _flash - delta)
+	scorch_t = maxf(0.0, scorch_t - delta)
 	_fade_in = minf(1.0, _fade_in + delta / 0.8)
 	if dead:
 		_death += delta
@@ -230,6 +232,8 @@ func _draw() -> void:
 	var pulse := 1.0 + sin(_t * 4.0) * 0.06
 	# Faint shadow, only visible near the fire.
 	_oval(Vector2(0, 2), s * 0.7, s * 0.2, Color(0, 0, 0, 0.3 * lit * alpha))
+	if scorch_t > 0.0:   # Oath of Crossfire: a smouldering ring while scorched
+		draw_arc(Vector2(0, -s * 1.9 + bob), s * 1.25, 0.0, TAU, 24, Color(1.0, 0.45, 0.15, 0.7 * minf(1.0, scorch_t) * alpha), 2.5 * board.view_scale, true)
 	# On death the ball swells and fades out.
 	var grow := 1.0 + _death * 2.0
 	draw_set_transform(Vector2(0, -s * 1.9 + bob), 0.0, Vector2.ONE * grow)
