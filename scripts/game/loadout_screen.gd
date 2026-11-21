@@ -12,7 +12,7 @@ const Icons := preload("res://scripts/game/icons.gd")
 const DieView := preload("res://scripts/game/die_view.gd")
 const DrawProxy := preload("res://scripts/ui/draw_proxy.gd")
 
-const FILTERS := [["", "All"], ["torch", "Torch"], ["vent", "Steam Vent"], ["mortar", "Mortar"], ["guide", "Guide Light"], ["kindle", "Kindle"], ["pine", "Pine Log"]]
+const FILTERS := [["torch", "Torch"], ["vent", "Steam Vent"], ["mortar", "Mortar"], ["guide", "Guide Light"], ["kindle", "Kindle"], ["pine", "Pine Log"]]
 
 var _slots: Array = []        ## die id per slot, "" when empty
 var _filter := ""
@@ -142,9 +142,18 @@ func _refresh() -> void:
 		b.custom_minimum_size = Vector2(0, 44)
 		b.add_theme_font_size_override("font_size", 18)
 		b.pressed.connect(func():
-			_filter = f[0]
+			_filter = "" if _filter == f[0] else f[0]   # tap an active filter again to clear it
 			_refresh())
 		_filter_row.add_child(b)
+	var reset := Button.new()
+	reset.text = "Reset"
+	reset.disabled = _filter == ""
+	reset.custom_minimum_size = Vector2(0, 44)
+	reset.add_theme_font_size_override("font_size", 18)
+	reset.pressed.connect(func():
+		_filter = ""
+		_refresh())
+	_filter_row.add_child(reset)
 	if _filter == "" and Defs.has_forks(Run.current_stop()):
 		_grid.add_child(_gate_card())
 	for id in _bag_ids():

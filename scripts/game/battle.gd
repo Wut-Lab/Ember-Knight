@@ -1148,6 +1148,10 @@ func _build_hud() -> void:
 	_roll_btn.pressed.connect(reroll)
 	_roll_btn.size_flags_vertical = Control.SIZE_SHRINK_END
 	_tray.add_child(_roll_btn)
+	var fight_gap := Control.new()   # keeps Fight! clear of the dice and Reroll, against mis-taps
+	fight_gap.custom_minimum_size = Vector2(48, 0)
+	fight_gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_tray.add_child(fight_gap)
 	_fight_btn = Button.new()
 	_fight_btn.text = "Fight!"
 	_fight_btn.custom_minimum_size = Vector2(150, 64)
