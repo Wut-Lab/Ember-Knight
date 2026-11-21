@@ -75,56 +75,91 @@ def leaf(cx,cy,ln,wd,ang,g='leafL',vein='#2a6a22'):
     side=''.join(f'<path d="M0,{f(-ln*t)} l{f(wd*.55*sg)},{f(-ln*.16)}" stroke="{vein}" stroke-width=".45" stroke-opacity=".6" fill="none"/>' for t in (.3,.5,.68) for sg in (-1,1))
     return (f'<g transform="translate({f(cx)},{f(cy)}) rotate({f(ang)})"><path d="{d}" fill="url(#{g})" stroke="#164a18" stroke-width=".6"/>'
             f'<path d="{v}" stroke="{vein}" stroke-width=".8" stroke-opacity=".8" fill="none"/>{side}</g>')
+def bez(p0,p1,p2,p3,n=24):
+    out=[]
+    for i in range(n+1):
+        t=i/n; u=1-t
+        out.append((u**3*p0[0]+3*u*u*t*p1[0]+3*u*t*t*p2[0]+t**3*p3[0], u**3*p0[1]+3*u*u*t*p1[1]+3*u*t*t*p2[1]+t**3*p3[1]))
+    return out
+def poly(pts): return 'M'+' L'.join(f'{f(x)},{f(y)}' for x,y in pts)
+def vine(pts,w,seed,dark=False,leaves=3,curl=True,lsize=7):
+    # one vine: dark outline, green body, a lit stripe, a few leaves and a tendril curl
+    rnd=random.Random(seed); d=poly(pts); o=[]
+    body='#2f7d2a' if dark else '#4fae3c'
+    o.append(f'<path d="{d}" stroke="#0f3412" stroke-width="{f(w+1.3)}" fill="none" stroke-linecap="round" stroke-linejoin="round"/>')
+    o.append(f'<path d="{d}" stroke="{body}" stroke-width="{f(w)}" fill="none" stroke-linecap="round" stroke-linejoin="round"/>')
+    o.append(f'<path d="{poly([(x-w*.22,y-w*.22) for x,y in pts])}" stroke="{"#7fcf55" if dark else "#a8ec78"}" stroke-width="{f(w*.32)}" stroke-opacity=".8" fill="none" stroke-linecap="round"/>')
+    n=len(pts)
+    for k in range(leaves):
+        i=int((k+1)*(n-2)/(leaves+1))+rnd.randint(-1,1); i=max(1,min(n-2,i))
+        (x0,y0),(x1,y1)=pts[i-1],pts[i+1]
+        ang=math.degrees(math.atan2(x1-x0,-(y1-y0)))+(55 if k%2 else -55)
+        o.append(leaf(pts[i][0],pts[i][1],lsize*rnd.uniform(.8,1.1),lsize*.42,ang,'leafD' if dark else 'leafL'))
+    if curl:
+        (xa,ya),(xb,yb)=pts[-2],pts[-1]; a0=math.atan2(yb-ya,xb-xa); sg=rnd.choice((-1,1)); c=[]
+        for i in range(14):
+            t=i/13; a=a0+sg*t*4.2; rr=3.2*(1-t*.7)
+            c.append((xb+math.cos(a0+sg*math.pi/2)*-3.2*sg*0+ (math.cos(a)-math.cos(a0))*rr*sg*0 + rr*math.cos(a - sg*math.pi/2)+3.2*math.cos(a0+sg*math.pi/2), yb+rr*math.sin(a - sg*math.pi/2)+3.2*math.sin(a0+sg*math.pi/2)))
+        o.append(f'<path d="{poly(c)}" stroke="#2f7d2a" stroke-width="{f(max(.8,w*.4))}" fill="none" stroke-linecap="round"/>')
+    return ''.join(o)
 # ---------- body
 body=[]
 # legs: root-like, ridged, with curling root toes
 for side,seed in ((-1,3),(1,4)):
-    L,R,C=limb(80+side*7,196,80+side*10,243,13,9,bend=side*1.5)
-    body.append(barkpart(L,R,C,4,f'leg{seed}',seed,'barkLimb'))
-    fx=80+side*10
+    L,R,C=limb(80+side*5,196,80+side*8,243,7.5,5.5,bend=side*1.5)
+    body.append(barkpart(L,R,C,3,f'leg{seed}',seed,'barkLimb'))
+    fx=80+side*8
     for k,(dx,dy,c) in enumerate(((side*9,1,side*4),(side*3,3,side*2),(-side*5,1,-side*3))):
-        body.append(f'<path d="M{f(fx)},{241} q{f(c)},{f(dy+2)} {f(dx)},{f(dy)}" stroke="#3a2412" stroke-width="{3.2-k*0.6:.1f}" fill="none" stroke-linecap="round"/>')
+        body.append(f'<path d="M{f(fx)},{241} q{f(c)},{f(dy+2)} {f(dx)},{f(dy)}" stroke="#3a2412" stroke-width="{2.4-k*0.5:.1f}" fill="none" stroke-linecap="round"/>')
 # torso: a tapered trunk with a slight lean
 def tprof(t):   # hem flare, waist, chest, round shoulders
-    pts=[(0,40),(.12,35),(.4,28),(.72,33),(.9,31),(1,22)]
+    pts=[(0,26),(.14,21),(.42,14),(.72,18),(.9,17),(1,12)]
     for (a,wa),(b,wb) in zip(pts,pts[1:]):
         if a<=t<=b:
             u=(t-a)/(b-a); u=u*u*(3-2*u); return wa+(wb-wa)*u
     return 22
 L,R,C=limb(80,200,81,120,0,0,bend=-1.5,n=24,prof=tprof)
-body.append(barkpart(L,R,C,9,'torso',11,top=5,bot=4))
+body.append(barkpart(L,R,C,6,'torso',11,top=3,bot=3))
 # the hem: a darker underside lip and a few root tips poking out
 body.append(f'<path d="M{f(L[0][0])},{f(L[0][1])} Q80,{f(L[0][1]+8)} {f(R[0][0])},{f(R[0][1])}" stroke="#1a0f06" stroke-width="2.2" fill="none" stroke-opacity=".7"/>')
 # knot hole and a lichen spot
-body.append('<ellipse cx="88" cy="168" rx="3.6" ry="5" fill="#24160b"/><ellipse cx="87.3" cy="167" rx="2.2" ry="3.2" fill="#120a04"/><path d="M84.6,164 q3,-3.5 6.6,0" stroke="#c4955f" stroke-width=".8" fill="none" stroke-opacity=".7"/>')
-body.append('<g fill="#a8d06a" fill-opacity=".75"><circle cx="70" cy="186" r="1.6"/><circle cx="72.5" cy="188.5" r="1.1"/><circle cx="69" cy="189.5" r=".9"/></g>')
-# moss sash with tufts
-body.append('<path d="M60,158 C72,150 88,142 101,134 L103,141 C90,149 74,157 62,165 Z" fill="url(#moss)" stroke="#1d4f1c" stroke-width=".7"/>')
-for i in range(9):
-    t=i/8; x=61+t*41; y=161-t*24
-    body.append(f'<circle cx="{f(x)}" cy="{f(y+random.uniform(-2,2))}" r="{random.uniform(.8,1.5):.1f}" fill="#b4ec80" fill-opacity=".7"/>')
+body.append('<ellipse cx="84" cy="178" rx="2.4" ry="3.4" fill="#24160b"/><ellipse cx="83.6" cy="177.4" rx="1.4" ry="2.2" fill="#120a04"/><path d="M81.8,175 q2,-2.4 4.4,0" stroke="#c4955f" stroke-width=".8" fill="none" stroke-opacity=".7"/>')
+body.append('<g fill="#a8d06a" fill-opacity=".75"><circle cx="75" cy="190" r="1.3"/><circle cx="77" cy="192" r=".9"/><circle cx="74" cy="193" r=".7"/></g>')
+# sash: a bundle of three twisted vines across the chest, with leaves and a dangling tendril
+sx0,sy0,sx1,sy1=68,166,94,134
+for k in range(3):
+    ph=k*2*math.pi/3; pts=[]
+    for i in range(25):
+        t=i/24; x=sx0+(sx1-sx0)*t; y=sy0+(sy1-sy0)*t
+        off=2.2*math.sin(t*math.pi*3+ph)
+        pts.append((x+off*.6,y+off))
+    body.append(vine(pts,2.0,40+k,dark=(k==1),leaves=1 if k else 2,curl=False,lsize=5.5))
+body.append(vine(bez((sx0+3,sy0-3),(sx0-2,sy0+6),(sx0+4,sy0+12),(sx0-1,sy0+18),12),1.3,45,leaves=1,lsize=4.5))
 # rim of firelight on the right edge of the trunk
-body.append(f'<path d="{taper(L,R,5,4)}" fill="url(#rim)" clip-path="url(#torso)"/>')
+body.append(f'<path d="{taper(L,R,3,3)}" fill="url(#rim)" clip-path="url(#torso)"/>')
 # arms: branches with twig fingers and a leaf
 arms=[]
 for side,seed,bend in ((-1,21,-3),(1,22,3)):
-    L,R,C=limb(80+side*12,128,80+side*30,176,9,5,bend=bend,n=12)
+    L,R,C=limb(80+side*7,126,80+side*24,174,5,3.2,bend=bend,n=12)
     arms.append(barkpart(L,R,C,3,f'arm{seed}',seed,'barkLimb'))
-    hx,hy=80+side*30,176
+    hx,hy=80+side*24,174
     for dx,dy in ((side*5,3),(side*1,6),(-side*3,5)):
-        arms.append(f'<path d="M{hx},{hy} q{f(dx*.4)},{f(dy*.7)} {f(dx)},{f(dy)}" stroke="#3a2412" stroke-width="1.6" fill="none" stroke-linecap="round"/>')
+        arms.append(f'<path d="M{hx},{hy} q{f(dx*.4)},{f(dy*.7)} {f(dx)},{f(dy)}" stroke="#3a2412" stroke-width="1.2" fill="none" stroke-linecap="round"/>')
     arms.append(leaf(hx+side*5,hy+3,11,4.5,side*120,'leafL'))
     # a small leaf bud at the elbow
-    arms.append(leaf(80+side*21,150,7,3,side*60,'leafD'))
+    arms.append(leaf(80+side*16,150,6,2.6,side*60,'leafD'))
 # head: cowl behind, rim leaves, face, leaf scales, sprout, blossom
 head=[]
 hx,hy=80,96
-for i,a in enumerate((70,92,114,136,158)):          # mantle leaves hanging to the shoulders
+# hair: a dark mass behind, then vines that sweep from the crown around the face to the shoulders
+head.append(f'<path d="M{hx-22},{hy+14} C{hx-30},{hy-14} {hx-16},{hy-40} {hx+1},{hy-44} C{hx+18},{hy-40} {hx+30},{hy-14} {hx+22},{hy+14} C{hx+12},{hy+22} {hx-12},{hy+22} {hx-22},{hy+14} Z" fill="url(#cowl)"/>')
+crown=(hx+1,hy-42)
+for k in range(7):   # back vines: long, falling past the shoulders
     for sg in (-1,1):
-        r=24+i*1.5
-        x=hx+sg*math.sin(math.radians(a))*r*0.82; y=hy-math.cos(math.radians(a))*r*0.9
-        head.append(leaf(x,y,15-i,6.5,sg*(a+10),'leafD' if i%2 else 'leafL'))
-head.append(f'<path d="M{hx-25},{hy+6} C{hx-29},{hy-22} {hx-12},{hy-40} {hx+2},{hy-47} C{hx+14},{hy-40} {hx+30},{hy-22} {hx+25},{hy+6} C{hx+18},{hy+24} {hx-18},{hy+24} {hx-25},{hy+6} Z" fill="url(#cowl)" stroke="#123d14" stroke-width="1"/>')
+        sp=12+k*4.5
+        end=(hx+sg*(17+k*2.2),hy+14+k*3.2)
+        pts=bez(crown,(hx+sg*sp*.5,hy-48+k*2),(hx+sg*(sp+10),hy-10+k*2),end)
+        head.append(vine(pts,2.4,100+k*2+(sg>0),dark=True,leaves=2,curl=True,lsize=8))
 # face: inset in the cowl
 head.append(f'<ellipse cx="{hx}" cy="{hy+4}" rx="16.5" ry="17.5" fill="#173f17"/>')
 head.append(f'<ellipse cx="{hx}" cy="{hy+5}" rx="15" ry="16" fill="url(#face)"/>')
@@ -137,13 +172,14 @@ for sg in (-1,1):
     head.append(f'<ellipse cx="{ex}" cy="{hy+4}" rx="3.4" ry="4.2" fill="url(#eye)"/><circle cx="{ex-1.1}" cy="{hy+2.4}" r="1.3" fill="#f4ffe0"/><circle cx="{ex+1.2}" cy="{hy+5.6}" r=".55" fill="#f4ffe0" fill-opacity=".8"/>')
     head.append(f'<ellipse cx="{hx+sg*10}" cy="{hy+11}" rx="3" ry="1.8" fill="#f2a0a8" fill-opacity=".45"/>')
 head.append(f'<path d="M{hx-3},{hy+13} q3,2.6 6,0" stroke="#3d6b2c" stroke-width="1.1" fill="none" stroke-linecap="round"/>')
-# leaf scales over the brow, lit ones in front
-for a,r,ln in ((-62,19,12),(-34,21,13),(-10,22,13),(14,22,13),(38,21,13),(64,19,12)):
-    x=hx+math.sin(math.radians(a))*r; y=hy+4-math.cos(math.radians(a))*r*1.05
-    head.append(leaf(x,y+4,ln,6,a,'leafL'))
-for a in (-22,4,28):
-    x=hx+math.sin(math.radians(a))*28; y=hy-math.cos(math.radians(a))*32
-    head.append(leaf(x,y+6,12,5.5,a,'leafD'))
+# front vines framing the face: across the brow and down each cheek
+for k,(sp,drop) in enumerate(((19,6),(22,14),(24,24))):
+    for sg in (-1,1):
+        pts=bez(crown,(hx+sg*sp*.35,hy-34),(hx+sg*(sp+1),hy-16+k*3),(hx+sg*(sp-3),hy+drop))
+        head.append(vine(pts,2.6-k*.3,200+k*2+(sg>0),leaves=2,curl=(k==2),lsize=7.5))
+for sg in (-1,1):   # a fringe vine curling over the brow
+    pts=bez(crown,(hx+sg*4,hy-30),(hx+sg*12,hy-14),(hx+sg*15,hy-10))
+    head.append(vine(pts,2.0,210+(sg>0),leaves=1,curl=True,lsize=5.5))
 # curled sprout at the peak
 head.append(f'<path d="M{hx+2},{hy-44} C{hx+3},{hy-54} {hx+12},{hy-58} {hx+13},{hy-51} C{hx+13},{hy-47} {hx+8},{hy-47} {hx+9},{hy-50}" stroke="#2f7d2a" stroke-width="2.2" fill="none" stroke-linecap="round"/>')
 head.append(leaf(hx+3,hy-50,12,5,-28,'leafL'))
