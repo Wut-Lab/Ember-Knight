@@ -93,7 +93,8 @@ func _take(o: Dictionary) -> void:
 static func _tally(faces: Array) -> String:
 	var parts := []
 	for f in Defs.DIE_FACES:
-		var n := faces.count(f)
-		if n > 0:
-			parts.append("%d %s" % [n, Defs.FACE_INFO[f]["name"]])
+		for up in ["+", ""]:
+			var n := faces.count(f + up)
+			if n > 0:
+				parts.append("%d %s%s" % [n, Defs.FACE_INFO[f]["name"], up])
 	return ", ".join(parts)

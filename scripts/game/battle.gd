@@ -814,7 +814,7 @@ func _try_place(d, local: Vector2) -> bool:
 		Run.flame = minf(Run.max_flame, Run.flame + Run.kindle_heal())
 		_add_fx("ring", Vector2.ZERO, Color("#fff0b0"), 130.0)
 	else:
-		_build_defense(d.face, target)
+		_build_defense(d.face, target, 2 if d.plus else 1)
 	d.placed = true
 	d.held = false
 	if _selected == d:
@@ -831,15 +831,18 @@ func _try_place(d, local: Vector2) -> bool:
 	return true
 
 
-func _build_defense(face: String, tile: int) -> void:
+func _build_defense(face: String, tile: int, levels := 1) -> void:
 	var existing = board.tile_defense[tile]
 	if existing:
-		existing.level_up()
+		for i in levels:
+			existing.level_up()
 		_add_fx("ring", existing.world, Color("#ffb238"), 60.0)
 		return
 	var df := Defense.new()
 	_entities.add_child(df)
 	df.setup(self, board, face, tile)
+	for i in levels - 1:
+		df.level_up()
 	board.tile_defense[tile] = df
 	defenses.append(df)
 	_add_fx("ring", df.world, Color("#ffb238"), 60.0)

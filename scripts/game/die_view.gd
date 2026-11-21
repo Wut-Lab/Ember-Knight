@@ -17,7 +17,8 @@ const DRAG_THRESHOLD := 14.0
 
 var faces: Array = Defs.STARTER_DIE
 var side := 0          ## index into faces of the rolled (top) face
-var face := "kindle"   ## faces[side]
+var face := "kindle"   ## faces[side], without any "+"
+var plus := false      ## the rolled face is a "+" face (places two levels)
 var held := false
 var selected := false
 var placed := false
@@ -40,7 +41,8 @@ func _ready() -> void:
 
 func roll(new_side: int, duration: float) -> void:
 	side = new_side
-	face = faces[side]
+	face = Defs.base_face(faces[side])
+	plus = Defs.face_levels(faces[side]) > 1
 	_rolling = duration
 
 
@@ -161,6 +163,8 @@ static func draw_die(ci: CanvasItem, c: Vector2, s: float, faces: Array, top: in
 ## A face icon pressed into the bone: a soft recessed dimple with the icon
 ## engraved in its colour, a dark lip below and a light lip above.
 static func _face_icon(ci: CanvasItem, f: String, at: Vector2, s: float, bone: Color) -> void:
+	var up := f.ends_with("+")
+	f = Defs.base_face(f)
 	var col: Color = Defs.FACE_INFO[f]["color"]
 	var ink := col.darkened(0.15) if f != "kindle" else Color("#e0a020")
 	ci.draw_circle(at, s * 0.5, bone.darkened(0.06))
@@ -168,6 +172,12 @@ static func _face_icon(ci: CanvasItem, f: String, at: Vector2, s: float, bone: C
 	ci.draw_arc(at, s * 0.5, PI * 0.1, PI * 0.9, 16, Color(1, 1, 1, 0.45), 1.2, true)
 	Icons.draw(ci, f, at + Vector2(0, 1.2), s * 0.78, OUTLINE.lerp(bone, 0.35))
 	Icons.draw(ci, f, at, s * 0.78, ink)
+	if up:   # a small raised "+" at the top right
+		var p := at + Vector2(s * 0.36, -s * 0.36)
+		var w := s * 0.13
+		ci.draw_circle(p, w * 1.6, ink)
+		ci.draw_line(p - Vector2(w, 0), p + Vector2(w, 0), bone, w * 0.6)
+		ci.draw_line(p - Vector2(0, w), p + Vector2(0, w), bone, w * 0.6)
 
 
 ## A face icon drawn squashed onto a side of the cube.

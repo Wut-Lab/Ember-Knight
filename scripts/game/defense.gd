@@ -57,6 +57,8 @@ func stats() -> Dictionary:
 	for stat in st:
 		if typeof(st[stat]) in [TYPE_FLOAT, TYPE_INT]:
 			st[stat] += Run.face_mod(kind, stat)
+	if kind == "torch" and Run.has_oath("gathered_flame"):
+		st["damage"] += Run.owned(Defs.GATHERED_FLAME_DIE)
 	if st.has("slow"):
 		st["slow"] = minf(st["slow"], Defs.SLOW_CAP)
 	if st.has("rate") and kind in Defs.LIGHT_DEFENSES:   # a Dark Wisp's dimming

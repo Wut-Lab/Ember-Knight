@@ -157,10 +157,10 @@ func _refresh() -> void:
 func _bag_ids() -> Array:
 	var ids := []
 	for id in Defs.DICE:
-		if Run.owned(id) > 0 and (_filter == "" or _filter in Defs.DICE[id]["faces"]):
+		if Run.owned(id) > 0 and (_filter == "" or Defs.face_count(Defs.DICE[id]["faces"], _filter) > 0):
 			ids.append(id)
 	if _filter != "":
-		ids.sort_custom(func(a, b): return Defs.DICE[a]["faces"].count(_filter) > Defs.DICE[b]["faces"].count(_filter))
+		ids.sort_custom(func(a, b): return Defs.face_count(Defs.DICE[a]["faces"], _filter) > Defs.face_count(Defs.DICE[b]["faces"], _filter))
 	return ids
 
 
@@ -256,7 +256,7 @@ func _bag_card(id: String) -> Button:
 		# Face tally: one small icon per face kind with its count.
 		var x := 84.0
 		for f in Defs.DIE_FACES:
-			var n: int = Defs.DICE[id]["faces"].count(f)
+			var n: int = Defs.face_count(Defs.DICE[id]["faces"], f)
 			if n == 0:
 				continue
 			Icons.draw(ci, f, Vector2(x + 9, 54), 20.0, Color(Defs.FACE_INFO[f]["color"]))

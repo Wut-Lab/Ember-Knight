@@ -20,7 +20,23 @@ const DICE := {
 	## Long-range themed die: 3 Mortar, 2 Guide Light, 1 Ashes (a blank that
 	## pays for the strong faces).
 	"artillery": {"name": "Artillery Die", "faces": ["mortar", "guide", "mortar", "ashes", "guide", "mortar"]},
+	## Torch+ places a Torch at level 2 (or adds two levels): one die doing
+	## the work of two.
+	"blazing": {"name": "Blazing Die", "faces": ["torch+", "torch", "kindle", "ashes", "torch", "torch+"]},
 }
+
+## A "+" face ("torch+") acts as its base face but adds two levels at once.
+static func base_face(f: String) -> String:
+	return f.trim_suffix("+")
+static func face_levels(f: String) -> int:
+	return 2 if f.ends_with("+") else 1
+## How many faces of a kind a die has, "+" faces included.
+static func face_count(faces: Array, f: String) -> int:
+	var n := 0
+	for x in faces:
+		if base_face(x) == f:
+			n += 1
+	return n
 
 ## Oaths: passives sworn for the rest of the run.
 ## "face_mods" upgrade a die face: {face: {stat: amount}}. Numbers add to a
@@ -28,18 +44,21 @@ const DICE := {
 ## where that face acts. See Run.face_mod().
 const OATHS := {
 	"shifting_embers": {
+		"rarity": "uncommon",
 		"name": "Oath of Shifting Embers",
 		"icon": "shift",
 		"short": "Move one defense after each wave.",
 		"desc": "After each wave, before the next one starts, you may move one defense to another empty tile.\n\nThe move costs 2 flame. Tap a defense to lift it, then tap a glowing tile.",
 	},
 	"hearth_bound": {
+		"rarity": "rare",
 		"name": "Hearth-Bound",
 		"icon": "hearth",
 		"short": "Kindle heals +4 more, but dawn heals 10 less.",
 		"desc": "Char is bound to the campfire.\n\nEach Kindle die put on the fire heals 4 more flame (12 instead of 8), but dawn heals 10 less (10 instead of 20).\n\nPays off when you put plenty of Kindle dice on the fire.",
 	},
 	"bright_beacon": {
+		"rarity": "common",
 		"name": "Oath of the Bright Beacon",
 		"icon": "beacon",
 		"short": "Guide Light also gives its group +1 damage.",
@@ -47,13 +66,22 @@ const OATHS := {
 		"face_mods": {"guide": {"group_damage": 1.0}},
 	},
 	"healing_ash": {
+		"rarity": "common",
 		"name": "Oath of the Healing Ash",
 		"icon": "ash_heal",
 		"short": "Unused Ashes may heal 3 flame.",
 		"desc": "Even cold ashes hold a little warmth.\n\nWhen a wave starts, each Ashes die you rolled has a 50% chance to heal 3 flame.",
 		"face_mods": {"ashes": {"heal": 3.0, "heal_chance": 0.5}},
 	},
+	"gathered_flame": {
+		"rarity": "rare",
+		"name": "Oath of the Gathered Flame",
+		"icon": "flare",
+		"short": "Torches deal +1 damage per Torchbearer Die you own.",
+		"desc": "Every flame you carry feeds the others.\n\nEach Torch deals +1 damage for every Torchbearer Die in your bag (up to +3 with 3 copies).",
+	},
 }
+const GATHERED_FLAME_DIE := "torch"   ## the die Gathered Flame counts
 const SHIFT_COST := 2.0
 
 ## Lull rewards: picked just before wave 3 of every night (not the fog ambush).
