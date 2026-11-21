@@ -117,6 +117,34 @@ const OATHS := {
 		"short": "Dawn heals +3 per leg; Char fires 5% faster.",
 		"desc": "Keep it simple: tend the fire, watch the dark.\n\nDawn heals +3 flame on leg 1, +6 on leg 2 and +9 on leg 3, and Char fires 5% faster.",
 	},
+	"warm_coals": {
+		"rarity": "common",
+		"name": "Oath of Warm Coals",
+		"icon": "hearth",
+		"short": "Ember Drops heal 7 instead of 5.",
+		"desc": "The coals the spirits leave burn warmer.\n\nEach Ember Drop you tap heals 7 flame instead of 5.",
+	},
+	"sturdy_stones": {
+		"rarity": "common",
+		"name": "Oath of Sturdy Stones",
+		"icon": "wall",
+		"short": "Ember Walls have 25% more HP.",
+		"desc": "Char lays the stones deep and tight.\n\nEmber Walls have 25% more HP (50 / 94 / 150).",
+	},
+	"sixth_face": {
+		"rarity": "unique",
+		"name": "Oath of the Sixth Face",
+		"icon": "shift",
+		"short": "Once per wave, choose a die's face.",
+		"desc": "The dice answer to Char now.\n\nOnce per wave, pick one of your dice and choose which of its faces it shows (the Choose button by Roll).",
+	},
+	"immortals": {
+		"rarity": "unique",
+		"name": "Oath of the Immortals",
+		"icon": "ward",
+		"short": "Char's kills have a 33% chance to heal 5.",
+		"desc": "What Char burns away feeds his flame.\n\nEach spirit Char banishes himself has a 33% chance to heal 5 flame.",
+	},
 	"gathered_flame": {
 		"rarity": "rare",
 		"name": "Oath of the Gathered Flame",
@@ -153,6 +181,10 @@ const WALL_CHEW := 0.5           ## wall hp lost per second = spirit damage x th
 const WALL_MIN_R := 130.0        ## walls go on trails between these distances from the fire
 const WALL_MAX_R := 460.0
 const WALL_GAP := 60.0           ## min distance between walls
+const WARM_COALS_BONUS := 2.0    ## Oath of Warm Coals: + Ember Drop heal
+const STURDY_WALL := 1.25        ## Oath of Sturdy Stones: Ember Wall hp x
+const IMMORTAL_CHANCE := 0.33    ## Oath of the Immortals: chance a Char kill heals
+const IMMORTAL_HEAL := 5.0
 const PINE_HEAL := 3.0           ## Pine Log: flame healed
 const PINE_TORCH_RANGE := 0.10   ## Pine Log: + Torch range per log this wave (stacks)
 ## Forest Friend's dryad (scripts/game/dryad.gd).

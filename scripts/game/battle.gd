@@ -65,6 +65,9 @@ var _spawn_queue: Array = []
 var _spawn_timer := 0.0
 var _dice: Array = []
 var _rerolls := 0
+var _sixth_used := false    ## Oath of the Sixth Face: used this wave
+var _choose_btn: Button
+var _choose_card: PanelContainer
 var _selected = null
 var _drag_die = null
 var _drag_pos := Vector2.ZERO
@@ -201,6 +204,7 @@ func _start_prep() -> void:
 	fighting = false
 	char_unit.set_mood("open")
 	_rerolls = Defs.REROLLS_PER_WAVE + Run.bonus_rerolls + _lull_rerolls
+	_sixth_used = false
 	_lull_rerolls = 0
 	var n: int = Run.dice.size()
 	for d in _dice:
@@ -641,9 +645,10 @@ func _try_pick_ember(local: Vector2) -> bool:
 
 func _pick_ember(e) -> void:
 	e.picked = true
-	Run.flame = minf(Run.max_flame, Run.flame + Defs.EMBER_HEAL)
+	var heal := Defs.EMBER_HEAL + (Defs.WARM_COALS_BONUS if Run.has_oath("warm_coals") else 0.0)
+	Run.flame = minf(Run.max_flame, Run.flame + heal)
 	_add_fx("ring", e.world, Color("#ffb238"), 40.0)
-	_add_fx("text", e.world, Color("#ffd27a"), 100.0, "+%d" % int(Defs.EMBER_HEAL))
+	_add_fx("text", e.world, Color("#ffd27a"), 100.0, "+%d" % int(heal))
 	AudioDirector.play_sfx("ember_pickup", -3.0)
 	_flame_bar.flash()
 	_update_hud()
@@ -736,6 +741,76 @@ func _add_fx(kind: String, at: Vector2, col: Color, r := 100.0, txt := "") -> vo
 	var f := Fx.new()
 	_fx.add_child(f)
 	f.setup(board, kind, at, col, r, txt)
+
+
+## Oath of the Immortals: a spirit Char banished himself may heal him.
+func char_kill(at: Vector2) -> void:
+	if Run.has_oath("immortals") and Run.rng.randf() < Defs.IMMORTAL_CHANCE:
+		Run.flame = minf(Run.max_flame, Run.flame + Defs.IMMORTAL_HEAL)
+		_add_fx("text", at, Color("#ffd27a"), 100.0, "+%d" % int(Defs.IMMORTAL_HEAL))
+		_update_hud()
+
+
+## Oath of the Sixth Face: pick which face the selected die shows.
+func _open_choose() -> void:
+	var d = _selected
+	if _sixth_used or d == null or d.placed or phase != Phase.PREP:
+		return
+	if _choose_card:
+		_choose_card.queue_free()
+	_choose_card = PanelContainer.new()
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 10)
+	var h := Label.new()
+	h.text = "Choose a face"
+	h.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	h.add_theme_font_override("font", Style.display_font())
+	h.add_theme_font_size_override("font_size", 40)
+	h.add_theme_color_override("font_color", Style.ACCENT)
+	box.add_child(h)
+	var grid := GridContainer.new()
+	grid.columns = 3
+	grid.add_theme_constant_override("h_separation", 10)
+	grid.add_theme_constant_override("v_separation", 10)
+	var seen := {}
+	for i in d.faces.size():
+		var f: String = d.faces[i]
+		if seen.has(f):
+			continue
+		seen[f] = true
+		var b := Button.new()
+		b.text = Defs.FACE_INFO[Defs.base_face(f)]["name"] + "+".repeat(Defs.face_levels(f) - 1)
+		b.custom_minimum_size = Vector2(200, 56)
+		b.pressed.connect(_choose_face.bind(d, i))
+		grid.add_child(b)
+	box.add_child(grid)
+	var cancel := Button.new()
+	cancel.text = "Cancel"
+	cancel.custom_minimum_size = Vector2(200, 52)
+	cancel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	cancel.pressed.connect(_close_choose)
+	box.add_child(cancel)
+	_choose_card.add_child(box)
+	add_child(_choose_card)
+	_choose_card.reset_size()
+	_choose_card.position = (size - _choose_card.size) * 0.5
+
+
+func _close_choose() -> void:
+	if _choose_card:
+		_choose_card.queue_free()
+		_choose_card = null
+
+
+func _choose_face(d, i: int) -> void:
+	_close_choose()
+	if not is_instance_valid(d) or d.placed or phase != Phase.PREP:
+		return
+	d.roll(i, 0.25)
+	_sixth_used = true
+	AudioDirector.play_sfx("tap", -6.0)
+	_select(d)
+	_update_hud()
 
 
 ## Ash Oaths, for each Ashes die still showing when the wave starts:
@@ -1229,6 +1304,13 @@ func _build_hud() -> void:
 	_roll_btn.pressed.connect(reroll)
 	_roll_btn.size_flags_vertical = Control.SIZE_SHRINK_END
 	_tray.add_child(_roll_btn)
+	_choose_btn = Button.new()   # Oath of the Sixth Face
+	_choose_btn.text = "Choose"
+	_choose_btn.custom_minimum_size = Vector2(130, 64)
+	_choose_btn.pressed.connect(_open_choose)
+	_choose_btn.size_flags_vertical = Control.SIZE_SHRINK_END
+	_choose_btn.visible = false
+	_tray.add_child(_choose_btn)
 	var fight_gap := Control.new()   # keeps Fight! clear of the dice and Reroll, against mis-taps
 	fight_gap.custom_minimum_size = Vector2(48, 0)
 	fight_gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1289,6 +1371,8 @@ func _update_hud() -> void:
 	_roll_btn.disabled = not prep or _rerolls <= 0
 	_fight_btn.disabled = not prep
 	_roll_btn.visible = prep
+	_choose_btn.visible = prep and Run.has_oath("sixth_face")
+	_choose_btn.disabled = _sixth_used or _selected == null or _selected.placed or _selected.is_rolling()
 	_fight_btn.visible = prep
 
 

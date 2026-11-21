@@ -46,6 +46,8 @@ func _process(delta: float) -> void:
 			battle.ring_fx(_aim, splash, Color("#e0603a"))
 		elif is_instance_valid(target) and not target.dead:
 			target.hit(damage)
+			if style == "char" and target.dead:
+				battle.char_kill(target.world)
 		battle.spark_fx(_aim, style)
 		queue_free()
 		return
