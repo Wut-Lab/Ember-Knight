@@ -114,8 +114,8 @@ const OATHS := {
 		"rarity": "common",
 		"name": "Oath of Simplicity",
 		"icon": "kindle",
-		"short": "Dawn heals +5 per leg; Char fires 3% faster.",
-		"desc": "Keep it simple: tend the fire, watch the dark.\n\nDawn heals +5 flame on leg 1, +10 on leg 2 and +15 on leg 3, and Char fires 3% faster.",
+		"short": "Dawn heals +3 per leg; Char fires 5% faster.",
+		"desc": "Keep it simple: tend the fire, watch the dark.\n\nDawn heals +3 flame on leg 1, +6 on leg 2 and +9 on leg 3, and Char fires 5% faster.",
 	},
 	"gathered_flame": {
 		"rarity": "rare",
@@ -144,8 +144,8 @@ const HEALTHY_NIGHTS_MAX := 4.0  ## Oath of Healthy Nights: cap on the bonus hea
 const ASH_BUCKET_HEAL := 1.0     ## Oath of Ash Buckets: flame per unused Ashes
 const BANKED_PER_ASH := 0.06     ## Oath of the Banked Fire: + damage per unused Ashes
 const BANKED_CAP := 0.30
-const SIMPLICITY_DAWN := 5.0     ## Oath of Simplicity: + dawn heal per leg number
-const SIMPLICITY_RATE := 1.03    ## ... and Char's fire rate
+const SIMPLICITY_DAWN := 3.0     ## Oath of Simplicity: + dawn heal per leg number
+const SIMPLICITY_RATE := 1.05    ## ... and Char's fire rate
 ## Ember Wall, levels 1..3: hp, and burn damage per second to spirits held at it.
 const WALL := [{"hp": 40.0, "burn": 2.0}, {"hp": 75.0, "burn": 3.0}, {"hp": 120.0, "burn": 4.5}]
 const WALL_BLOCK := 22.0         ## spirits stop this close to a wall
