@@ -139,7 +139,8 @@ func healthy_bonus() -> float:
 ## Flame healed at dawn (Hearth-Bound takes from it).
 func dawn_heal() -> float:
 	return Defs.DAWN_HEAL - (Defs.HEARTH_DAWN_PENALTY if has_oath("hearth_bound") else 0.0) \
-		+ Defs.HEARTHSTONE_HEAL * perk("hearthstones")
+		+ Defs.HEARTHSTONE_HEAL * perk("hearthstones") \
+		+ (Defs.SIMPLICITY_DAWN * (Defs.leg_of(night) + 1) if has_oath("simplicity") else 0.0)
 
 
 ## 2-3 camps drawn at random from the pool of stops (Defs.STOPS).

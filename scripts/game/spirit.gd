@@ -171,6 +171,13 @@ func _process(delta: float) -> void:
 		if _trail.size() > 6:
 			_trail.pop_back()
 	dist += speed * burst * (1.0 - slow) * board.speed_at(world) * delta   # water slows them
+	for w in board.walls:   # an Ember Wall ahead: stop and burn through it
+		if is_instance_valid(w) and w.blocks(world) \
+				and board.path_point(path_idx, minf(dist, board.path_lengths[path_idx])).distance_to(w.world) < world.distance_to(w.world):
+			dist = d0
+			w.chew(damage * Defs.WALL_CHEW * delta)
+			queue_redraw()
+			return
 	path_idx = board.route(path_idx, d0, dist)   # forks: pick a way (or the gate's)
 	if dist >= board.path_lengths[path_idx]:
 		dead = true

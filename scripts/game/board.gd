@@ -26,6 +26,7 @@ var shapes: Array[String] = []        ## per lane: straight / wavy / curved
 var paths: Array[PackedVector2Array] = []
 var path_lengths: Array[float] = []
 var tiles: Array[Vector2] = []
+var walls: Array = []                ## EmberWall nodes on the trails (set by the battle)
 var tile_defense: Array = []          ## Defense node or null, per tile
 var glow_face := ""                   ## face being placed: valid tiles glow
 var hover_tile := -1
@@ -1240,6 +1241,18 @@ func _draw() -> void:
 							_ring(cj, rx * 1.3, rx * K * 1.3, Color(1, 0.92, 0.6, 0.45), 2.5 * view_scale)
 	_draw_forks(pulse)
 	# Fire target ring for the Kindle (★) die.
+	if glow_face == "wall":   # the stretch of each trail a wall can go on
+		var wc := Color("#d9743a", 0.25 + 0.35 * pulse)
+		for pts in paths:
+			var last := Vector2.INF
+			for k in range(1, pts.size()):
+				var q: Vector2 = pts[k]
+				if q.length() < Defs.WALL_MIN_R or q.length() > Defs.WALL_MAX_R:
+					last = Vector2.INF
+					continue
+				if last != Vector2.INF:
+					draw_line(proj(last), proj(q), wc, 7.0 * view_scale)
+				last = q
 	if glow_face in ["kindle", "pine"]:
 		var gc := Color("#fff0b0")
 		gc.a = 0.35 + 0.4 * pulse + (0.25 if hover_tile == -2 else 0.0)

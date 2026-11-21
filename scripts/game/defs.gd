@@ -5,7 +5,7 @@ extends RefCounted
 # ------------------------------------------------------------ dice
 ## Every face that exists. "kindle" (star) goes on the fire to power up Char.
 ## Every other face must be a key in DEFENSES.
-const DIE_FACES := ["kindle", "torch", "vent", "mortar", "guide", "pine", "ashes"]
+const DIE_FACES := ["kindle", "torch", "vent", "mortar", "guide", "wall", "pine", "ashes"]
 ## Fire faces go on the fire instead of a tile.
 const FIRE_FACES := ["kindle", "pine"]
 ## A die is a D6: a list of 6 faces. Opposite sides are i and 5 - i.
@@ -35,6 +35,8 @@ const DICE := {
 	"ashen_torch": {"name": "Ashen Torch Die", "faces": ["torch++", "ashes", "ashes", "torch+", "ashes", "ashes"]},
 	"ashen_mortar": {"name": "Ashen Mortar Die", "faces": ["mortar++", "ashes", "ashes", "mortar+", "ashes", "ashes"]},
 	"ashen_vent": {"name": "Ashen Vent Die", "faces": ["vent++", "ashes", "ashes", "vent+", "ashes", "ashes"]},
+	## Mason Die: Ember Walls hold spirits where the Mortars can land on them.
+	"mason": {"name": "Mason Die", "faces": ["wall", "mortar", "wall+", "ashes", "mortar", "wall"]},
 	"bombardment": {"name": "Bombardment Die", "faces": ["mortar+", "ashes", "vent+", "kindle", "ashes", "mortar+"]},
 }
 
@@ -108,6 +110,13 @@ const OATHS := {
 		"short": "Each Ashes left gives +6% damage for the wave.",
 		"desc": "Ash smothers the coals, and they burn hotter beneath.\n\nWhen a wave starts, each Ashes die still showing gives every defense and Char +6% damage for that wave (up to +30%).",
 	},
+	"simplicity": {
+		"rarity": "common",
+		"name": "Oath of Simplicity",
+		"icon": "kindle",
+		"short": "Dawn heals +5 per leg; Char fires 3% faster.",
+		"desc": "Keep it simple: tend the fire, watch the dark.\n\nDawn heals +5 flame on leg 1, +10 on leg 2 and +15 on leg 3, and Char fires 3% faster.",
+	},
 	"gathered_flame": {
 		"rarity": "rare",
 		"name": "Oath of the Gathered Flame",
@@ -135,6 +144,15 @@ const HEALTHY_NIGHTS_MAX := 4.0  ## Oath of Healthy Nights: cap on the bonus hea
 const ASH_BUCKET_HEAL := 1.0     ## Oath of Ash Buckets: flame per unused Ashes
 const BANKED_PER_ASH := 0.06     ## Oath of the Banked Fire: + damage per unused Ashes
 const BANKED_CAP := 0.30
+const SIMPLICITY_DAWN := 5.0     ## Oath of Simplicity: + dawn heal per leg number
+const SIMPLICITY_RATE := 1.03    ## ... and Char's fire rate
+## Ember Wall, levels 1..3: hp, and burn damage per second to spirits held at it.
+const WALL := [{"hp": 40.0, "burn": 2.0}, {"hp": 75.0, "burn": 3.0}, {"hp": 120.0, "burn": 4.5}]
+const WALL_BLOCK := 22.0         ## spirits stop this close to a wall
+const WALL_CHEW := 0.5           ## wall hp lost per second = spirit damage x this
+const WALL_MIN_R := 130.0        ## walls go on trails between these distances from the fire
+const WALL_MAX_R := 460.0
+const WALL_GAP := 60.0           ## min distance between walls
 const PINE_HEAL := 3.0           ## Pine Log: flame healed
 const PINE_TORCH_RANGE := 0.10   ## Pine Log: + Torch range per log this wave (stacks)
 ## Forest Friend's dryad (scripts/game/dryad.gd).
@@ -302,6 +320,8 @@ const FACE_INFO := {
 		"desc": "Lobs a cinder at the spirit farthest back on its trail. Slow, splashes, can't hit up close."},
 	"guide": {"name": "Guide Light", "color": Color("#ffe9a8"),
 		"desc": "A lantern on a pole. Neighbouring defenses reach a little farther and closer."},
+	"wall": {"name": "Ember Wall", "color": Color("#d9743a"),
+		"desc": "Build across a trail: spirits stop and burn through it, scorched by its embers."},
 	"pine": {"name": "Pine Log", "color": Color("#c98a4a"),
 		"desc": "Place on the fire: heals 3 flame, and every Torch reaches 10% farther this wave."},
 	"ashes": {"name": "Ashes", "color": Color("#8a8078"),

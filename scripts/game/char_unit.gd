@@ -40,6 +40,8 @@ func _ready() -> void:
 
 func stats() -> Dictionary:
 	var s: Dictionary = Defs.CHAR_STATS[kindle].duplicate()
+	if Run.has_oath("simplicity"):
+		s["rate"] *= Defs.SIMPLICITY_RATE
 	return s
 
 
