@@ -121,7 +121,19 @@ func take_perk(o: Dictionary) -> void:
 
 ## Flame healed by one Kindle die (Hearth-Bound adds to it).
 func kindle_heal() -> float:
-	return Defs.KINDLE_HEAL + (Defs.HEARTH_KINDLE_BONUS if has_oath("hearth_bound") else 0.0)
+	return Defs.KINDLE_HEAL + (Defs.HEARTH_KINDLE_BONUS if has_oath("hearth_bound") else 0.0) + healthy_bonus()
+
+
+## Flame healed by one Pine Log.
+func pine_heal() -> float:
+	return Defs.PINE_HEAL + healthy_bonus()
+
+
+## Oath of Healthy Nights: +1 per two nights passed, between 1 and the cap.
+func healthy_bonus() -> float:
+	if not has_oath("healthy_nights"):
+		return 0.0
+	return clampf(floorf(night / 2.0), 1.0, Defs.HEALTHY_NIGHTS_MAX)
 
 
 ## Flame healed at dawn (Hearth-Bound takes from it).

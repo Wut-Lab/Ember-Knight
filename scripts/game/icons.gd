@@ -63,6 +63,11 @@ static func draw(ci: CanvasItem, kind: String, c: Vector2, s: float, col: Color,
 				pts.append(c + Vector2(sin(u) * s * 0.22, -cos(u) * s * (0.4 if cos(u) > 0 else 0.3)).rotated(0.6))
 			ci.draw_colored_polygon(pts, col)
 			ci.draw_line(c + Vector2(0, s * 0.42).rotated(0.6), c + Vector2(0, -s * 0.3).rotated(0.6), col.darkened(0.45), s * 0.05, true)
+		"heart":
+			var r := s * 0.17
+			ci.draw_circle(c + Vector2(-r * 0.95, -s * 0.08), r, col)
+			ci.draw_circle(c + Vector2(r * 0.95, -s * 0.08), r, col)
+			ci.draw_colored_polygon(PackedVector2Array([c + Vector2(-r * 1.9, -s * 0.02), c + Vector2(r * 1.9, -s * 0.02), c + Vector2(0, s * 0.36)]), col)
 		"ash_heal":
 			_ashes(ci, c + Vector2(-s * 0.08, s * 0.06), s * 0.9, col)
 			var p := c + Vector2(s * 0.26, -s * 0.24)

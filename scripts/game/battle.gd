@@ -820,7 +820,7 @@ func _try_place(d, local: Vector2) -> bool:
 		return false
 	if target == -2 and d.face == "pine":
 		pine_logs += 1
-		Run.flame = minf(Run.max_flame, Run.flame + Defs.PINE_HEAL)
+		Run.flame = minf(Run.max_flame, Run.flame + Run.pine_heal())
 		_add_fx("ring", Vector2.ZERO, Color("#c98a4a"), 130.0)
 	elif target == -2:
 		char_unit.kindle_up()

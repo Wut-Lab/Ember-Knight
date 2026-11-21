@@ -28,6 +28,8 @@ const DICE := {
 	## Two blanks pay for three "+" faces: strong but swingy.
 	## Pine Logs feed the fire: a small heal and longer Torch reach for the wave.
 	"stoking": {"name": "Stoking Die", "faces": ["kindle", "pine", "kindle", "ashes", "pine", "kindle"]},
+	## Two Kindle and two Pine Logs heal; a Torch and an Ashes keep it honest.
+	"healing": {"name": "Healing Die", "faces": ["kindle", "pine", "torch", "kindle", "ashes", "pine"]},
 	"bombardment": {"name": "Bombardment Die", "faces": ["mortar+", "ashes", "vent+", "kindle", "ashes", "mortar+"]},
 }
 
@@ -79,6 +81,13 @@ const OATHS := {
 		"desc": "Even cold ashes hold a little warmth.\n\nWhen a wave starts, each Ashes die you rolled has a 50% chance to heal 3 flame.",
 		"face_mods": {"ashes": {"heal": 3.0, "heal_chance": 0.5}},
 	},
+	"healthy_nights": {
+		"rarity": "uncommon",
+		"name": "Oath of Healthy Nights",
+		"icon": "heart",
+		"short": "Kindle and Pine Logs heal more as nights pass.",
+		"desc": "The fire grows stronger the longer it burns.\n\nKindle and Pine Logs put on the fire heal +1 flame for every two nights passed (at least +1, at most +4).",
+	},
 	"gathered_flame": {
 		"rarity": "rare",
 		"name": "Oath of the Gathered Flame",
@@ -102,6 +111,7 @@ const OATHS := {
 	},
 }
 const GATHERED_FLAME_DIE := "torch"   ## the die Gathered Flame counts
+const HEALTHY_NIGHTS_MAX := 4.0  ## Oath of Healthy Nights: cap on the bonus heal
 const PINE_HEAL := 3.0           ## Pine Log: flame healed
 const PINE_TORCH_RANGE := 0.10   ## Pine Log: + Torch range per log this wave (stacks)
 ## Forest Friend's dryad (scripts/game/dryad.gd).
