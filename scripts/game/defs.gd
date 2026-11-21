@@ -570,7 +570,7 @@ static func night_step(night: int) -> float:
 
 ## Spawn list for one wave: Array of spirit kinds. night/wave are 0-based.
 static func wave_spirits(night: int, wave: int, stop: String, rng: RandomNumberGenerator, boss_id := "dark_wisp") -> Array:
-	var count := floori(5 + night_step(night) * 2 + wave * 2 + 0.000001)
+	var count := floori(5 + night_step(night) * 2 + wave * 1 + 0.000001)
 	# Mist Wisps slip into night 1 from wave 2, thicker at misty stops (the lake).
 	var mist_chance := 0.15 + 0.05 * night_step(night)
 	if night == 0:
