@@ -497,5 +497,5 @@ static func has_forks(stop: String) -> bool:
 
 
 static func spirit_hp_scale(night: int, stop: String) -> float:
-	var s := 1.0 + 0.25 * night_step(night)
+	var s := 1.0 + 0.15 * night_step(night)
 	return s
