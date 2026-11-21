@@ -75,6 +75,7 @@ var _ap_timer := 1.2
 var _shift_ready := false  ## Oath of Shifting Embers: a move is available this prep
 var _shift_free := false   ## lull reward Adjustment: the next move costs nothing
 var _lull_rerolls := 0     ## lull reward Spare Luck: extra rerolls next prep
+var banked := 0.0          ## Oath of the Banked Fire: + damage this wave (read by Defense, Char)
 var pine_logs := 0         ## Pine Logs on the fire this wave (Torches reach farther; read by Defense)
 var stoked := false        ## lull reward Stoke: defenses fire faster (read by Defense)
 var boss_wave := false     ## this wave brings the leg's boss
@@ -318,6 +319,7 @@ func _wave_cleared() -> void:
 		print("  night %d wave %d cleared  flame=%d  char_kindle=%d  defenses=%s" % [Run.night + 1, wave + 1, roundi(Run.flame), char_unit.kindle, desc])
 	fighting = false
 	pine_logs = 0
+	banked = 0.0
 	AudioDirector.set_tension(false)
 	AudioDirector.end_boss_music()
 	wave += 1
@@ -733,8 +735,19 @@ func _add_fx(kind: String, at: Vector2, col: Color, r := 100.0, txt := "") -> vo
 	f.setup(board, kind, at, col, r, txt)
 
 
-## Oath of the Healing Ash: each unused Ashes die may heal a little flame.
+## Ash Oaths, for each Ashes die still showing when the wave starts:
+## Healing Ash may heal, Ash Buckets heals 1, Banked Fire adds damage.
 func _warm_ashes() -> void:
+	var left := 0
+	for d in _dice:
+		if not d.placed and d.face == "ashes":
+			left += 1
+	if left > 0 and Run.has_oath("ash_buckets"):
+		Run.flame = minf(Run.max_flame, Run.flame + Defs.ASH_BUCKET_HEAL * left)
+		_add_fx("text", Vector2(0, -110), Color("#ffd27a"), 100.0, "+%d" % int(Defs.ASH_BUCKET_HEAL * left))
+	if left > 0 and Run.has_oath("banked_fire"):
+		banked = minf(Defs.BANKED_CAP, Defs.BANKED_PER_ASH * left)
+		_add_fx("text", Vector2(0, -140), Color("#ff8a4c"), 100.0, "+%d%% damage" % roundi(banked * 100.0))
 	var heal := Run.face_mod("ashes", "heal")
 	if heal <= 0.0:
 		return
@@ -827,7 +840,7 @@ func _try_place(d, local: Vector2) -> bool:
 		Run.flame = minf(Run.max_flame, Run.flame + Run.kindle_heal())
 		_add_fx("ring", Vector2.ZERO, Color("#fff0b0"), 130.0)
 	else:
-		_build_defense(d.face, target, 2 if d.plus else 1)
+		_build_defense(d.face, target, d.levels)
 	d.placed = true
 	d.held = false
 	if _selected == d:

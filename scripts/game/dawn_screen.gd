@@ -165,7 +165,7 @@ func _auto_pick(kind: String) -> void:
 static func _tally(faces: Array) -> String:
 	var parts := []
 	for f in Defs.DIE_FACES:
-		for up in ["+", ""]:
+		for up in ["++", "+", ""]:
 			var n := faces.count(f + up)
 			if n > 0:
 				parts.append("%d %s%s" % [n, Defs.FACE_INFO[f]["name"], up])

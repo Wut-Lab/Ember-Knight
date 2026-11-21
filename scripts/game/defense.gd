@@ -71,6 +71,8 @@ func stats() -> Dictionary:
 		st["slow"] = minf(st["slow"], Defs.SLOW_CAP)
 	if st.has("rate") and kind in Defs.LIGHT_DEFENSES:   # a Dark Wisp's dimming
 		st["rate"] *= 1.0 - battle.dim_at(world)
+	if battle.banked > 0.0 and st.has("damage"):   # Oath of the Banked Fire
+		st["damage"] *= 1.0 + battle.banked
 	if battle.stoked and st.has("rate"):   # lull reward: Stoke
 		st["rate"] *= Defs.STOKE_RATE
 	var g := guide_bonus()
