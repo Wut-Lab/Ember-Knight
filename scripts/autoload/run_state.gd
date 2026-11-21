@@ -48,6 +48,9 @@ func new_run() -> void:
 	loadout = pool.duplicate()
 	apply_loadout()
 	oaths.clear()
+	for arg in OS.get_cmdline_user_args():   # `-- --oaths=a,b`: start sworn to these (tests)
+		if arg.begins_with("--oaths="):
+			oaths.append_array(arg.trim_prefix("--oaths=").split(",", false))
 	chosen_stops.clear()
 	spirits_banished = 0
 	nights_survived = 0

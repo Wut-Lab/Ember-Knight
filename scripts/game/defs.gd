@@ -89,8 +89,22 @@ const OATHS := {
 		"short": "Mortars reach closer: -10% minimum range per Steam Vent level.",
 		"desc": "Vents hold the spirits close; the Mortars learn to drop shells right on them.\n\nEach Cinder Mortar's minimum range shrinks 10% for every Steam Vent level on the map (up to 50%).",
 	},
+	"forest_friend": {
+		"name": "Oath of the Forest Friend",
+		"rarity": "rare",
+		"icon": "leaf",
+		"short": "A dryad wanders the trails, slowing and stinging spirits.",
+		"desc": "A dryad joins the camp and wanders the trails all night.\n\nWhen she touches a spirit, vines wrap it: 2 damage and 30% slower for 2s. Each spirit can be touched once every 1.5s.",
+	},
 }
 const GATHERED_FLAME_DIE := "torch"   ## the die Gathered Flame counts
+## Forest Friend's dryad (scripts/game/dryad.gd).
+const DRYAD_SPEED := 40.0       ## world units/s (a Wisp is 48)
+const DRYAD_REACH := 30.0       ## touch distance
+const DRYAD_DAMAGE := 2.0
+const DRYAD_SLOW := 0.3
+const DRYAD_SLOW_TIME := 2.0
+const DRYAD_TOUCH_CD := 1.5     ## per spirit
 const DECIMATION_PER_VENT := 0.10   ## Mortar min range cut per Steam Vent level
 const DECIMATION_CAP := 0.5         ## at most this much of the min range is cut
 const SHIFT_COST := 2.0

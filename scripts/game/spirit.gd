@@ -22,6 +22,7 @@ var path_idx := 0
 var dist := 0.0
 var world := Vector2.ZERO
 var slow := 0.0            ## 0..1, set by the battle from nearby slowing defenses
+var vine_t := 0.0          ## time left wrapped in the Forest Friend's vines
 var dead := false
 var zap_range := 0.0       ## >0: stops this close to the fire and zaps it
 var zap_every := 2.0

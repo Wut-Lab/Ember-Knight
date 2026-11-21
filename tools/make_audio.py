@@ -643,6 +643,18 @@ def sfx_ember_pickup():
     return out
 
 
+def sfx_vine():
+    """Forest Friend's touch: a soft woody marimba chime, two notes, with a leafy rustle."""
+    out = np.zeros(int(0.9 * SR))
+    for at, m, amp in ((0.0, 88, 1.0), (0.07, 83, 0.7)):   # E6 then B5
+        f = mtof(m)
+        bar = _tone(f, f, 0.8, 0.22) + 0.35 * _tone(f * 3.93, f * 3.93, 0.8, 0.04) + 0.12 * _tone(f * 0.5, f * 0.5, 0.8, 0.12)
+        _place(out, amp * bar, at)
+    n = int(0.25 * SR)
+    _place(out, 0.25 * _noise(n, 2500, 9000) * _env(n, 0.03, 0.06) * 6, 0.0)
+    return out
+
+
 def write_sfx(only=None):
     global OUT
     base = OUT
@@ -652,7 +664,7 @@ def write_sfx(only=None):
                      ("chime", sfx_chime), ("wave", sfx_wave), ("button", sfx_button),
                      ("charge_hum", sfx_charge_hum), ("zap", sfx_zap), ("wind", sfx_wind),
                      ("dark_arrive", sfx_dark_arrive), ("thief_arrive", sfx_thief_arrive), ("helio_arrive", sfx_helio_arrive),
-                     ("dash", sfx_dash), ("snuff", sfx_snuff), ("ember_pickup", sfx_ember_pickup)]:
+                     ("dash", sfx_dash), ("snuff", sfx_snuff), ("ember_pickup", sfx_ember_pickup), ("vine", sfx_vine)]:
         if only and name not in only:
             continue
         mono = fn()

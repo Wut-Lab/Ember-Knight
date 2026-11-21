@@ -142,6 +142,10 @@ func _ready() -> void:
 	char_unit = CharUnit.new()
 	_entities.add_child(char_unit)
 	char_unit.setup(self, board)
+	if Run.has_oath("forest_friend"):
+		var dr := Dryad.new()
+		_entities.add_child(dr)
+		dr.setup(self, board)
 
 	_build_hud()
 	resized.connect(_layout)
@@ -503,6 +507,9 @@ func _process(delta: float) -> void:
 			var st: Dictionary = d.stats()
 			if st.get("slow", 0.0) > 0.0 and d.world.distance_to(sp.world) <= st["range"]:
 				slow = maxf(slow, st["slow"])
+		if sp.vine_t > 0.0:   # wrapped by the Forest Friend's dryad
+			sp.vine_t -= delta
+			slow = maxf(slow, Defs.DRYAD_SLOW)
 		sp.slow = slow
 	# A dashing Lantern Thief snuffs out every defense he passes.
 	for sp in spirits:

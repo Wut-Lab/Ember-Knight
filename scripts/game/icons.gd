@@ -42,6 +42,13 @@ static func draw(ci: CanvasItem, kind: String, c: Vector2, s: float, col: Color,
 			for a in [-0.3, -0.15, 0.0, 0.15, 0.3]:
 				var d := Vector2.from_angle(-PI * 0.5 + a * PI)
 				ci.draw_line(c + d * s * 0.36, c + d * s * 0.48, col, s * 0.05, true)
+		"leaf":
+			var pts := PackedVector2Array()
+			for i in 16:
+				var u := TAU * i / 16.0
+				pts.append(c + Vector2(sin(u) * s * 0.22, -cos(u) * s * (0.4 if cos(u) > 0 else 0.3)).rotated(0.6))
+			ci.draw_colored_polygon(pts, col)
+			ci.draw_line(c + Vector2(0, s * 0.42).rotated(0.6), c + Vector2(0, -s * 0.3).rotated(0.6), col.darkened(0.45), s * 0.05, true)
 		"ash_heal":
 			_ashes(ci, c + Vector2(-s * 0.08, s * 0.06), s * 0.9, col)
 			var p := c + Vector2(s * 0.26, -s * 0.24)
