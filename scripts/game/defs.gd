@@ -30,14 +30,20 @@ const DICE := {
 	"stoking": {"name": "Stoking Die", "faces": ["kindle", "pine", "kindle", "ashes", "pine", "kindle"]},
 	## Two Kindle and two Pine Logs heal; a Torch and an Ashes keep it honest.
 	"healing": {"name": "Healing Die", "faces": ["kindle", "pine", "torch", "kindle", "ashes", "pine"]},
+	## Ashen Dice: four blanks pay for a "++" face (places a level-3 defense)
+	## and a "+" face. Weak alone; built to feed the Ash Oaths.
+	"ashen_torch": {"name": "Ashen Torch Die", "faces": ["torch++", "ashes", "ashes", "torch+", "ashes", "ashes"]},
+	"ashen_mortar": {"name": "Ashen Mortar Die", "faces": ["mortar++", "ashes", "ashes", "mortar+", "ashes", "ashes"]},
+	"ashen_vent": {"name": "Ashen Vent Die", "faces": ["vent++", "ashes", "ashes", "vent+", "ashes", "ashes"]},
 	"bombardment": {"name": "Bombardment Die", "faces": ["mortar+", "ashes", "vent+", "kindle", "ashes", "mortar+"]},
 }
 
-## A "+" face ("torch+") acts as its base face but adds two levels at once.
+## A "+" face ("torch+") acts as its base face but adds two levels at once;
+## a "++" face adds three (a level-3 defense in one die).
 static func base_face(f: String) -> String:
-	return f.trim_suffix("+")
+	return f.rstrip("+")
 static func face_levels(f: String) -> int:
-	return 2 if f.ends_with("+") else 1
+	return 1 + f.length() - f.rstrip("+").length()
 ## How many faces of a kind a die has, "+" faces included.
 static func face_count(faces: Array, f: String) -> int:
 	var n := 0
@@ -88,6 +94,20 @@ const OATHS := {
 		"short": "Kindle and Pine Logs heal more as nights pass.",
 		"desc": "The fire grows stronger the longer it burns.\n\nKindle and Pine Logs put on the fire heal +1 flame for every two nights passed (at least +1, at most +4).",
 	},
+	"ash_buckets": {
+		"rarity": "common",
+		"name": "Oath of Ash Buckets",
+		"icon": "ash_heal",
+		"short": "Each Ashes left when a wave starts heals 1.",
+		"desc": "Sweep the ashes back into the fire.\n\nWhen a wave starts, each Ashes die still showing heals 1 flame.",
+	},
+	"banked_fire": {
+		"rarity": "rare",
+		"name": "Oath of the Banked Fire",
+		"icon": "hearth",
+		"short": "Each Ashes left gives +6% damage for the wave.",
+		"desc": "Ash smothers the coals, and they burn hotter beneath.\n\nWhen a wave starts, each Ashes die still showing gives every defense and Char +6% damage for that wave (up to +30%).",
+	},
 	"gathered_flame": {
 		"rarity": "rare",
 		"name": "Oath of the Gathered Flame",
@@ -112,6 +132,9 @@ const OATHS := {
 }
 const GATHERED_FLAME_DIE := "torch"   ## the die Gathered Flame counts
 const HEALTHY_NIGHTS_MAX := 4.0  ## Oath of Healthy Nights: cap on the bonus heal
+const ASH_BUCKET_HEAL := 1.0     ## Oath of Ash Buckets: flame per unused Ashes
+const BANKED_PER_ASH := 0.06     ## Oath of the Banked Fire: + damage per unused Ashes
+const BANKED_CAP := 0.30
 const PINE_HEAL := 3.0           ## Pine Log: flame healed
 const PINE_TORCH_RANGE := 0.10   ## Pine Log: + Torch range per log this wave (stacks)
 ## Forest Friend's dryad (scripts/game/dryad.gd).

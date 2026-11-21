@@ -82,7 +82,7 @@ func _process(delta: float) -> void:
 		var target = battle.pick_target(world, st["range"])
 		if target:
 			var muzzle := Vector2(0, -150.0 * size_k)
-			battle.shoot(world, muzzle, target, st["damage"], "char")
+			battle.shoot(world, muzzle, target, st["damage"] * (1.0 + battle.banked), "char")
 			_cool = 1.0 / (st["rate"] * (1.0 - chill))
 
 
