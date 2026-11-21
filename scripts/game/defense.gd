@@ -57,6 +57,8 @@ func stats() -> Dictionary:
 	for stat in st:
 		if typeof(st[stat]) in [TYPE_FLOAT, TYPE_INT]:
 			st[stat] += Run.face_mod(kind, stat)
+	if kind == "torch" and battle.pine_logs > 0:   # Pine Logs on the fire this wave
+		st["range"] *= 1.0 + Defs.PINE_TORCH_RANGE * battle.pine_logs
 	if kind == "torch" and Run.has_oath("gathered_flame"):
 		st["damage"] += Run.owned(Defs.GATHERED_FLAME_DIE)
 	if kind == "mortar" and Run.has_oath("decimation"):

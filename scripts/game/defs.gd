@@ -5,7 +5,9 @@ extends RefCounted
 # ------------------------------------------------------------ dice
 ## Every face that exists. "kindle" (star) goes on the fire to power up Char.
 ## Every other face must be a key in DEFENSES.
-const DIE_FACES := ["kindle", "torch", "vent", "mortar", "guide", "ashes"]
+const DIE_FACES := ["kindle", "torch", "vent", "mortar", "guide", "pine", "ashes"]
+## Fire faces go on the fire instead of a tile.
+const FIRE_FACES := ["kindle", "pine"]
 ## A die is a D6: a list of 6 faces. Opposite sides are i and 5 - i.
 ## The player starts every run with STARTING_DICE copies of the starter die.
 const STARTER_DIE := ["torch", "vent", "kindle", "kindle", "vent", "torch"]
@@ -24,6 +26,8 @@ const DICE := {
 	## the work of two.
 	"blazing": {"name": "Blazing Die", "faces": ["torch+", "torch", "kindle", "ashes", "torch", "torch+"]},
 	## Two blanks pay for three "+" faces: strong but swingy.
+	## Pine Logs feed the fire: a small heal and longer Torch reach for the wave.
+	"stoking": {"name": "Stoking Die", "faces": ["kindle", "pine", "kindle", "ashes", "pine", "kindle"]},
 	"bombardment": {"name": "Bombardment Die", "faces": ["mortar+", "ashes", "vent+", "kindle", "ashes", "mortar+"]},
 }
 
@@ -98,6 +102,8 @@ const OATHS := {
 	},
 }
 const GATHERED_FLAME_DIE := "torch"   ## the die Gathered Flame counts
+const PINE_HEAL := 3.0           ## Pine Log: flame healed
+const PINE_TORCH_RANGE := 0.10   ## Pine Log: + Torch range per log this wave (stacks)
 ## Forest Friend's dryad (scripts/game/dryad.gd).
 const DRYAD_SPEED := 40.0       ## world units/s (a Wisp is 48)
 const DRYAD_REACH := 30.0       ## touch distance
@@ -207,6 +213,8 @@ const FACE_INFO := {
 		"desc": "Lobs a cinder at the spirit farthest back on its trail. Slow, splashes, can't hit up close."},
 	"guide": {"name": "Guide Light", "color": Color("#ffe9a8"),
 		"desc": "A lantern on a pole. Neighbouring defenses reach a little farther and closer."},
+	"pine": {"name": "Pine Log", "color": Color("#c98a4a"),
+		"desc": "Place on the fire: heals 3 flame, and every Torch reaches 10% farther this wave."},
 	"ashes": {"name": "Ashes", "color": Color("#8a8078"),
 		"desc": "Cold ashes. Does nothing: reroll it or leave it."},
 }

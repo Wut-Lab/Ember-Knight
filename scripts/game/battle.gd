@@ -75,6 +75,7 @@ var _ap_timer := 1.2
 var _shift_ready := false  ## Oath of Shifting Embers: a move is available this prep
 var _shift_free := false   ## lull reward Adjustment: the next move costs nothing
 var _lull_rerolls := 0     ## lull reward Spare Luck: extra rerolls next prep
+var pine_logs := 0         ## Pine Logs on the fire this wave (Torches reach farther; read by Defense)
 var stoked := false        ## lull reward Stoke: defenses fire faster (read by Defense)
 var boss_wave := false     ## this wave brings the leg's boss
 var _glare: ColorRect
@@ -236,7 +237,7 @@ func _start_prep() -> void:
 	else:
 		_show_banner("Wave %d of %d" % [wave + 1, Defs.WAVES_PER_NIGHT])
 	if Run.night == 0 and wave == 0:
-		_hint.text = "Tap a die to hold it, then tap a glowing tile.  Or drag it there.  Star dice go on the fire."
+		_hint.text = "Tap a die to hold it, then tap a glowing tile.  Or drag it there.  Star and Pine Log dice go on the fire."
 	elif mod != "":
 		_hint.text = "%s: %s  Place your dice, then Fight!" % [Defs.WAVE_MODS[mod]["name"], Defs.WAVE_MODS[mod]["desc"]]
 	elif boss_wave:
@@ -316,6 +317,7 @@ func _wave_cleared() -> void:
 			desc.append("%s%d@%d" % [d.kind, d.level, d.tile])
 		print("  night %d wave %d cleared  flame=%d  char_kindle=%d  defenses=%s" % [Run.night + 1, wave + 1, roundi(Run.flame), char_unit.kindle, desc])
 	fighting = false
+	pine_logs = 0
 	AudioDirector.set_tension(false)
 	AudioDirector.end_boss_music()
 	wave += 1
@@ -804,7 +806,7 @@ func _on_drag_ended(d, pos: Vector2) -> void:
 
 ## Tile index under a point, -2 for the fire (★ dice), -1 for nothing valid.
 func _target_at(local: Vector2, face: String) -> int:
-	if face == "kindle":
+	if face in Defs.FIRE_FACES:
 		return -2 if (board.is_fire_at(local) or char_unit.world.distance_to(board.unproj(local)) < 70.0) else -1
 	var t: int = board.tile_at(local)
 	return t if board.can_place(face, t) else -1
@@ -816,7 +818,11 @@ func _try_place(d, local: Vector2) -> bool:
 	var target := _target_at(local, d.face)
 	if target == -1:
 		return false
-	if target == -2:
+	if target == -2 and d.face == "pine":
+		pine_logs += 1
+		Run.flame = minf(Run.max_flame, Run.flame + Defs.PINE_HEAL)
+		_add_fx("ring", Vector2.ZERO, Color("#c98a4a"), 130.0)
+	elif target == -2:
 		char_unit.kindle_up()
 		Run.flame = minf(Run.max_flame, Run.flame + Run.kindle_heal())
 		_add_fx("ring", Vector2.ZERO, Color("#fff0b0"), 130.0)
@@ -944,7 +950,7 @@ func _autoplay_step(delta: float) -> void:
 	for d in _dice:
 		if d.placed or d.face == "ashes":
 			continue
-		if d.face == "kindle":
+		if d.face in Defs.FIRE_FACES:
 			_try_place(d, board.proj(Vector2.ZERO))
 			return
 		var best := -1

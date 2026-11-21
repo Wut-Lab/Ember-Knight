@@ -1240,7 +1240,7 @@ func _draw() -> void:
 							_ring(cj, rx * 1.3, rx * K * 1.3, Color(1, 0.92, 0.6, 0.45), 2.5 * view_scale)
 	_draw_forks(pulse)
 	# Fire target ring for the Kindle (★) die.
-	if glow_face == "kindle":
+	if glow_face in ["kindle", "pine"]:
 		var gc := Color("#fff0b0")
 		gc.a = 0.35 + 0.4 * pulse + (0.25 if hover_tile == -2 else 0.0)
 		_ring(Vector2.ZERO, 92.0 * view_scale, 92.0 * view_scale * K, gc, 4.0 * view_scale)

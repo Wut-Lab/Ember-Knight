@@ -12,7 +12,7 @@ const Icons := preload("res://scripts/game/icons.gd")
 const DieView := preload("res://scripts/game/die_view.gd")
 const DrawProxy := preload("res://scripts/ui/draw_proxy.gd")
 
-const FILTERS := [["", "All"], ["torch", "Torch"], ["vent", "Steam Vent"], ["mortar", "Mortar"], ["guide", "Guide Light"], ["kindle", "Kindle"]]
+const FILTERS := [["", "All"], ["torch", "Torch"], ["vent", "Steam Vent"], ["mortar", "Mortar"], ["guide", "Guide Light"], ["kindle", "Kindle"], ["pine", "Pine Log"]]
 
 var _slots: Array = []        ## die id per slot, "" when empty
 var _filter := ""

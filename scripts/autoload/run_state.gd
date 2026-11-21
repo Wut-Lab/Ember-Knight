@@ -45,6 +45,9 @@ func new_run() -> void:
 	pool.clear()
 	for i in Defs.STARTING_DICE:
 		pool.append("ember")
+	for arg in OS.get_cmdline_user_args():   # `-- --dice=a,b`: start with these dice instead (tests)
+		if arg.begins_with("--dice="):
+			pool.assign(arg.trim_prefix("--dice=").split(",", false))
 	loadout = pool.duplicate()
 	apply_loadout()
 	oaths.clear()

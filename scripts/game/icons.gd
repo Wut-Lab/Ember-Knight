@@ -42,6 +42,20 @@ static func draw(ci: CanvasItem, kind: String, c: Vector2, s: float, col: Color,
 			for a in [-0.3, -0.15, 0.0, 0.15, 0.3]:
 				var d := Vector2.from_angle(-PI * 0.5 + a * PI)
 				ci.draw_line(c + d * s * 0.36, c + d * s * 0.48, col, s * 0.05, true)
+		"pine":   # a log end-on at the left, with a pine sprig on top
+			var r := Rect2(c + Vector2(-s * 0.36, -s * 0.06), Vector2(s * 0.72, s * 0.3))
+			ci.draw_rect(r, col)
+			ci.draw_circle(c + Vector2(-s * 0.36, s * 0.09), s * 0.15, col.lightened(0.3))
+			ci.draw_arc(c + Vector2(-s * 0.36, s * 0.09), s * 0.08, 0, TAU, 12, col.darkened(0.3), s * 0.03)
+			ci.draw_line(c + Vector2(-s * 0.15, s * 0.0), c + Vector2(s * 0.3, s * 0.0), col.darkened(0.3), s * 0.03)
+			ci.draw_line(c + Vector2(-s * 0.1, s * 0.16), c + Vector2(s * 0.34, s * 0.16), col.darkened(0.3), s * 0.03)
+			var g := col.lerp(Color("#3f9a36"), 0.85)
+			var base := c + Vector2(s * 0.08, -s * 0.06)
+			ci.draw_line(base, base + Vector2(s * 0.1, -s * 0.34), g, s * 0.05)
+			for k in 3:
+				var p := base + Vector2(s * 0.1, -s * 0.34) * (0.35 + 0.25 * k)
+				ci.draw_line(p, p + Vector2(-s * 0.14, s * 0.03), g, s * 0.04)
+				ci.draw_line(p, p + Vector2(s * 0.13, s * 0.06), g, s * 0.04)
 		"leaf":
 			var pts := PackedVector2Array()
 			for i in 16:
