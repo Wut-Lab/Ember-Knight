@@ -316,6 +316,9 @@ func _wave_cleared() -> void:
 		var desc := []
 		for d in defenses:
 			desc.append("%s%d@%d" % [d.kind, d.level, d.tile])
+		for w in board.walls:
+			if is_instance_valid(w) and not w.broken:
+				desc.append("wall%d(%d hp)" % [w.level, roundi(w.hp)])
 		print("  night %d wave %d cleared  flame=%d  char_kindle=%d  defenses=%s" % [Run.night + 1, wave + 1, roundi(Run.flame), char_unit.kindle, desc])
 	fighting = false
 	pine_logs = 0
@@ -818,7 +821,59 @@ func _on_drag_ended(d, pos: Vector2) -> void:
 
 
 ## Tile index under a point, -2 for the fire (★ dice), -1 for nothing valid.
+var _wall_at := Vector2.ZERO     ## where a dropped wall die would go (world)
+var _wall_tan := Vector2.RIGHT
+var _wall_hit = null             ## an existing wall it would level up
+
+
+## Ember Wall: the nearest trail point to `local`, if a wall can go there.
+## Returns -3 when it can (sets _wall_at/_wall_tan/_wall_hit), else -1.
+func _wall_target(local: Vector2) -> int:
+	var p: Vector2 = board.unproj(local)
+	_wall_hit = null
+	for w in board.walls:
+		if is_instance_valid(w) and not w.broken and w.world.distance_to(p) < 40.0:
+			if w.level >= 3:
+				return -1
+			_wall_hit = w
+			return -3
+	var best := 45.0
+	var found := false
+	for pts in board.paths:
+		for k in range(1, pts.size()):
+			var q := Geometry2D.get_closest_point_to_segment(p, pts[k - 1], pts[k])
+			var dd := q.distance_to(p)
+			if dd < best and q.length() > Defs.WALL_MIN_R and q.length() < Defs.WALL_MAX_R:
+				best = dd
+				_wall_at = q
+				_wall_tan = pts[k] - pts[k - 1]
+				found = true
+	if not found:
+		return -1
+	for w in board.walls:
+		if is_instance_valid(w) and not w.broken and w.world.distance_to(_wall_at) < Defs.WALL_GAP:
+			return -1
+	return -3
+
+
+func _build_wall(levels: int) -> void:
+	if _wall_hit:
+		for i in levels:
+			_wall_hit.level_up()
+		_add_fx("ring", _wall_hit.world, Color("#d9743a"), 50.0)
+		return
+	var w := EmberWall.new()
+	_entities.add_child(w)
+	w.setup(self, board, _wall_at, _wall_tan)
+	for i in levels - 1:
+		w.level_up()
+	board.walls.append(w)
+	_add_fx("ring", _wall_at, Color("#d9743a"), 50.0)
+
+
 func _target_at(local: Vector2, face: String) -> int:
+	if face == "wall":
+		return _wall_target(local)
 	if face in Defs.FIRE_FACES:
 		return -2 if (board.is_fire_at(local) or char_unit.world.distance_to(board.unproj(local)) < 70.0) else -1
 	var t: int = board.tile_at(local)
@@ -839,6 +894,8 @@ func _try_place(d, local: Vector2) -> bool:
 		char_unit.kindle_up()
 		Run.flame = minf(Run.max_flame, Run.flame + Run.kindle_heal())
 		_add_fx("ring", Vector2.ZERO, Color("#fff0b0"), 130.0)
+	elif target == -3:
+		_build_wall(d.levels)
 	else:
 		_build_defense(d.face, target, d.levels)
 	d.placed = true
@@ -965,6 +1022,17 @@ func _autoplay_step(delta: float) -> void:
 			continue
 		if d.face in Defs.FIRE_FACES:
 			_try_place(d, board.proj(Vector2.ZERO))
+			return
+		if d.face == "wall":   # across the trail with the fewest walls, ~230 out
+			var spots := []
+			for i in board.paths.size():
+				spots.append(board.path_point(i, board.path_lengths[i] - 230.0))
+			spots.shuffle()
+			for s in spots:
+				if _wall_target(board.proj(s)) == -3:
+					_try_place(d, board.proj(s))
+					return
+			d.placed = true   # nowhere left: let it go
 			return
 		var best := -1
 		for i in board.tiles.size():

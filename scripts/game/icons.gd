@@ -35,6 +35,13 @@ static func draw(ci: CanvasItem, kind: String, c: Vector2, s: float, col: Color,
 			_mortar(ci, c, s, col)
 		"guide":
 			_guide(ci, c, s, col)
+		"wall":   # three courses of bricks
+			for row in 3:
+				var y := c.y + s * (0.18 - 0.2 * row)
+				var off := s * 0.11 if row % 2 == 1 else 0.0
+				for k in (2 if row % 2 == 1 else 3):
+					var x := c.x - s * 0.34 + off + s * 0.23 * k
+					ci.draw_rect(Rect2(x, y - s * 0.08, s * 0.2, s * 0.16), col)
 		"ashes":
 			_ashes(ci, c, s, col)
 		"beacon":
