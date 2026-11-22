@@ -206,6 +206,8 @@ func _start_prep() -> void:
 	fighting = false
 	char_unit.set_mood("open")
 	_rerolls = Defs.REROLLS_PER_WAVE + Run.bonus_rerolls + _lull_rerolls
+	if Run.has_oath("steady_hands"):
+		_rerolls += Defs.STEADY_REROLLS
 	_sixth_used = false
 	_lull_rerolls = 0
 	var n: int = Run.dice.size()
@@ -344,6 +346,7 @@ func _wave_cleared() -> void:
 		phase = Phase.DONE
 		Run.nights_survived += 1
 		Profile.add_stat("nights_won")
+		Profile.add_stat("night_%d_won" % (Run.night + 1))
 		char_unit.set_mood("happy")
 		var gained := Defs.essence_for_night(Run.flame, Run.night)
 		Profile.add_essence(gained)

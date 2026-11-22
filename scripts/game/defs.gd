@@ -184,9 +184,17 @@ const OATHS := {
 		"short": "Once each dawn, pay 5 flame and 3 Essence to reroll the offerings.",
 		"desc": "The sunrise can be bargained with.\n\nOnce each dawn, you may spend 5 flame and 3 Essence to reroll the dice and Oaths still on offer.",
 	},
+	"steady_hands": {
+		"name": "Oath of Steady Hands",
+		"rarity": "uncommon",
+		"icon": "bolt",
+		"short": "+1 reroll every wave.",
+		"desc": "Char has learned to wait for the right roll.\n\nYou get 1 extra reroll every wave.",
+	},
 }
 ## Oaths that only reach the Dawn Offerings once unlocked (Defs.UNLOCKS).
-const LOCKED_OATHS := ["dawn_offerings"]
+const LOCKED_OATHS := ["dawn_offerings", "steady_hands"]
+const STEADY_REROLLS := 1   ## Oath of Steady Hands: + rerolls every wave
 ## Dice that only reach the Dawn Offerings once unlocked (Defs.UNLOCKS).
 const LOCKED_DICE := ["crazy"]
 const DAWN_REROLL_FLAME := 5.0   ## Oath of Dawn Offerings: reroll cost
@@ -201,6 +209,8 @@ const UNLOCKS := {
 		"hint": "Skip 10 Dawn Offerings."},
 	"crazy": {"type": "die", "ref": "crazy", "stat": "nights_won", "goal": 1,
 		"hint": "Survive night 1."},
+	"steady_hands": {"type": "oath", "ref": "steady_hands", "stat": "night_2_won", "goal": 1,
+		"hint": "Survive night 2."},
 }
 
 const GATHERED_FLAME_DIE := "torch"   ## the die Gathered Flame counts
