@@ -343,6 +343,7 @@ func _wave_cleared() -> void:
 	elif wave >= Defs.WAVES_PER_NIGHT:
 		phase = Phase.DONE
 		Run.nights_survived += 1
+		Profile.add_stat("nights_won")
 		char_unit.set_mood("happy")
 		var gained := Defs.essence_for_night(Run.flame, Run.night)
 		Profile.add_essence(gained)

@@ -39,6 +39,7 @@ const DICE := {
 	"mason": {"name": "Mason Die", "faces": ["wall", "mortar", "wall+", "ashes", "mortar", "wall"]},
 	## Wayfinder Die: Guide Lights with Torches to light and a Wall to hold the line.
 	"ward": {"name": "Ward Die", "faces": ["ward", "vent", "kindle", "ward", "vent", "kindle"]},
+	"crazy": {"name": "Crazy Die", "faces": ["torch", "mortar", "vent", "wall", "guide", "ashes"]},
 	"wayfinder": {"name": "Wayfinder Die", "faces": ["guide", "torch", "guide", "wall", "torch", "ashes"]},
 	"bombardment": {"name": "Bombardment Die", "faces": ["mortar+", "ashes", "vent+", "kindle", "ashes", "mortar+"]},
 }
@@ -186,6 +187,8 @@ const OATHS := {
 }
 ## Oaths that only reach the Dawn Offerings once unlocked (Defs.UNLOCKS).
 const LOCKED_OATHS := ["dawn_offerings"]
+## Dice that only reach the Dawn Offerings once unlocked (Defs.UNLOCKS).
+const LOCKED_DICE := ["crazy"]
 const DAWN_REROLL_FLAME := 5.0   ## Oath of Dawn Offerings: reroll cost
 const DAWN_REROLL_ESSENCE := 3
 
@@ -196,6 +199,8 @@ const UNLOCK_TYPES := [["oath", "Oaths"], ["die", "Dice"], ["misc", "Misc"]]
 const UNLOCKS := {
 	"dawn_offerings": {"type": "oath", "ref": "dawn_offerings", "stat": "dawn_skips", "goal": 10,
 		"hint": "Skip 10 Dawn Offerings."},
+	"crazy": {"type": "die", "ref": "crazy", "stat": "nights_won", "goal": 1,
+		"hint": "Survive night 1."},
 }
 
 const GATHERED_FLAME_DIE := "torch"   ## the die Gathered Flame counts
@@ -330,7 +335,7 @@ const UNIQUE_EARLY_CHANCE := 0.02
 static func dawn_dice(rng: RandomNumberGenerator, dice_owned: Array) -> Array:
 	var pool := []
 	for id in DICE:
-		if dice_owned.count(id) < MAX_DIE_COPIES:
+		if dice_owned.count(id) < MAX_DIE_COPIES and (not id in LOCKED_DICE or Profile.is_unlocked(id)):
 			pool.append(id)
 	var out := []
 	while out.size() < DAWN_DICE and not pool.is_empty():
