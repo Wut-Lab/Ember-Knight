@@ -42,6 +42,8 @@ func stats() -> Dictionary:
 	var s: Dictionary = Defs.CHAR_STATS[kindle].duplicate()
 	if Run.has_oath("simplicity"):
 		s["rate"] *= Defs.SIMPLICITY_RATE
+	if Run.flame < Run.max_flame * Defs.COMEBACK_AT:   # cornered, Char fights harder
+		s["rate"] *= Defs.COMEBACK_RATE
 	return s
 
 

@@ -252,6 +252,8 @@ const WARD_AT := 0.5       ## Ash Ward pulses when the fire falls to this share 
 const WARD_SLOW := 0.5     ## multiplies with other slows
 const WARD_TIME := 3.0
 const WARD_EXTRA := 1.5    ## seconds per extra Ash Ward on the fire that wave
+const COMEBACK_AT := 0.3    ## below this share of max flame...
+const COMEBACK_RATE := 1.3  ## ...Char fires this much faster
 const MIN_SPEED := 0.2     ## spirits never drop below this share of their speed
 const SLOW_CAP := 0.5   ## no defense slows spirits more than this (honed Vents)
 const QUICK_REWARDS := {
@@ -694,9 +696,23 @@ static func night_step(night: int) -> float:
 	return leg_of(night) * LEG_RAMP + last * pow(minf(i / last, 1.0), DIFF_K)
 
 
+## Ramp for one wave: wave 1 opens partway back toward the night before and
+## each wave climbs to the full night, so a night's jump is spread over its
+## waves. Never above the night (a new leg's step down stays a step down).
+const WAVE_RAMP_FROM := 0.5
+
+static func wave_step(night: int, wave: int) -> float:
+	var cur := night_step(night)
+	if night <= 0:
+		return cur
+	var prev := minf(night_step(night - 1), cur)
+	var t := WAVE_RAMP_FROM + (1.0 - WAVE_RAMP_FROM) * float(wave) / float(WAVES_PER_NIGHT - 1)
+	return lerpf(prev, cur, t)
+
+
 ## Spawn list for one wave: Array of spirit kinds. night/wave are 0-based.
 static func wave_spirits(night: int, wave: int, stop: String, rng: RandomNumberGenerator, boss_id := "dark_wisp") -> Array:
-	var count := floori(5 + night_step(night) * 2 + wave * 1 + 0.000001)
+	var count := floori(5 + wave_step(night, wave) * 2 + wave * 1 + 0.000001)
 	# Mist Wisps slip into night 1 from wave 2, thicker at misty stops (the lake).
 	var mist_chance := 0.15 + 0.05 * night_step(night)
 	if night == 0:
@@ -731,7 +747,7 @@ const SPAWN_GAP_PER_WAVE := 0.14
 const SPAWN_GAP_MIN := 0.55
 
 static func spawn_gap(night: int, wave: int) -> float:
-	return maxf(SPAWN_GAP_MIN, SPAWN_GAP - SPAWN_GAP_PER_NIGHT * night_step(night) - SPAWN_GAP_PER_WAVE * wave)
+	return maxf(SPAWN_GAP_MIN, SPAWN_GAP - SPAWN_GAP_PER_NIGHT * wave_step(night, wave) - SPAWN_GAP_PER_WAVE * wave)
 
 
 ## Does this stop's map get forks (and so gates)? Set "forks": false on a stop to drop them.
