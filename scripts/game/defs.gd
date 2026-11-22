@@ -187,7 +187,7 @@ const OATHS := {
 	"steady_hands": {
 		"name": "Oath of Steady Hands",
 		"rarity": "uncommon",
-		"icon": "bolt",
+		"icon": "hand",
 		"short": "+1 reroll every wave.",
 		"desc": "Char has learned to wait for the right roll.\n\nYou get 1 extra reroll every wave.",
 	},
