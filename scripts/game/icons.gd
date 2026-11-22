@@ -200,17 +200,23 @@ static func _parchment(ci: CanvasItem, c: Vector2, s: float, col: Color) -> void
 ## An open hand, palm out, inside a ring.
 static func _hand(ci: CanvasItem, c: Vector2, s: float, col: Color) -> void:
 	ci.draw_arc(c, s * 0.44, 0.0, TAU, 40, col, s * 0.06, true)
-	var p := c + Vector2(0, s * 0.1)
-	ci.draw_circle(p, s * 0.13, col)   # palm
-	ci.draw_rect(Rect2(p + Vector2(-s * 0.13, -s * 0.02), Vector2(s * 0.26, s * 0.16)), col)
-	var fw := s * 0.07
-	for i in 4:   # fingers, the middle two tallest
-		var x := -s * 0.1 + i * s * 0.067
-		var top: float = s * [0.2, 0.26, 0.25, 0.19][i]
-		ci.draw_line(p + Vector2(x, 0), p + Vector2(x, -top), col, fw, true)
-		ci.draw_circle(p + Vector2(x, -top), fw * 0.5, col)
-	ci.draw_line(p + Vector2(-s * 0.1, s * 0.04), p + Vector2(-s * 0.22, -s * 0.06), col, fw, true)   # thumb
-	ci.draw_circle(p + Vector2(-s * 0.22, -s * 0.06), fw * 0.5, col)
+	var p := c + Vector2(s * 0.03, s * 0.05)
+	var fw := s * 0.055
+	# Palm: a rounded block under the fingers.
+	ci.draw_rect(Rect2(p + Vector2(-s * 0.12, -s * 0.03), Vector2(s * 0.24, s * 0.12)), col)
+	ci.draw_circle(p + Vector2(0, s * 0.09), s * 0.12, col)
+	# Four fingers with clear gaps, the middle two tallest.
+	var tops: Array[float] = [0.2, 0.27, 0.25, 0.18]
+	for i in 4:
+		var x := -s * 0.0975 + i * s * 0.065
+		var top: float = s * tops[i]
+		ci.draw_line(p + Vector2(x, 0), p + Vector2(x, -top), col, fw * 0.8, true)
+		ci.draw_circle(p + Vector2(x, -top), fw * 0.4, col)
+	# Thumb, angled out to the left.
+	var t0 := p + Vector2(-s * 0.1, s * 0.07)
+	var t1 := p + Vector2(-s * 0.22, -s * 0.04)
+	ci.draw_line(t0, t1, col, fw * 0.85, true)
+	ci.draw_circle(t1, fw * 0.42, col)
 
 
 static func _star(ci: CanvasItem, c: Vector2, s: float, col: Color) -> void:
