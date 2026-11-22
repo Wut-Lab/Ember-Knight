@@ -178,7 +178,7 @@ const OATHS := {
 	},
 	"dawn_offerings": {
 		"name": "Oath of Dawn Offerings",
-		"rarity": "rare",
+		"rarity": "uncommon",
 		"icon": "sunrise",
 		"short": "Once each dawn, pay 5 flame and 3 Essence to reroll the offerings.",
 		"desc": "The sunrise can be bargained with.\n\nOnce each dawn, you may spend 5 flame and 3 Essence to reroll the dice and Oaths still on offer.",
