@@ -79,6 +79,8 @@ var _shift_ready := false  ## Oath of Shifting Embers: a move is available this 
 var _shift_free := false   ## lull reward Adjustment: the next move costs nothing
 var _lull_rerolls := 0     ## lull reward Spare Luck: extra rerolls next prep
 var banked := 0.0          ## Oath of the Banked Fire: + damage this wave (read by Defense, Char)
+var wards := 0             ## Ash Wards on the fire this wave, waiting to pulse
+var ward_t := 0.0          ## seconds left on the Ash Ward slow
 var pine_logs := 0         ## Pine Logs on the fire this wave (Torches reach farther; read by Defense)
 var stoked := false        ## lull reward Stoke: defenses fire faster (read by Defense)
 var boss_wave := false     ## this wave brings the leg's boss
@@ -326,6 +328,8 @@ func _wave_cleared() -> void:
 		print("  night %d wave %d cleared  flame=%d  char_kindle=%d  defenses=%s" % [Run.night + 1, wave + 1, roundi(Run.flame), char_unit.kindle, desc])
 	fighting = false
 	pine_logs = 0
+	wards = 0
+	ward_t = 0.0
 	banked = 0.0
 	AudioDirector.set_tension(false)
 	AudioDirector.end_boss_music()
@@ -499,6 +503,14 @@ func _process(delta: float) -> void:
 			_add_fx("ring", p, Color("#ff8f6b"), 40.0)
 	if not fighting:
 		return
+	if wards > 0 and Run.flame <= Run.max_flame * Defs.WARD_AT:
+		ward_t = Defs.WARD_TIME + Defs.WARD_EXTRA * (wards - 1)
+		wards = 0
+		_add_fx("ring", Vector2.ZERO, Color("#b9a8d8"), 900.0)
+		if Run.autoplay:
+			print("  ash ward pulse (%.1fs)" % ward_t)
+	if ward_t > 0.0:
+		ward_t -= delta
 	if not _spawn_queue.is_empty():
 		_spawn_timer -= delta
 		if not _boss_intro and Defs.SPIRITS[_spawn_queue[0][0]].get("boss", false) and _spawn_timer <= BOSS_INTRO:
@@ -521,7 +533,9 @@ func _process(delta: float) -> void:
 		if sp.vine_t > 0.0:   # wrapped by the Forest Friend's dryad
 			sp.vine_t -= delta
 			slow = maxf(slow, Defs.DRYAD_SLOW)
-		sp.slow = slow
+		if ward_t > 0.0:   # Ash Ward stacks with the rest
+			slow = 1.0 - (1.0 - slow) * (1.0 - Defs.WARD_SLOW)
+		sp.slow = minf(slow, 1.0 - Defs.MIN_SPEED)
 	# A dashing Lantern Thief snuffs out every defense he passes.
 	for sp in spirits:
 		if sp.dashing() and not sp.dead:
@@ -965,6 +979,9 @@ func _try_place(d, local: Vector2) -> bool:
 		pine_logs += 1
 		Run.flame = minf(Run.max_flame, Run.flame + Run.pine_heal())
 		_add_fx("ring", Vector2.ZERO, Color("#c98a4a"), 130.0)
+	elif target == -2 and d.face == "ward":
+		wards += 1
+		_add_fx("ring", Vector2.ZERO, Color("#b9a8d8"), 130.0)
 	elif target == -2:
 		char_unit.kindle_up()
 		Run.flame = minf(Run.max_flame, Run.flame + Run.kindle_heal())

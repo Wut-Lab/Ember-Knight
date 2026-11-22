@@ -5,9 +5,9 @@ extends RefCounted
 # ------------------------------------------------------------ dice
 ## Every face that exists. "kindle" (star) goes on the fire to power up Char.
 ## Every other face must be a key in DEFENSES.
-const DIE_FACES := ["kindle", "torch", "vent", "mortar", "guide", "wall", "pine", "ashes"]
+const DIE_FACES := ["kindle", "torch", "vent", "mortar", "guide", "wall", "pine", "ward", "ashes"]
 ## Fire faces go on the fire instead of a tile.
-const FIRE_FACES := ["kindle", "pine"]
+const FIRE_FACES := ["kindle", "pine", "ward"]
 ## A die is a D6: a list of 6 faces. Opposite sides are i and 5 - i.
 ## The player starts every run with STARTING_DICE copies of the starter die.
 const STARTER_DIE := ["torch", "vent", "kindle", "kindle", "vent", "torch"]
@@ -38,6 +38,7 @@ const DICE := {
 	## Mason Die: Ember Walls hold spirits where the Mortars can land on them.
 	"mason": {"name": "Mason Die", "faces": ["wall", "mortar", "wall+", "ashes", "mortar", "wall"]},
 	## Wayfinder Die: Guide Lights with Torches to light and a Wall to hold the line.
+	"ward": {"name": "Ward Die", "faces": ["ward", "vent", "kindle", "ward", "vent", "kindle"]},
 	"wayfinder": {"name": "Wayfinder Die", "faces": ["guide", "torch", "guide", "wall", "torch", "ashes"]},
 	"bombardment": {"name": "Bombardment Die", "faces": ["mortar+", "ashes", "vent+", "kindle", "ashes", "mortar+"]},
 }
@@ -143,7 +144,7 @@ const OATHS := {
 	"immortals": {
 		"rarity": "unique",
 		"name": "Oath of the Immortals",
-		"icon": "ward",
+		"icon": "rune",
 		"short": "Char's kills have a 33% chance to heal 5.",
 		"desc": "What Char burns away feeds his flame.\n\nEach spirit Char banishes himself has a 33% chance to heal 5 flame.",
 	},
@@ -226,6 +227,11 @@ const HONE := {
 	"mortar": {"damage": 1.0},
 	"vent": {"slow": 0.1},
 }
+const WARD_AT := 0.5       ## Ash Ward pulses when the fire falls to this share of max flame
+const WARD_SLOW := 0.5     ## multiplies with other slows
+const WARD_TIME := 3.0
+const WARD_EXTRA := 1.5    ## seconds per extra Ash Ward on the fire that wave
+const MIN_SPEED := 0.2     ## spirits never drop below this share of their speed
 const SLOW_CAP := 0.5   ## no defense slows spirits more than this (honed Vents)
 const QUICK_REWARDS := {
 	"second_wind": {"name": "Second Wind", "desc": "Heal 15 flame now."},
@@ -368,6 +374,8 @@ const FACE_INFO := {
 		"desc": "Build across a trail: spirits stop and burn through it, scorched by its embers."},
 	"pine": {"name": "Pine Log", "color": Color("#c98a4a"),
 		"desc": "Place on the fire: heals 3 flame, and every Torch reaches 10% farther this wave."},
+	"ward": {"name": "Ash Ward", "color": Color("#b9a8d8"),
+		"desc": "Place on the fire. When the fire falls to half flame this wave, it pulses: every spirit 50% slower for 3s (+1.5s per extra Ward)."},
 	"ashes": {"name": "Ashes", "color": Color("#8a8078"),
 		"desc": "Cold ashes. Does nothing: reroll it or leave it."},
 }
