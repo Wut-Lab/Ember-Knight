@@ -45,6 +45,8 @@ func _process(delta: float) -> void:
 		if splash > 0.0:
 			for sp in battle.spirits_in_range(_aim, splash):
 				sp.hit(damage)
+				if style == "mortar":
+					sp.daze_t = Defs.MORTAR_DAZE_TIME
 				if style == "mortar" and Run.has_oath("crossfire"):
 					sp.scorch_t = Defs.CROSSFIRE_SCORCH
 			battle.ring_fx(_aim, splash, Color("#e0603a"))

@@ -252,6 +252,9 @@ const WARD_AT := 0.5       ## Ash Ward pulses when the fire falls to this share 
 const WARD_SLOW := 0.5     ## multiplies with other slows
 const WARD_TIME := 3.0
 const WARD_EXTRA := 1.5    ## seconds per extra Ash Ward on the fire that wave
+const HEAT_CAP := 0.2      ## overheal banks as heat, up to this share of max flame
+const MORTAR_DAZE := 0.3   ## Cinder Mortar hits slow spirits this much...
+const MORTAR_DAZE_TIME := 1.0  ## ...for this long
 const MIN_SPEED := 0.2     ## spirits never drop below this share of their speed
 const SLOW_CAP := 0.5   ## no defense slows spirits more than this (honed Vents)
 const QUICK_REWARDS := {
@@ -382,19 +385,19 @@ const MAX_LEVEL := 3
 ## Name, colour and tooltip for each die face.
 const FACE_INFO := {
 	"kindle": {"name": "Kindle Char", "color": Color("#fff0b0"),
-		"desc": "Place on the fire: Char hits harder and heals a little."},
+		"desc": "Place on the fire: Char hits harder and heals a little. Healing past full flame banks as heat that soaks hits this wave."},
 	"torch": {"name": "Torch", "color": Color("#ff9a3c"),
 		"desc": "A small flame on a post. Shoots embers like a weak Char."},
 	"vent": {"name": "Steam Vent", "color": Color("#9fd6d0"),
 		"desc": "A brass boiler that puffs steam: slows nearby spirits and scalds them a little."},
 	"mortar": {"name": "Cinder Mortar", "color": Color("#e0603a"),
-		"desc": "Lobs a cinder at the spirit farthest back on its trail. Slow, splashes, can't hit up close."},
+		"desc": "Lobs a cinder at the spirit farthest back on its trail. Slow, splashes and dazes (30% slower for 1s), can't hit up close."},
 	"guide": {"name": "Guide Light", "color": Color("#ffe9a8"),
 		"desc": "A lantern on a pole. Neighbouring defenses reach a little farther and closer."},
 	"wall": {"name": "Ember Wall", "color": Color("#d9743a"),
 		"desc": "Build across a trail: spirits stop and burn through it, scorched by its embers."},
 	"pine": {"name": "Pine Log", "color": Color("#c98a4a"),
-		"desc": "Place on the fire: heals 3 flame, and every Torch reaches 10% farther this wave."},
+		"desc": "Place on the fire: heals 3 flame (past full, it banks as heat), and every Torch reaches 10% farther this wave."},
 	"ward": {"name": "Ash Ward", "color": Color("#b9a8d8"),
 		"desc": "Place on the fire. When the fire falls to half flame this wave, it pulses: every spirit 50% slower for 3s (+1.5s per extra Ward)."},
 	"ashes": {"name": "Ashes", "color": Color("#8a8078"),
@@ -656,7 +659,7 @@ static func ambush_spirits(night: int) -> Array:
 
 
 # ------------------------------------------------------------ wave modifiers
-## From night 2 on, each wave has MOD_CHANCE to roll one of these (equal odds).
+## From night 2 on, waves 1-2 each have MOD_CHANCE to roll one of these (equal odds).
 ## Shown in the prep phase so the player can plan for it.
 const MOD_CHANCE := 0.1
 const WAVE_MODS := {
@@ -727,7 +730,7 @@ static func wave_spirits(night: int, wave: int, stop: String, rng: RandomNumberG
 ## Night 1: 1.15 / 0.95 / 0.75.
 const SPAWN_GAP := 1.15
 const SPAWN_GAP_PER_NIGHT := 0.06
-const SPAWN_GAP_PER_WAVE := 0.2
+const SPAWN_GAP_PER_WAVE := 0.14
 const SPAWN_GAP_MIN := 0.55
 
 static func spawn_gap(night: int, wave: int) -> float:
