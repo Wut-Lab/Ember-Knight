@@ -53,6 +53,7 @@ func _show(screen: Control, fade := true) -> void:
 	add_child(screen)
 	move_child(_fade, -1)
 	_sky.visible = not (screen is Battle)
+	_sky.dawn = screen is DawnScreen
 	var t2 := create_tween()
 	t2.tween_property(_fade, "color:a", 0.0, 0.45)
 

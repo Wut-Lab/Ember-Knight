@@ -10,32 +10,10 @@ const Style := preload("res://scripts/ui/ui_style.gd")
 const ChoiceCard := preload("res://scripts/ui/choice_card.gd")
 
 
-## Dawn sky behind the offering: night purple at the top warming through
-## crimson and orange to a gold horizon at the bottom.
-func _dawn_sky() -> TextureRect:
-	var g := Gradient.new()
-	g.offsets = PackedFloat32Array([0.0, 0.4, 0.7, 1.0])
-	g.colors = PackedColorArray([Color("#2a1840e6"), Color("#6b2448e0"), Color("#c2502ed9"), Color("#f2a24ad0")])
-	var tex := GradientTexture2D.new()
-	tex.gradient = g
-	tex.fill_from = Vector2(0, 0)
-	tex.fill_to = Vector2(0, 1)
-	tex.width = 4
-	tex.height = 256
-	var sky := TextureRect.new()
-	sky.texture = tex
-	sky.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	sky.stretch_mode = TextureRect.STRETCH_SCALE
-	sky.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	sky.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	return sky
-
-
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	theme = Style.make_theme()
-	add_child(_dawn_sky())
 	var root := VBoxContainer.new()
 	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	root.alignment = BoxContainer.ALIGNMENT_CENTER

@@ -9,6 +9,8 @@ const GROUND_NEAR := Color("#09070a")
 const TREES := Color("#0b090f")
 const HORIZON := 0.6   ## fraction of height
 
+## Dawn sky: purple through crimson and orange to a gold horizon; stars fade.
+var dawn := false
 var _stars: Array = []
 var _trees: Array = []
 var _t := 0.0
@@ -38,10 +40,17 @@ func _process(delta: float) -> void:
 func _draw() -> void:
 	var s := size
 	var hy := s.y * HORIZON
-	_quad(Vector2.ZERO, Vector2(s.x, hy), SKY_TOP, SKY_LOW)
+	if dawn:
+		var cols := [Color("#2a1840"), Color("#6b2448"), Color("#c2502e"), Color("#f2a24a")]
+		for i in 3:
+			_quad(Vector2(0, hy * i / 3.0), Vector2(s.x, hy * (i + 1) / 3.0), cols[i], cols[i + 1])
+	else:
+		_quad(Vector2.ZERO, Vector2(s.x, hy), SKY_TOP, SKY_LOW)
 	for st in _stars:
 		var tw: float = 0.65 + 0.35 * sin(_t * st[4] + st[3])
-		draw_circle(st[0] * s, st[1], Color(1.0, 0.94, 0.84, st[2] * tw))
+		var a: float = st[2] * tw * (0.25 if dawn and st[0].y < 0.3 else 0.0 if dawn else 1.0)
+		if a > 0.0:
+			draw_circle(st[0] * s, st[1], Color(1.0, 0.94, 0.84, a))
 	# Pine treeline: layered triangles along the horizon.
 	for tr in _trees:
 		var cx: float = tr[0] * s.x
