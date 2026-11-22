@@ -23,7 +23,6 @@ var dist := 0.0
 var world := Vector2.ZERO
 var slow := 0.0            ## 0..1, set by the battle from nearby slowing defenses
 var scorch_t := 0.0        ## Oath of Crossfire: time left scorched by a Mortar (Torches hit harder)
-var daze_t := 0.0          ## time left slowed by a Cinder Mortar hit
 var vine_t := 0.0          ## time left wrapped in the Forest Friend's vines
 var dead := false
 var zap_range := 0.0       ## >0: stops this close to the fire and zaps it

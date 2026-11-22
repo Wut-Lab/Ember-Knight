@@ -78,7 +78,6 @@ var _ap_timer := 1.2
 var _shift_ready := false  ## Oath of Shifting Embers: a move is available this prep
 var _shift_free := false   ## lull reward Adjustment: the next move costs nothing
 var _lull_rerolls := 0     ## lull reward Spare Luck: extra rerolls next prep
-var heat := 0.0            ## healing past full flame: soaks spirit hits this wave
 var banked := 0.0          ## Oath of the Banked Fire: + damage this wave (read by Defense, Char)
 var wards := 0             ## Ash Wards on the fire this wave, waiting to pulse
 var ward_t := 0.0          ## seconds left on the Ash Ward slow
@@ -233,7 +232,7 @@ func _start_prep() -> void:
 		var bd: Dictionary = Defs.SPIRITS[Run.boss_for(Run.night)]
 		_boss_bar.reserve(bd["name"], bd.get("bar_color", bd["color"]))
 	_boss_intro = false
-	mod = "" if ambush or boss_wave or wave == Defs.WAVES_PER_NIGHT - 1 else Defs.roll_wave_mod(Run.night, Run.rng)
+	mod = "" if ambush or boss_wave else Defs.roll_wave_mod(Run.night, Run.rng)
 	_swarm_lane = Run.rng.randi() % board.lane_count if mod == "swarmy" else -1
 	_update_hud()
 	if ambush:
@@ -332,7 +331,6 @@ func _wave_cleared() -> void:
 	wards = 0
 	ward_t = 0.0
 	banked = 0.0
-	heat = 0.0
 	AudioDirector.set_tension(false)
 	AudioDirector.end_boss_music()
 	wave += 1
@@ -535,9 +533,6 @@ func _process(delta: float) -> void:
 		if sp.vine_t > 0.0:   # wrapped by the Forest Friend's dryad
 			sp.vine_t -= delta
 			slow = maxf(slow, Defs.DRYAD_SLOW)
-		if sp.daze_t > 0.0:   # rattled by a Cinder Mortar
-			sp.daze_t -= delta
-			slow = maxf(slow, Defs.MORTAR_DAZE)
 		if ward_t > 0.0:   # Ash Ward stacks with the rest
 			slow = 1.0 - (1.0 - slow) * (1.0 - Defs.WARD_SLOW)
 		sp.slow = minf(slow, 1.0 - Defs.MIN_SPEED)
@@ -693,12 +688,7 @@ func _on_zapped(sp) -> void:
 func _hurt_fire(sp, sfx := "hurt") -> void:
 	if phase == Phase.DONE:
 		return
-	var dmg: float = sp.damage
-	if heat > 0.0:   # banked heat takes the hit first
-		var soak := minf(heat, dmg)
-		heat -= soak
-		dmg -= soak
-	Run.flame = maxf(0.0, Run.flame - dmg)
+	Run.flame = maxf(0.0, Run.flame - sp.damage)
 	char_unit.hurt()
 	_flame_bar.flash()
 	_add_fx("ring", Vector2.ZERO, Color("#8fa0ff"), 110.0)
@@ -979,19 +969,6 @@ func _target_at(local: Vector2, face: String) -> int:
 	return t if board.can_place(face, t) else -1
 
 
-## Heal from a fire face. What spills past full flame banks as heat (up to a
-## share of max flame) that soaks spirit hits this wave.
-func _heal_fire(amount: float) -> void:
-	var over := maxf(0.0, Run.flame + amount - Run.max_flame)
-	Run.flame = minf(Run.max_flame, Run.flame + amount)
-	if over > 0.0:
-		var cap := Run.max_flame * Defs.HEAT_CAP
-		var gain := minf(over, cap - heat)
-		if gain > 0.0:
-			heat += gain
-			_add_fx("text", Vector2(0, -140), Color("#ffd27a"), 100.0, "+%d heat" % roundi(gain))
-
-
 func _try_place(d, local: Vector2) -> bool:
 	if d == null or d.placed or d.is_rolling():
 		return false
@@ -1000,14 +977,14 @@ func _try_place(d, local: Vector2) -> bool:
 		return false
 	if target == -2 and d.face == "pine":
 		pine_logs += 1
-		_heal_fire(Run.pine_heal())
+		Run.flame = minf(Run.max_flame, Run.flame + Run.pine_heal())
 		_add_fx("ring", Vector2.ZERO, Color("#c98a4a"), 130.0)
 	elif target == -2 and d.face == "ward":
 		wards += 1
 		_add_fx("ring", Vector2.ZERO, Color("#b9a8d8"), 130.0)
 	elif target == -2:
 		char_unit.kindle_up()
-		_heal_fire(Run.kindle_heal())
+		Run.flame = minf(Run.max_flame, Run.flame + Run.kindle_heal())
 		_add_fx("ring", Vector2.ZERO, Color("#fff0b0"), 130.0)
 	elif target == -3:
 		_build_wall(d.levels)
