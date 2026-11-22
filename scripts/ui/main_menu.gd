@@ -290,7 +290,7 @@ func _unlocks_card() -> PanelContainer:
 func _unlock_row(id: String) -> Control:
 	var u: Dictionary = Defs.UNLOCKS[id]
 	var got := Profile.is_unlocked(id)
-	var info: Dictionary = Defs.OATHS.get(u["ref"], {}) if u["type"] == "oath" else Defs.DICE.get(u["ref"], {})
+	var info: Dictionary = Defs.OATHS.get(u["ref"], {}) if u["type"] == "oath" else (Defs.DICE.get(u["ref"], {}) if u["type"] == "die" else Defs.QUICK_REWARDS.get(u["ref"], {}))
 	var row := PanelContainer.new()
 	row.focus_mode = Control.FOCUS_ALL
 	row.mouse_entered.connect(row.grab_focus)

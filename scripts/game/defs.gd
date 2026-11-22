@@ -211,6 +211,8 @@ const UNLOCKS := {
 		"hint": "Survive night 1."},
 	"steady_hands": {"type": "oath", "ref": "steady_hands", "stat": "night_2_won", "goal": 1,
 		"hint": "Survive night 2."},
+	"heavy_support": {"type": "misc", "ref": "heavy_support", "stat": "night_3_won", "goal": 1,
+		"hint": "Survive night 3."},
 }
 
 const GATHERED_FLAME_DIE := "torch"   ## the die Gathered Flame counts
@@ -276,7 +278,15 @@ const QUICK_REWARDS := {
 	"spare_luck": {"name": "Spare Luck", "desc": "+2 rerolls for wave 3."},
 	"stoke": {"name": "Stoke", "desc": "Your defenses fire 25% faster in wave 3."},
 	"adjustment": {"name": "Adjustment", "desc": "Move one defense to another open tile, for free."},
+	"heavy_support": {"name": "Heavy Support Fire", "icon": "mortar",
+		"desc": "Wave 3: Char lobs mortar shots. +50% damage, a blast and double range, but slower shots."},
 }
+## Heavy Support Fire (unlockable lull reward): Char's wave-3 shots become mortar lobs.
+const LOCKED_QUICK := ["heavy_support"]
+const HEAVY_DAMAGE := 1.5
+const HEAVY_RATE := 0.6
+const HEAVY_RANGE := 2.0
+const HEAVY_SPLASH := 50.0
 const PERKS := {
 	"hone": {"name": "Hone", "desc": "%s: %s for the rest of the run."},
 	"steady_hand": {"name": "Steady Hand", "desc": "+1 reroll every wave for the rest of the run."},

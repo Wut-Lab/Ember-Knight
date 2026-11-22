@@ -44,6 +44,10 @@ func stats() -> Dictionary:
 		s["rate"] *= Defs.SIMPLICITY_RATE
 	if Run.flame < Run.max_flame * Defs.COMEBACK_AT:   # cornered, Char fights harder
 		s["rate"] *= Defs.COMEBACK_RATE
+	if battle.heavy:   # lull reward: Heavy Support Fire
+		s["damage"] *= Defs.HEAVY_DAMAGE
+		s["rate"] *= Defs.HEAVY_RATE
+		s["range"] *= Defs.HEAVY_RANGE
 	return s
 
 
@@ -86,7 +90,10 @@ func _process(delta: float) -> void:
 		var target = battle.pick_target(world, st["range"])
 		if target:
 			var muzzle := Vector2(0, -150.0 * size_k)
-			battle.shoot(world, muzzle, target, st["damage"] * (1.0 + battle.banked), "char")
+			if battle.heavy:
+				battle.shoot(world, muzzle, target, st["damage"] * (1.0 + battle.banked), "mortar", Defs.HEAVY_SPLASH)
+			else:
+				battle.shoot(world, muzzle, target, st["damage"] * (1.0 + battle.banked), "char")
 			_cool = 1.0 / (st["rate"] * (1.0 - chill))
 
 

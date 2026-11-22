@@ -82,6 +82,7 @@ var banked := 0.0          ## Oath of the Banked Fire: + damage this wave (read 
 var wards := 0             ## Ash Wards on the fire this wave, waiting to pulse
 var ward_t := 0.0          ## seconds left on the Ash Ward slow
 var pine_logs := 0         ## Pine Logs on the fire this wave (Torches reach farther; read by Defense)
+var heavy := false         ## lull reward Heavy Support Fire: Char lobs mortar shots (read by CharUnit)
 var stoked := false        ## lull reward Stoke: defenses fire faster (read by Defense)
 var boss_wave := false     ## this wave brings the leg's boss
 var _glare: ColorRect
@@ -363,6 +364,9 @@ func _wave_cleared() -> void:
 ## Pick 1 of LULL_QUICK quick-use rewards and 1 permanent one, then prep wave 3.
 func _show_lull() -> void:
 	var quick_ok := ["second_wind", "spare_luck", "stoke"]
+	for id in Defs.LOCKED_QUICK:
+		if Profile.is_unlocked(id):
+			quick_ok.append(id)
 	if not defenses.is_empty() and board.tile_defense.has(null):
 		quick_ok.append("adjustment")
 	var hone_kinds := []
@@ -446,6 +450,8 @@ func _take_lull(o: Dictionary) -> void:
 				_lull_rerolls = Defs.LULL_REROLLS
 			"stoke":
 				stoked = true
+			"heavy_support":
+				heavy = true
 			"adjustment":
 				_shift_free = true
 	_update_hud()
