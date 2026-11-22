@@ -176,7 +176,28 @@ const OATHS := {
 		"short": "A dryad wanders the trails, slowing and stinging spirits.",
 		"desc": "A dryad joins the camp and wanders the trails all night.\n\nWhen she touches a spirit, vines wrap it: 2 damage and 30% slower for 2s. Each spirit can be touched once every 1.5s.",
 	},
+	"dawn_offerings": {
+		"name": "Oath of Dawn Offerings",
+		"rarity": "rare",
+		"icon": "sunrise",
+		"short": "Once each dawn, pay 5 flame and 3 Essence to reroll the offerings.",
+		"desc": "The sunrise can be bargained with.\n\nOnce each dawn, you may spend 5 flame and 3 Essence to reroll the dice and Oaths still on offer.",
+	},
 }
+## Oaths that only reach the Dawn Offerings once unlocked (Defs.UNLOCKS).
+const LOCKED_OATHS := ["dawn_offerings"]
+const DAWN_REROLL_FLAME := 5.0   ## Oath of Dawn Offerings: reroll cost
+const DAWN_REROLL_ESSENCE := 3
+
+## Unlockables shown in the main menu's Unlocks list, grouped by "type"
+## (oath, die, misc; listed in that order). Each counts a Profile stat up to
+## "goal"; "ref" is the Oath or die id it unlocks.
+const UNLOCK_TYPES := [["oath", "Oaths"], ["die", "Dice"], ["misc", "Misc"]]
+const UNLOCKS := {
+	"dawn_offerings": {"type": "oath", "ref": "dawn_offerings", "stat": "dawn_skips", "goal": 10,
+		"hint": "Skip 10 Dawn Offerings."},
+}
+
 const GATHERED_FLAME_DIE := "torch"   ## the die Gathered Flame counts
 const HEALTHY_NIGHTS_MAX := 4.0  ## Oath of Healthy Nights: cap on the bonus heal
 const ASH_BUCKET_HEAL := 1.0     ## Oath of Ash Buckets: flame per unused Ashes
@@ -320,7 +341,7 @@ static func dawn_dice(rng: RandomNumberGenerator, dice_owned: Array) -> Array:
 static func dawn_oaths(rng: RandomNumberGenerator, oaths_owned: Array, night_idx: int) -> Array:
 	var left := []
 	for id in OATHS:
-		if not id in oaths_owned:
+		if not id in oaths_owned and (not id in LOCKED_OATHS or Profile.is_unlocked(id)):
 			left.append(id)
 	var out := []
 	while out.size() < DAWN_OATHS and not left.is_empty():

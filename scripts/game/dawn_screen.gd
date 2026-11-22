@@ -43,6 +43,8 @@ func _ready() -> void:
 	_root = root
 	_row("A NEW DIE  ·  TAKE ONE", "die", Defs.dawn_dice(Run.rng, Run.pool))
 	_row("AN OATH  ·  SWEAR ONE", "oath", Defs.dawn_oaths(Run.rng, Run.oaths, Run.night))
+	if Run.has_oath("dawn_offerings") and not _rows.is_empty():
+		_add_reroll()
 	_status = Label.new()
 	_status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_status.add_theme_color_override("font_color", Style.MUTE)
@@ -61,6 +63,8 @@ var _root: VBoxContainer
 var _status: Label
 var _rows := []        ## [{kind, cards: [Button], done}]
 var _left := 0         ## rows still to choose in
+var _reroll: Button
+var _rerolled := false
 
 
 ## One row of offerings (2 cards) plus a Skip card worth SKIP_FLAME flame.
@@ -78,10 +82,20 @@ func _row(title: String, kind: String, ids: Array) -> void:
 	row.add_theme_constant_override("separation", 18)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_root.add_child(row)
-	var r := {"kind": kind, "cards": [], "ids": ids, "done": false}
-	for id in ids:
+	var r := {"kind": kind, "cards": [], "ids": ids, "done": false, "box": row}
+	_fill(r)
+	_rows.append(r)
+	_left += 1
+
+
+## (Re)builds a row's cards from r["ids"], plus the Skip card.
+func _fill(r: Dictionary) -> void:
+	for c in r["cards"]:
+		c.queue_free()
+	r["cards"] = []
+	for id in r["ids"]:
 		var card: Button
-		if kind == "die":
+		if r["kind"] == "die":
 			card = ChoiceCard.make(Defs.DICE[id]["name"], "New die:  " + _tally(Defs.DICE[id]["faces"]), 300.0)
 		else:
 			var o: Dictionary = Defs.OATHS[id]
@@ -90,15 +104,50 @@ func _row(title: String, kind: String, ids: Array) -> void:
 			_tint(card, rar["color"])
 		card.custom_minimum_size.y = 118
 		card.pressed.connect(_choose.bind(r, card, id))
-		row.add_child(card)
+		r["box"].add_child(card)
 		r["cards"].append(card)
 	var skip := ChoiceCard.make("Skip", "+%d flame" % roundi(Defs.SKIP_FLAME), 170.0)
 	skip.custom_minimum_size.y = 118
 	skip.pressed.connect(_choose.bind(r, skip, ""))
-	row.add_child(skip)
+	r["box"].add_child(skip)
 	r["cards"].append(skip)
-	_rows.append(r)
-	_left += 1
+
+
+## Oath of Dawn Offerings: once a dawn, pay flame and Essence to reroll
+## every row not yet chosen in.
+func _add_reroll() -> void:
+	_reroll = Button.new()
+	_reroll.text = "Reroll offerings  (%d flame, %d Essence)" % [roundi(Defs.DAWN_REROLL_FLAME), Defs.DAWN_REROLL_ESSENCE]
+	_reroll.custom_minimum_size = Vector2(380, 50)
+	_reroll.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	_reroll.pressed.connect(_do_reroll)
+	_root.add_child(_reroll)
+	_update_reroll()
+
+
+func _update_reroll() -> void:
+	if _reroll:
+		_reroll.disabled = _rerolled or _left <= 0 or Run.flame <= Defs.DAWN_REROLL_FLAME \
+			or Profile.essence < Defs.DAWN_REROLL_ESSENCE
+
+
+func _do_reroll() -> void:
+	if _reroll.disabled or not Profile.spend_essence(Defs.DAWN_REROLL_ESSENCE):
+		return
+	_rerolled = true
+	Run.flame -= Defs.DAWN_REROLL_FLAME
+	for r in _rows:
+		if r["done"]:
+			continue
+		r["ids"] = Defs.dawn_dice(Run.rng, Run.pool) if r["kind"] == "die" else Defs.dawn_oaths(Run.rng, Run.oaths, Run.night)
+		_fill(r)
+	AudioDirector.play_sfx("chime", -4.0)
+	_update_status()
+	_update_reroll()
+	for r in _rows:
+		if not r["done"]:
+			r["cards"][0].grab_focus.call_deferred()
+			break
 
 
 ## Colour an Oath card's title by its rarity.
@@ -113,6 +162,7 @@ func _choose(r: Dictionary, card: Button, id: String) -> void:
 	r["done"] = true
 	_left -= 1
 	if id == "":
+		Profile.add_stat("dawn_skips")
 		Run.flame = minf(Run.max_flame, Run.flame + Defs.SKIP_FLAME)
 	elif r["kind"] == "die":
 		Run.pool.append(id)
@@ -123,6 +173,7 @@ func _choose(r: Dictionary, card: Button, id: String) -> void:
 		c.modulate = Color(1, 1, 1, 1.0 if c == card else 0.35)
 	AudioDirector.play_sfx("chime", -4.0)
 	_update_status()
+	_update_reroll()
 	for o in _rows:   # move focus to the next open row
 		if not o["done"]:
 			o["cards"][0].grab_focus()

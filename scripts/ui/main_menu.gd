@@ -1,14 +1,17 @@
 extends Control
 ## Main menu: Play, Unlocks, Options, Credits in one centred column,
 ## with Continue on top when a saved run exists.
-## Play starts a run; Options holds the volume sliders; Unlocks opens an
-## "Under Construction" card;
+## Play starts a run; Options holds the volume sliders; Unlocks lists what
+## can be unlocked (silhouette until earned, a hint and progress beside it);
 ## Credits lists who made the game. Every card has
 ## a Back button, and Esc / gamepad B also goes back.
 
 const Style := preload("res://scripts/ui/ui_style.gd")
 const EssenceTracker := preload("res://scripts/ui/essence_tracker.gd")
 const VolumeSliders := preload("res://scripts/ui/volume_sliders.gd")
+const Defs := preload("res://scripts/game/defs.gd")
+const Icons := preload("res://scripts/game/icons.gd")
+const DrawProxy := preload("res://scripts/ui/draw_proxy.gd")
 
 signal play_requested
 
@@ -16,9 +19,7 @@ const ITEMS := ["Play", "Unlocks", "Options", "Credits"]
 const BUTTON_SIZE := Vector2(320, 60)
 
 ## Title of the card + one line under "Under Construction".
-const PLACEHOLDERS := {
-	"Unlocks": ["Unlocks", "Caravan unlockables will live here."],
-}
+const PLACEHOLDERS := {}
 
 const CREDITS := [
 	["Game design & direction", "[Your name]"],
@@ -111,6 +112,8 @@ func _on_pick(item: String) -> void:
 		play_requested.emit()
 	elif item == "Credits":
 		_open_card(_credits_card())
+	elif item == "Unlocks":
+		_open_card(_unlocks_card())
 	elif item == "Options":
 		_open_card(_options_card())
 	else:
@@ -237,3 +240,114 @@ func _credits_card() -> PanelContainer:
 	box.add_child(grid)
 	_add_back(box)
 	return parts[0]
+
+
+# ------------------------------------------------------------ unlocks
+## Back on top and bottom; between them a scrolling list grouped by type
+## (Oaths, Dice, Misc). Each row: the item's image (a silhouette until
+## unlocked) on the left; its name, unlock hint and progress on the right.
+func _unlocks_card() -> PanelContainer:
+	var parts := _base_card("Unlocks")
+	var card: PanelContainer = parts[0]
+	var box: VBoxContainer = parts[1]
+	card.custom_minimum_size.x = 640
+	var top := Button.new()
+	top.text = "Back"
+	top.custom_minimum_size = Vector2(200, 48)
+	top.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	top.pressed.connect(_close_card)
+	box.add_child(top)
+	var scroll := ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.follow_focus = true
+	scroll.custom_minimum_size = Vector2(600, maxf(180.0, size.y * 0.73 - 345.0))
+	box.add_child(scroll)
+	var list := VBoxContainer.new()
+	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	list.add_theme_constant_override("separation", 10)
+	scroll.add_child(list)
+	for t in Defs.UNLOCK_TYPES:
+		var h := Label.new()
+		h.text = t[1].to_upper()
+		h.add_theme_color_override("font_color", Style.MUTE)
+		h.add_theme_font_size_override("font_size", 16)
+		list.add_child(h)
+		var n := 0
+		for id in Defs.UNLOCKS:
+			if Defs.UNLOCKS[id]["type"] == t[0]:
+				list.add_child(_unlock_row(id))
+				n += 1
+		if n == 0:
+			var none := Label.new()
+			none.text = "Nothing here yet."
+			none.add_theme_color_override("font_color", Style.MUTE)
+			none.add_theme_font_size_override("font_size", 18)
+			list.add_child(none)
+	_add_back(box)
+	return card
+
+
+func _unlock_row(id: String) -> Control:
+	var u: Dictionary = Defs.UNLOCKS[id]
+	var got := Profile.is_unlocked(id)
+	var info: Dictionary = Defs.OATHS.get(u["ref"], {}) if u["type"] == "oath" else Defs.DICE.get(u["ref"], {})
+	var row := PanelContainer.new()
+	row.focus_mode = Control.FOCUS_ALL
+	row.mouse_entered.connect(row.grab_focus)
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0, 0, 0, 0.25)
+	sb.set_corner_radius_all(8)
+	sb.set_content_margin_all(10)
+	row.add_theme_stylebox_override("panel", sb)
+	var focus_sb := sb.duplicate()
+	focus_sb.border_color = Style.ACCENT
+	focus_sb.set_border_width_all(2)
+	row.add_theme_stylebox_override("focus", focus_sb)
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override("separation", 16)
+	row.add_child(h)
+	var px := 76.0
+	var ic := DrawProxy.new()
+	ic.custom_minimum_size = Vector2(px, px)
+	ic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var col: Color = Defs.RARITY[info.get("rarity", "common")]["color"] if got else Color("#0b0810")
+	ic.draw_fn = func(ci: CanvasItem):
+		ci.draw_circle(Vector2(px, px) / 2, px * 0.48, Color(1, 1, 1, 0.06) if not got else Color(0, 0, 0, 0.3))
+		Icons.draw(ci, info.get("icon", "rune"), Vector2(px, px) / 2, px * 0.85, col)
+	h.add_child(ic)
+	var text := VBoxContainer.new()
+	text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	text.alignment = BoxContainer.ALIGNMENT_CENTER
+	text.add_theme_constant_override("separation", 4)
+	h.add_child(text)
+	var name := Label.new()
+	name.text = info.get("name", id) if got else "???"
+	name.add_theme_font_size_override("font_size", 22)
+	if got:
+		name.add_theme_color_override("font_color", col)
+	text.add_child(name)
+	var hint := Label.new()
+	hint.text = u["hint"]
+	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	hint.add_theme_font_size_override("font_size", 18)
+	hint.add_theme_color_override("font_color", Style.MUTE)
+	text.add_child(hint)
+	var goal := int(u.get("goal", 1))
+	if got:
+		var done := Label.new()
+		done.text = "Unlocked"
+		done.add_theme_font_size_override("font_size", 16)
+		done.add_theme_color_override("font_color", Color("#8fd17f"))
+		text.add_child(done)
+	elif goal > 1:
+		var have := mini(Profile.stat(u["stat"]), goal)
+		var bar := DrawProxy.new()
+		bar.custom_minimum_size = Vector2(0, 22)
+		bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		bar.draw_fn = func(ci: Control):
+			var w := minf(ci.size.x - 70.0, 300.0)
+			ci.draw_rect(Rect2(0, 6, w, 10), Color(1, 1, 1, 0.1))
+			ci.draw_rect(Rect2(0, 6, w * have / goal, 10), Style.ACCENT)
+			ci.draw_string(Style.BODY_FONT, Vector2(w + 10, 17), "%d / %d" % [have, goal], HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Style.MUTE)
+		text.add_child(bar)
+	return row

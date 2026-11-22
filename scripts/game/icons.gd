@@ -11,6 +11,7 @@ extends RefCounted
 ##   hearth -> flame cradled in a heart (Hearth-Bound)
 ##   beacon -> Guide Light lantern with a crown of rays (Bright Beacon)
 ##   ash_heal -> ash heap with a small plus (Healing Ash)
+##   sunrise -> half a sun on the horizon (Oath of Dawn Offerings)
 ##   essence -> blue orb with a flame (the Essence currency; `t` waves the flame)
 
 
@@ -52,6 +53,16 @@ static func draw(ci: CanvasItem, kind: String, c: Vector2, s: float, col: Color,
 			for a in [-0.3, -0.15, 0.0, 0.15, 0.3]:
 				var d := Vector2.from_angle(-PI * 0.5 + a * PI)
 				ci.draw_line(c + d * s * 0.36, c + d * s * 0.48, col, s * 0.05, true)
+		"sunrise":   # half a sun on the horizon, with rays
+			var hc := c + Vector2(0, s * 0.16)
+			var pts := PackedVector2Array()
+			for k in 17:
+				pts.append(hc + Vector2.from_angle(PI + PI * k / 16.0) * s * 0.26)
+			ci.draw_colored_polygon(pts, col)
+			for a in [0.1, 0.3, 0.5, 0.7, 0.9]:
+				var d := Vector2.from_angle(PI + PI * a)
+				ci.draw_line(hc + d * s * 0.33, hc + d * s * 0.45, col, s * 0.06, true)
+			ci.draw_line(hc + Vector2(-s * 0.46, s * 0.04), hc + Vector2(s * 0.46, s * 0.04), col, s * 0.06, true)
 		"pine":   # a log end-on at the left, with a pine sprig on top
 			var r := Rect2(c + Vector2(-s * 0.36, -s * 0.06), Vector2(s * 0.72, s * 0.3))
 			ci.draw_rect(r, col)
