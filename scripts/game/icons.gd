@@ -2,7 +2,8 @@ extends RefCounted
 ## Simple vector icons for dice faces and cards, drawn on any CanvasItem.
 ##   bolt   -> ember arrow (Ember Lantern)
 ##   flare  -> flame (Brazier)
-##   ward   -> rune diamond (Rune Stone)
+##   rune   -> rune diamond (Rune Stone)
+##   ward   -> parchment scroll (Ash Ward)
 ##   torch  -> flame (Torch)
 ##   vent   -> steam wisps (Steam Vent)
 ##   kindle -> star (Kindle Char)
@@ -19,8 +20,10 @@ static func draw(ci: CanvasItem, kind: String, c: Vector2, s: float, col: Color,
 			_bolt(ci, c, s, col)
 		"flare", "torch":
 			_flame(ci, c, s, col)
-		"ward":
+		"rune":
 			_rune(ci, c, s, col)
+		"ward":
+			_parchment(ci, c, s, col)
 		"vent":
 			_steam(ci, c, s, col)
 		"kindle":
@@ -167,6 +170,18 @@ static func _rune(ci: CanvasItem, c: Vector2, s: float, col: Color) -> void:
 	ci.draw_line(c + Vector2(0, -r * 0.55), c + Vector2(0, r * 0.55), col, s * 0.08, true)
 	ci.draw_line(c + Vector2(-r * 0.3, -r * 0.15), c + Vector2(0, r * 0.15), col, s * 0.07, true)
 	ci.draw_line(c + Vector2(r * 0.3, -r * 0.15), c + Vector2(0, r * 0.15), col, s * 0.07, true)
+
+
+static func _parchment(ci: CanvasItem, c: Vector2, s: float, col: Color) -> void:
+	var w := s * 0.5
+	var h := s * 0.62
+	var line := s * 0.06
+	ci.draw_rect(Rect2(c - Vector2(w * 0.5, h * 0.5), Vector2(w, h)), col, false, line)
+	for y in [-h * 0.5, h * 0.5]:   # rolled ends
+		ci.draw_line(c + Vector2(-w * 0.62, y), c + Vector2(w * 0.62, y), col, s * 0.11, true)
+	for i in 3:   # lines of writing
+		var y := -h * 0.22 + i * h * 0.22
+		ci.draw_line(c + Vector2(-w * 0.3, y), c + Vector2(w * (0.3 if i < 2 else 0.05), y), col, s * 0.045, true)
 
 
 static func _star(ci: CanvasItem, c: Vector2, s: float, col: Color) -> void:

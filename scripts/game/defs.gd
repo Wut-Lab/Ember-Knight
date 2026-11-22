@@ -144,7 +144,7 @@ const OATHS := {
 	"immortals": {
 		"rarity": "unique",
 		"name": "Oath of the Immortals",
-		"icon": "ward",
+		"icon": "rune",
 		"short": "Char's kills have a 33% chance to heal 5.",
 		"desc": "What Char burns away feeds his flame.\n\nEach spirit Char banishes himself has a 33% chance to heal 5 flame.",
 	},
