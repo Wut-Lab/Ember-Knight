@@ -166,6 +166,12 @@ func _build_layout() -> void:
 			continue
 		if not links.is_empty() or not Defs.has_forks(stop):
 			return
+	# Every attempt failed (a lake that found no dock): keep the last layout
+	# playable rather than leave its tiles without defense slots.
+	if tile_defense.size() < tiles.size():
+		while tile_defense.size() < tiles.size():
+			tile_defense.append(null)
+		group_count = (tiles.size() + 2) / 3
 
 
 func _build_once(r: RandomNumberGenerator) -> bool:
