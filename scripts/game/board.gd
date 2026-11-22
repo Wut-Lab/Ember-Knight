@@ -1253,7 +1253,7 @@ func _draw() -> void:
 				if last != Vector2.INF:
 					draw_line(proj(last), proj(q), wc, 7.0 * view_scale)
 				last = q
-	if glow_face in ["kindle", "pine"]:
+	if glow_face in ["kindle", "pine", "ward"]:
 		var gc := Color("#fff0b0")
 		gc.a = 0.35 + 0.4 * pulse + (0.25 if hover_tile == -2 else 0.0)
 		_ring(Vector2.ZERO, 92.0 * view_scale, 92.0 * view_scale * K, gc, 4.0 * view_scale)
