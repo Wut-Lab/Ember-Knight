@@ -726,7 +726,7 @@ static func wave_spirits(night: int, wave: int, stop: String, rng: RandomNumberG
 ## night AND each wave, so wave 1 is gentle and wave 3 tends to overrun Char.
 ## Night 1: 1.15 / 0.95 / 0.75.
 const SPAWN_GAP := 1.15
-const SPAWN_GAP_PER_NIGHT := 0.12
+const SPAWN_GAP_PER_NIGHT := 0.06
 const SPAWN_GAP_PER_WAVE := 0.2
 const SPAWN_GAP_MIN := 0.55
 
