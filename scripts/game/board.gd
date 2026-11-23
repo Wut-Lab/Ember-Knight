@@ -1360,7 +1360,8 @@ func _slab_shape(i: int) -> Dictionary:
 	var edge := PackedVector2Array()
 	for k in n:
 		var a := rot + TAU * (k + r.randf_range(-0.25, 0.25)) / n
-		edge.append(Vector2.from_angle(a) * TILE_RADIUS * r.randf_range(0.86, 1.06))
+		var lump := r.randf_range(0.95, 1.02) if stop == "lake" else r.randf_range(0.86, 1.06)
+		edge.append(Vector2.from_angle(a) * TILE_RADIUS * lump)
 	var cracks := []
 	for k in r.randi_range(1, 2):
 		var p0: Vector2 = edge[r.randi() % n] * 0.78
@@ -1370,14 +1371,23 @@ func _slab_shape(i: int) -> Dictionary:
 			line.append(line[line.size() - 1] + dir.rotated(r.randf_range(-0.5, 0.5)) * TILE_RADIUS * r.randf_range(0.14, 0.24))
 		cracks.append(line)
 	var moss := []
-	if r.randf() < 0.4:
+	if r.randf() < {"hill": 0.75, "cliff": 0.55, "lake": 0.0}.get(stop, 0.4):
 		var at := Vector2.from_angle(r.randf() * TAU) * TILE_RADIUS * 0.62
 		for k in r.randi_range(3, 5):
 			moss.append([at + Vector2(r.randf_range(-9, 9), r.randf_range(-6, 6)), r.randf_range(2.5, 5.0)])
 	var ember = null
 	if r.randf() < 0.18:
 		ember = Vector2.from_angle(r.randf() * TAU) * TILE_RADIUS * r.randf_range(0.2, 0.6)
-	return {"edge": edge, "cracks": cracks, "moss": moss, "ember": ember}
+	return {"edge": edge, "cracks": cracks, "moss": moss, "ember": ember, "rot": rot}
+
+
+## Tile look per map: [side dark, side lit, top dark, top lit, moss dark, moss lit].
+const SLAB_LOOK := {
+	"road": ["#2e2725", "#6b5b4f", "#463c37", "#93806f", "#3e4a22", "#6d7d34"],   # warm fieldstone
+	"cliff": ["#262a30", "#56606a", "#3a4048", "#8a939c", "#6b6a4c", "#aaa77a"],  # cold slate, pale lichen
+	"hill": ["#2b2a22", "#5b5844", "#3d3c2f", "#837d5f", "#3d5222", "#73923a"],   # weathered, mossy
+	"lake": ["#2a1d14", "#5e4430", "#3e2b1d", "#8a6644", "", ""],                # wooden decking
+}
 
 
 func _draw_slab(i: int, w: Vector2, lit: float) -> void:
@@ -1395,9 +1405,13 @@ func _draw_slab(i: int, w: Vector2, lit: float) -> void:
 		side.append(q)
 		shadow.append(q + Vector2(2.0, 5.0) * view_scale)
 		top.append(proj(w + e * 0.86) + up)
+	var look: Array = SLAB_LOOK.get(stop, SLAB_LOOK["road"])
 	draw_colored_polygon(shadow, Color(0, 0, 0, 0.45))
-	draw_colored_polygon(side, Color("#2e2725").lerp(Color("#6b5b4f"), lit))
-	draw_colored_polygon(top, Color("#463c37").lerp(Color("#93806f"), lit))
+	draw_colored_polygon(side, Color(look[0]).lerp(Color(look[1]), lit))
+	draw_colored_polygon(top, Color(look[2]).lerp(Color(look[3]), lit))
+	if stop == "lake":
+		_draw_planks(S, w, up, lit)
+		return
 	var hi := PackedVector2Array()   # a paler worn patch on the top face
 	for e in S["edge"]:
 		hi.append(proj(w + e * 0.5 + Vector2(-6, -4)) + up)
@@ -1409,11 +1423,43 @@ func _draw_slab(i: int, w: Vector2, lit: float) -> void:
 			pts.append(proj(w + e) + up)
 		draw_polyline(pts, crack_c, 1.4 * view_scale, true)
 	for m in S["moss"]:
-		var mc := Color("#3e4a22").lerp(Color("#6d7d34"), lit)
+		var mc := Color(look[4]).lerp(Color(look[5]), lit)
 		_ellipse_xy(proj(w + m[0]) + up, m[1] * view_scale, m[1] * view_scale * K, mc)
 	if S["ember"] != null:
 		var ec := Color("#ff8a3a", 0.5 + 0.35 * sin(_t * 2.3 + i))
 		draw_circle(proj(w + S["ember"]) + up, 1.8 * view_scale, ec)
+
+
+## Lakeside tiles are little wooden decks: planks with dark seams and nails.
+func _draw_planks(S: Dictionary, w: Vector2, up: Vector2, lit: float) -> void:
+	var poly := PackedVector2Array()
+	for e in S["edge"]:
+		poly.append(e * 0.86)
+	var u := Vector2.from_angle(S["rot"])
+	var v := u.orthogonal()
+	var seam := Color("#1c130c", 0.8)
+	var nail := Color("#c8b9a0", 0.5 * lit + 0.15)
+	var k := 0
+	var t := -TILE_RADIUS
+	while t <= TILE_RADIUS:
+		var cut := PackedVector2Array([v * t - u * TILE_RADIUS * 1.2, v * t + u * TILE_RADIUS * 1.2])
+		for seg in Geometry2D.intersect_polyline_with_polygon(cut, poly):
+			var a: Vector2 = seg[0]
+			var b: Vector2 = seg[seg.size() - 1]
+			draw_line(proj(w + a) + up, proj(w + b) + up, seam, 1.6 * view_scale, true)
+			if k % 2 == 0:   # nails along the plank's ends, just inside the seam
+				for q in [a.lerp(b, 0.12), b.lerp(a, 0.12)]:
+					draw_circle(proj(w + q + v * 6.0) + up, 1.3 * view_scale, nail)
+		# a lighter grain streak on every other plank
+		if k % 2 == 1:
+			var g := PackedVector2Array([v * (t - 7.0) - u * TILE_RADIUS * 1.2, v * (t - 7.0) + u * TILE_RADIUS * 1.2])
+			for seg in Geometry2D.intersect_polyline_with_polygon(g, poly):
+				draw_line(proj(w + seg[0] * 0.9) + up, proj(w + seg[seg.size() - 1] * 0.9) + up,
+					Color(1, 0.9, 0.7, 0.07 * lit), 2.0 * view_scale, true)
+		t += 15.0
+		k += 1
+	if S["ember"] != null:
+		draw_circle(proj(w + S["ember"]) + up, 1.8 * view_scale, Color("#ff8a3a", 0.5 + 0.35 * sin(_t * 2.3)))
 
 
 func _draw_forks(pulse: float) -> void:
