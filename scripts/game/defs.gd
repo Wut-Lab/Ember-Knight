@@ -44,8 +44,8 @@ const DICE := {
 	"bombardment": {"name": "Bombardment Die", "faces": ["mortar+", "ashes", "vent+", "kindle", "ashes", "mortar+"]},
 	## Forge Die: two Bellows to drive a patch of Torches and Vents.
 	"forge": {"name": "Forge Die", "faces": ["bellows", "torch", "vent", "ashes", "torch", "bellows"]},
-	## Kiln Die: two Ember Braziers to set a patch of Torches and Mortars smouldering.
-	"kiln": {"name": "Kiln Die", "faces": ["brazier", "torch", "mortar", "ashes", "torch", "brazier"]},
+	## Fire Support Die: no attackers at all, only patch buffs (opposite faces match).
+	"fire_support": {"name": "Fire Support Die", "faces": ["guide", "bellows", "brazier", "brazier", "bellows", "guide"]},
 }
 
 ## A "+" face ("torch+") acts as its base face but adds two levels at once;
