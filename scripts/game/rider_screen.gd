@@ -141,4 +141,5 @@ func _set_out() -> void:
 	Run.riders = _picked.duplicate()
 	Run.riders_picked = true
 	Profile.set_riders(_picked)
+	Run.apply_loadout()   # Simon, the Smith forges now
 	done.emit()

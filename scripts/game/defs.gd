@@ -257,6 +257,7 @@ const LAMP_EVERY := 4.0     ## seconds between rings
 const LAMP_DAMAGE := 1.0    ## each shot's damage, as a share of Char's
 const LAMP_RANGE := 0.75    ## reach, as a share of the farthest trail start
 const LAMP_TURN := PI / 8.0 ## the ring turns this much each volley
+const SMITH_FACES := ["torch", "vent", "mortar", "wall"]   ## Simon, the Smith: faces he can forge a "+" onto
 const HOUND_SCARES := 1   ## Hella, the Caravan Hound: Wisps she scares off each wave
 const COOK_HEAL := 5.0   ## Carson, the Cook: his own heal at each dawn
 const CARAVAN := {
@@ -270,8 +271,8 @@ const CARAVAN := {
 		"desc": "Scares off the first Wisp to reach the fire each wave, back to the start of a random lane. Bosses ignore her."},
 	"lamplighter": {"name": "Leopold, the Lamplighter", "role": "Synergy", "icon": "guide", "cost": 90,
 		"desc": "A Lit Lamp beside Char fires a ring of 8 white shots every few seconds."},
-	"smith": {"name": "Smith", "role": "Power", "icon": "smith", "cost": 120,
-		"desc": "Start the run with one die face turned into its \"+\" version."},
+	"smith": {"name": "Simon, the Smith", "role": "Power", "icon": "smith", "cost": 120,
+		"desc": "Forges one random face on one of your dice into its \"+\" version for the run."},
 }
 
 const GATHERED_FLAME_DIE := "torch"   ## the die Gathered Flame counts

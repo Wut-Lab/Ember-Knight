@@ -294,6 +294,8 @@ func _start_prep() -> void:
 		_hint.text += "   " + _shift_hint()
 	if built > 0:
 		_hint.text += "   %s built %s from spare parts." % [Defs.CARAVAN["tinker"]["name"], "a free reroll" if built == 1 else "%d free rerolls" % built]
+	if Run.night == 0 and wave == 0 and Run.forge_text() != "":
+		_hint.text += "   Simon, the Smith forged a %s." % Run.forge_text()
 	if not _carl_lanes.is_empty():
 		_hint.text += "   Carl's ears twitch toward %s." % ("the glowing trail" if _carl_lanes.size() == 1 else "the glowing trails")
 	elif not _planned.is_empty():

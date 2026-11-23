@@ -9,6 +9,7 @@ var flame := Defs.MAX_FLAME
 var max_flame := Defs.MAX_FLAME
 var pool: Array = []           ## die kinds owned this run (Defs.DICE ids, repeats allowed)
 var loadout: Array = []        ## die kinds in tonight's slots (Defs.LOADOUT_SIZE)
+var forged: Array = []         ## Simon, the Smith: [die id, face index] forged "+" this run
 var dice: Array = []           ## tonight's dice as face lists, built from the loadout
 var oaths: Array = []          ## Defs.OATHS ids sworn this run
 var stop_options: Array = []   ## per night: the stop_ids on offer
@@ -68,6 +69,7 @@ func new_run() -> void:
 	riders.clear()
 	riders_picked = false
 	spare_parts = 0
+	forged = []
 	gates = Defs.GATES_FREE
 	shrine_seen = false
 	shrine_curse = false
@@ -83,6 +85,41 @@ func apply_loadout() -> void:
 	dice.clear()
 	for id in loadout:
 		dice.append(Array(Defs.DICE[id]["faces"]).duplicate())
+	_apply_forge()
+
+
+## Simon, the Smith: one random face on one of the run's dice gets a "+".
+## Picked once; picked again only if that die leaves the loadout.
+func _apply_forge() -> void:
+	if not has_rider("smith"):
+		return
+	if forged.size() != 2 or not forged[0] in loadout or not _forgeable(Defs.DICE[forged[0]]["faces"][int(forged[1])]):
+		var options := []
+		for id in loadout:
+			var faces: Array = Defs.DICE[id]["faces"]
+			for j in faces.size():
+				if _forgeable(faces[j]) and not [id, j] in options:
+					options.append([id, j])
+		if options.is_empty():
+			forged = []
+			return
+		forged = options[rng.randi() % options.size()]
+	var k: int = loadout.find(forged[0])
+	dice[k][int(forged[1])] += "+"
+
+
+static func _forgeable(f: String) -> bool:
+	return Defs.base_face(f) in Defs.SMITH_FACES and Defs.face_levels(f) < 3
+
+
+## "Torch+ on an Ember Die", for the hint.
+func forge_text() -> String:
+	if forged.size() != 2:
+		return ""
+	var f: String = Defs.DICE[forged[0]]["faces"][int(forged[1])] + "+"
+	var die: String = Defs.DICE[forged[0]]["name"]
+	return "%s%s on %s %s" % [Defs.FACE_INFO[Defs.base_face(f)]["name"], "+".repeat(Defs.face_levels(f) - 1),
+		"an" if die[0] in "AEIOU" else "a", die]
 
 
 func owned(id: String) -> int:
@@ -204,7 +241,7 @@ const SAVE_PATH := "user://run.save"
 const SAVE_KEYS := ["night", "flame", "max_flame", "stop_options", "chosen_stops",
 	"spirits_banished", "nights_survived"]
 ## Newer keys: older saves load without them.
-const EXTRA_KEYS := ["bonus_rerolls", "shrine_seen", "gates", "spare_parts"]
+const EXTRA_KEYS := ["bonus_rerolls", "shrine_seen", "gates", "spare_parts", "forged"]
 
 var resume := false   ## set by the menu's Continue; read by the run screen
 var _checkpoint := {}
@@ -223,7 +260,7 @@ func checkpoint() -> void:
 	_checkpoint["night_flames"] = night_flames.duplicate()
 	_checkpoint["riders"] = riders.duplicate()
 	for k in EXTRA_KEYS:
-		_checkpoint[k] = get(k)
+		_checkpoint[k] = get(k).duplicate() if get(k) is Array else get(k)
 	# The RNG is saved too, so Save and Quit can't reroll anything (fog, ambush,
 	# wave modifiers, spawns, dice). Strings: JSON would round 64-bit ints.
 	_checkpoint["rng_seed"] = str(rng.seed)
@@ -278,6 +315,8 @@ func load_run() -> bool:
 	bosses = Array(d.get("bosses", []))
 	riders = Array(d.get("riders", []))
 	spare_parts = int(d.get("spare_parts", 0))
+	forged = Array(d.get("forged", []))
+	apply_loadout()   # again, now riders and the Smith's forge are known
 	riders_picked = true
 	shrine_seen = bool(d.get("shrine_seen", false))
 	shrine_curse = false
