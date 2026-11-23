@@ -85,6 +85,9 @@ var _shift_ready := false  ## Oath of Shifting Embers: a move is available this 
 var _shift_free := false   ## lull reward Adjustment: the next move costs nothing
 var _parts_view: Control     ## Terry, the Tinker: cog + pips above the Roll button
 var _parts_pulse := 0.0
+var _hella_left := 0          # Hella, the Caravan Hound: scares left this wave
+var _hella_view: Control
+var _hella_pulse := 0.0
 var _lull_rerolls := 0     ## lull reward Spare Luck: extra rerolls next prep
 var banked := 0.0          ## Oath of the Banked Fire: + damage this wave (read by Defense, Char)
 var wards := 0             ## Ash Wards on the fire this wave, waiting to pulse
@@ -231,6 +234,9 @@ func _start_prep() -> void:
 		_rerolls += built
 	_sixth_used = false
 	_lull_rerolls = 0
+	_hella_left = Defs.HOUND_SCARES if Run.has_rider("hound") else 0
+	_hella_view.visible = Run.has_rider("hound")
+	_hella_view.queue_redraw()
 	var n: int = Run.dice.size()
 	for d in _dice:
 		d.queue_free()
@@ -509,6 +515,9 @@ func _process(delta: float) -> void:
 	# The board's light follows the campfire's flicker.
 	board.fire_glow = 0.9 + 0.1 * sin(Time.get_ticks_msec() * 0.006) * sin(Time.get_ticks_msec() * 0.0017)
 	board.hover_tile = _hover
+	if _hella_pulse > 0.0:
+		_hella_pulse = maxf(0.0, _hella_pulse - delta * 2.0)
+		_hella_view.queue_redraw()
 	if _parts_pulse > 0.0:
 		_parts_pulse = maxf(0.0, _parts_pulse - delta * 2.5)
 		_parts_view.queue_redraw()
@@ -742,6 +751,7 @@ func _spawn(kind: String, lane := -1, hearty := false):
 		sp.speed *= Defs.HILL_SPEED
 	sp.banished.connect(_on_banished)
 	sp.reached_fire.connect(_on_reached_fire)
+	sp.scare_fn = _hella_scare
 	sp.zapped.connect(_on_zapped)
 	sp.summoned.connect(_on_summoned)
 	if sp.zap_range > 0.0:
@@ -828,6 +838,22 @@ func _autoplay_embers() -> void:
 	for e in _embers.duplicate():
 		if not e.picked and e.life <= e.get_meta("ap_at", -99.0):
 			_pick_ember(e)
+
+
+## Hella, the Caravan Hound: the first Wisp to reach the fire each wave
+## (not a boss) is scared back to the start of a random lane.
+func _hella_scare(sp) -> bool:
+	if _hella_left <= 0 or sp.boss or phase != Phase.FIGHT:
+		return false
+	_hella_left -= 1
+	_hella_pulse = 1.0
+	_hella_view.queue_redraw()
+	_add_fx("ring", sp.world, Color("#e0b07a"), 70.0)
+	_add_fx("ring", Vector2.ZERO, Color("#e0b07a"), 140.0)
+	_add_fx("text", sp.world, Color("#ffd58f"), 100.0, "Scared!")
+	AudioDirector.play_sfx("flare", -3.0)
+	sp.scared_to(Run.rng.randi() % board.lane_count)
+	return true
 
 
 func _on_reached_fire(sp) -> void:
@@ -1419,6 +1445,13 @@ func _build_hud() -> void:
 	_flame_bar = FlameBar.new()
 	_flame_bar.position = Vector2(20, 18)
 	add_child(_flame_bar)
+	_hella_view = DrawProxy.new()   # Hella's paw: bright while she's on guard
+	_hella_view.position = Vector2(328, 18)
+	_hella_view.size = Vector2(36, 36)
+	_hella_view.visible = false
+	_hella_view.draw_fn = _draw_hella
+	_hella_view.tooltip_text = "Hella, the Caravan Hound"
+	add_child(_hella_view)
 	_boss_bar = BossBar.new()
 	add_child(_boss_bar)
 
@@ -1678,3 +1711,12 @@ func _draw_parts(ci: Control) -> void:
 			ci.draw_circle(p, 4.5 + (1.5 * _parts_pulse if i == rem - 1 else 0.0), col)
 	if ready > 0:
 		ci.draw_string(Style.BODY_FONT, Vector2(x0 + 14.0 + Defs.TINKER_PARTS * 18.0, cy + 6.0), "+%d roll" % ready, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Style.ACCENT)
+
+
+func _draw_hella(ci: CanvasItem) -> void:
+	var c := Vector2(18, 16)
+	var on := _hella_left > 0
+	ci.draw_circle(c, 17.0, Color(0, 0, 0, 0.45))
+	if _hella_pulse > 0.0:
+		ci.draw_arc(c, 17.0 + 10.0 * (1.0 - _hella_pulse), 0, TAU, 32, Color("#ffd58f", _hella_pulse), 2.0)
+	Icons.draw(ci, "hound", c, 24.0, Style.ACCENT if on else Color(0.55, 0.5, 0.45, 0.6))

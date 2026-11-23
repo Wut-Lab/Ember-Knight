@@ -252,6 +252,7 @@ const UNLOCKS := {
 ## Their abilities are wired up member by member (blueprint: Caravan).
 const CARAVAN_SEATS := 2
 const TINKER_PARTS := 3  ## Terry, the Tinker: Ashes rolled per free reroll
+const HOUND_SCARES := 1   ## Hella, the Caravan Hound: Wisps she scares off each wave
 const COOK_HEAL := 5.0   ## Carson, the Cook: his own heal at each dawn
 const CARAVAN := {
 	"cook": {"name": "Carson, the Cook", "role": "Sustain", "icon": "cook", "cost": 30,
@@ -260,8 +261,8 @@ const CARAVAN := {
 		"desc": "Keeps a part from every Ashes you roll. Every 3 parts make a free reroll next wave."},
 	"cat": {"name": "Carl, the Caravan Cat", "role": "Information", "icon": "cat", "cost": 50,
 		"desc": "His ears point to the lane the most Wisps will come down each wave."},
-	"hound": {"name": "Hound", "role": "Defense", "icon": "hound", "cost": 70,
-		"desc": "Bites the first spirit to get close to the fire each wave."},
+	"hound": {"name": "Hella, the Caravan Hound", "role": "Defense", "icon": "hound", "cost": 70,
+		"desc": "Scares off the first Wisp to reach the fire each wave, back to the start of a random lane. Bosses ignore her."},
 	"lamplighter": {"name": "Lamplighter", "role": "Synergy", "icon": "guide", "cost": 90,
 		"desc": "Guide Lights reach 15% farther."},
 	"smith": {"name": "Smith", "role": "Power", "icon": "smith", "cost": 120,

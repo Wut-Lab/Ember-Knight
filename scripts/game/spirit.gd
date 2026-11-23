@@ -32,6 +32,7 @@ var zap_every := 2.0
 var _zap_t := 0.0
 var _arc := 0.0            ## time left on the visible zap arc
 var boss := false
+var scare_fn: Callable   ## battle's Hella check: true = scared off instead of hurting the fire
 var dim_range := 0.0       ## >0 (Dark Wisp): light defenses within this of aura_center() fire slower
 var dim := 0.0
 var dim_bob := 0.0
@@ -105,6 +106,15 @@ func aura_center() -> Vector2:
 ## Helio: close enough to sear the fire?
 func burning() -> bool:
 	return burn_range > 0.0 and not dead and world.length() <= burn_range
+
+
+## Hella scared it: back to the far start of `lane`, fading in again.
+func scared_to(lane: int) -> void:
+	path_idx = lane
+	place_at(0.0)
+	_fade_in = 0.0
+	_trail.clear()
+	queue_redraw()
 
 
 ## Start partway down a trail (Rays rise from Helio's spot).
@@ -199,6 +209,8 @@ func _process(delta: float) -> void:
 			return
 	path_idx = board.route(path_idx, d0, dist)   # forks: pick a way (or the gate's)
 	if dist >= board.path_lengths[path_idx]:
+		if scare_fn.is_valid() and scare_fn.call(self):   # Hella chased it off
+			return
 		dead = true
 		reached_fire.emit(self)
 		queue_free()
