@@ -188,13 +188,12 @@ const OATHS := {
 		"name": "Oath of Steady Hands",
 		"rarity": "uncommon",
 		"icon": "hand",
-		"short": "+1 reroll every wave.",
-		"desc": "Char has learned to wait for the right roll.\n\nYou get 1 extra reroll every wave.",
+		"short": "Rerolls never land on Ashes.",
+		"desc": "Char's hands are steady now; nothing slips into the ashes.\n\nWhen you reroll, dice never land on an Ashes face. The first roll each wave is unchanged.",
 	},
 }
 ## Oaths that only reach the Dawn Offerings once unlocked (Defs.UNLOCKS).
 const LOCKED_OATHS := ["dawn_offerings", "steady_hands"]
-const STEADY_REROLLS := 1   ## Oath of Steady Hands: + rerolls every wave
 ## Dice that only reach the Dawn Offerings once unlocked (Defs.UNLOCKS).
 const LOCKED_DICE := ["crazy"]
 const DAWN_REROLL_FLAME := 5.0   ## Oath of Dawn Offerings: reroll cost

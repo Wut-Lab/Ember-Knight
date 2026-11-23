@@ -207,8 +207,6 @@ func _start_prep() -> void:
 	fighting = false
 	char_unit.set_mood("open")
 	_rerolls = Defs.REROLLS_PER_WAVE + Run.bonus_rerolls + _lull_rerolls
-	if Run.has_oath("steady_hands"):
-		_rerolls += Defs.STEADY_REROLLS
 	_sixth_used = false
 	_lull_rerolls = 0
 	var n: int = Run.dice.size()
@@ -267,7 +265,15 @@ func _roll(first := false) -> void:
 	for d in _dice:
 		if d.placed or (d.held and not first):
 			continue
-		d.roll(Run.rng.randi() % d.faces.size(), 0.45 + 0.12 * d.index)
+		var side: int = Run.rng.randi() % d.faces.size()
+		if not first and Run.has_oath("steady_hands"):   # rerolls never land on Ashes
+			var sides := []
+			for i in d.faces.size():
+				if d.faces[i] != "ashes":
+					sides.append(i)
+			if not sides.is_empty():
+				side = sides[Run.rng.randi() % sides.size()]
+		d.roll(side, 0.45 + 0.12 * d.index)
 		any = true
 	if any:
 		AudioDirector.play_sfx("dice_roll", -3.0)
