@@ -251,6 +251,7 @@ const UNLOCKS := {
 ## night 1). "icon" is an Icons kind; "role" is the short tag on the card.
 ## Their abilities are wired up member by member (blueprint: Caravan).
 const CARAVAN_SEATS := 2
+const COOK_DAWN := 5.0   ## Cook: + dawn heal
 const CARAVAN := {
 	"cook": {"name": "Cook", "role": "Sustain", "icon": "cook", "cost": 30,
 		"desc": "Dawn heals 5 more flame."},

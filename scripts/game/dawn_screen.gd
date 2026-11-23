@@ -29,7 +29,8 @@ func _ready() -> void:
 	root.add_child(h)
 	var sub := Label.new()
 	var healed := Run.dawn_heal() + (Defs.BOSS_DAWN_HEAL if Defs.ends_leg(Run.night) else 0.0)
-	sub.text = "The spirits fade with the sunrise. Char's flame recovers (+%d)." % roundi(healed)
+	sub.text = "The spirits fade with the sunrise. Char's flame recovers (+%d%s)." % [roundi(healed),
+		", %d from the Cook's broth" % roundi(Defs.COOK_DAWN) if Run.has_rider("cook") else ""]
 	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	sub.add_theme_font_size_override("font_size", 22)
 	root.add_child(sub)
