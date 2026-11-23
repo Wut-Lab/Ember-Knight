@@ -75,7 +75,7 @@ func stats() -> Dictionary:
 			st["damage"] *= 1.0 + ded
 		if st.has("slow"):
 			st["slow"] *= 1.0 + ded
-	if Run.has_oath("urgency") and st.has("rate") and kind in ["torch", "mortar", "vent"]:
+	if Run.has_oath("urgency") and st.has("rate") and not kind in Defs.SUPPORT_FACES:   # every defense that fires
 		st["rate"] *= Defs.URGENCY_RATE
 	if st.has("slow"):
 		st["slow"] = minf(st["slow"], Defs.SLOW_CAP)
@@ -87,10 +87,10 @@ func stats() -> Dictionary:
 		st["rate"] *= Defs.STOKE_RATE
 	var bw := group_best("bellows", "haste")
 	if not bw.is_empty() and st.has("rate"):
-		st["rate"] *= bw["haste"]
+		st["rate"] *= 1.0 + (bw["haste"] - 1.0) * (1.0 + Run.dedication("bellows"))   # Dedication: more haste
 	var br := group_best("brazier", "burn_dps")
 	if not br.is_empty():
-		st["burn"] = Vector2(br["burn_dps"], br["burn_t"])
+		st["burn"] = Vector2(br["burn_dps"] * (1.0 + Run.dedication("brazier")), br["burn_t"])   # Dedication: hotter burn
 	var g := guide_bonus()
 	if not g.is_empty():
 		st["range"] *= g["boost"]
