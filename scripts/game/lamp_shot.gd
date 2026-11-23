@@ -13,6 +13,7 @@ var dir := Vector2.RIGHT
 var reach := 300.0
 var damage := 6.0
 var _went := 0.0
+var height := 81.0   # starts at the lantern, eases down to flying height
 var _fade := 0.0    # > 0: drizzling out
 var _trail: Array[Vector2] = []
 
@@ -20,7 +21,7 @@ var _trail: Array[Vector2] = []
 func setup(b, bd, from: Vector2, d: Vector2, r: float, dmg: float) -> void:
 	battle = b
 	board = bd
-	world = from + d * 14.0
+	world = from + Vector2(-27, 0) + d * 6.0
 	dir = d
 	reach = r
 	damage = dmg
@@ -28,10 +29,11 @@ func setup(b, bd, from: Vector2, d: Vector2, r: float, dmg: float) -> void:
 
 
 func _place() -> void:
-	position = board.proj(world) + Vector2(0, -50.0 * board.view_scale * (1.0 - 0.6 * _fade / DRIZZLE))
+	position = board.proj(world) + Vector2(0, -height * board.view_scale * (1.0 - 0.6 * _fade / DRIZZLE))
 
 
 func _process(delta: float) -> void:
+	height = lerpf(height, 46.0, clampf(delta * 4.0, 0.0, 1.0))
 	if _fade > 0.0:
 		_fade += delta
 		world += dir * SPEED * 0.25 * delta
