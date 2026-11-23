@@ -25,6 +25,7 @@ var perks: Dictionary = {}       ## lull permanent rewards: id (or "hone_<kind>"
 var night_flames: Array = []   ## flame left at the end of each night cleared
 var riders: Array = []         ## Defs.CARAVAN ids riding along this run
 var cook_healed := 0.0        ## flame the Cook actually healed this dawn (for the dawn screen)
+var spare_parts := 0           ## Terry, the Tinker: parts banked toward the next free reroll
 var riders_picked := false     ## the seat pick has been made this run
 var rng := RandomNumberGenerator.new()
 ## `-- --autoplay`: the game plays itself (for previews and balance checks).
@@ -66,6 +67,7 @@ func new_run() -> void:
 	bosses = Defs.roll_bosses(rng)
 	riders.clear()
 	riders_picked = false
+	spare_parts = 0
 	gates = Defs.GATES_FREE
 	shrine_seen = false
 	shrine_curse = false
@@ -202,7 +204,7 @@ const SAVE_PATH := "user://run.save"
 const SAVE_KEYS := ["night", "flame", "max_flame", "stop_options", "chosen_stops",
 	"spirits_banished", "nights_survived"]
 ## Newer keys: older saves load without them.
-const EXTRA_KEYS := ["bonus_rerolls", "shrine_seen", "gates"]
+const EXTRA_KEYS := ["bonus_rerolls", "shrine_seen", "gates", "spare_parts"]
 
 var resume := false   ## set by the menu's Continue; read by the run screen
 var _checkpoint := {}
@@ -275,6 +277,7 @@ func load_run() -> bool:
 	perks = Dictionary(d.get("perks", {}))
 	bosses = Array(d.get("bosses", []))
 	riders = Array(d.get("riders", []))
+	spare_parts = int(d.get("spare_parts", 0))
 	riders_picked = true
 	shrine_seen = bool(d.get("shrine_seen", false))
 	shrine_curse = false

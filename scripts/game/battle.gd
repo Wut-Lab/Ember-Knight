@@ -19,6 +19,7 @@ signal oaths_requested
 
 const Defs := preload("res://scripts/game/defs.gd")
 const Style := preload("res://scripts/ui/ui_style.gd")
+const Icons := preload("res://scripts/game/icons.gd")
 const EssenceTracker := preload("res://scripts/ui/essence_tracker.gd")
 const VolumeSliders := preload("res://scripts/ui/volume_sliders.gd")
 const Board := preload("res://scripts/game/board.gd")
@@ -77,6 +78,8 @@ var _auto_begin := -1.0
 var _ap_timer := 1.2
 var _shift_ready := false  ## Oath of Shifting Embers: a move is available this prep
 var _shift_free := false   ## lull reward Adjustment: the next move costs nothing
+var _parts_view: Control     ## Terry, the Tinker: cog + pips above the Roll button
+var _parts_pulse := 0.0
 var _lull_rerolls := 0     ## lull reward Spare Luck: extra rerolls next prep
 var banked := 0.0          ## Oath of the Banked Fire: + damage this wave (read by Defense, Char)
 var wards := 0             ## Ash Wards on the fire this wave, waiting to pulse
@@ -207,6 +210,11 @@ func _start_prep() -> void:
 	fighting = false
 	char_unit.set_mood("open")
 	_rerolls = Defs.REROLLS_PER_WAVE + Run.bonus_rerolls + _lull_rerolls
+	var built := 0
+	if Run.has_rider("tinker"):   # banked parts become free rerolls this wave
+		built = Run.spare_parts / Defs.TINKER_PARTS
+		Run.spare_parts %= Defs.TINKER_PARTS
+		_rerolls += built
 	_sixth_used = false
 	_lull_rerolls = 0
 	var n: int = Run.dice.size()
@@ -257,6 +265,8 @@ func _start_prep() -> void:
 		_hint.text += "   Tap a glowing fork to cobble a gate (%d left)." % _gates_left
 	if _shift_ready:
 		_hint.text += "   " + _shift_hint()
+	if built > 0:
+		_hint.text += "   %s built %s from spare parts." % [Defs.CARAVAN["tinker"]["name"], "a free reroll" if built == 1 else "%d free rerolls" % built]
 	_layout.call_deferred()
 
 
@@ -275,6 +285,9 @@ func _roll(first := false) -> void:
 				side = sides[Run.rng.randi() % sides.size()]
 		d.roll(side, 0.45 + 0.12 * d.index)
 		any = true
+		if d.faces[side] == "ashes" and Run.has_rider("tinker"):
+			Run.spare_parts += 1
+			_parts_pulse = 1.0
 	if any:
 		AudioDirector.play_sfx("dice_roll", -3.0)
 	if not first:
@@ -479,6 +492,9 @@ func _process(delta: float) -> void:
 	# The board's light follows the campfire's flicker.
 	board.fire_glow = 0.9 + 0.1 * sin(Time.get_ticks_msec() * 0.006) * sin(Time.get_ticks_msec() * 0.0017)
 	board.hover_tile = _hover
+	if _parts_pulse > 0.0:
+		_parts_pulse = maxf(0.0, _parts_pulse - delta * 2.5)
+		_parts_view.queue_redraw()
 	# Boss waves: ease the map down to make room for the boss bar.
 	var top_to := TOP_BOSS if boss_wave else TOP
 	if not is_equal_approx(_top, top_to):
@@ -1350,6 +1366,13 @@ func _build_hud() -> void:
 	_roll_btn.pressed.connect(reroll)
 	_roll_btn.size_flags_vertical = Control.SIZE_SHRINK_END
 	_tray.add_child(_roll_btn)
+	_parts_view = DrawProxy.new()
+	_parts_view.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_parts_view.position = Vector2(0, -30)
+	_parts_view.size = Vector2(150, 26)
+	_parts_view.draw_fn = _draw_parts
+	_parts_view.tooltip_text = "Spare parts"
+	_roll_btn.add_child(_parts_view)
 	_choose_btn = Button.new()   # Oath of the Sixth Face
 	_choose_btn.text = "Choose"
 	_choose_btn.custom_minimum_size = Vector2(130, 64)
@@ -1417,6 +1440,8 @@ func _update_hud() -> void:
 	_roll_btn.disabled = not prep or _rerolls <= 0
 	_fight_btn.disabled = not prep
 	_roll_btn.visible = prep
+	_parts_view.visible = prep and Run.has_rider("tinker")
+	_parts_view.queue_redraw()
 	_choose_btn.visible = prep and Run.has_oath("sixth_face")
 	_choose_btn.disabled = _sixth_used or _selected == null or _selected.placed or _selected.is_rolling()
 	_fight_btn.visible = prep
@@ -1523,3 +1548,21 @@ func _save_quit() -> void:
 	_close_pause()
 	phase = Phase.DONE
 	save_and_quit.emit()
+
+
+## Terry, the Tinker: a cog, one pip per part toward the next reroll, and
+## "+N" for rerolls already built for next wave. Pulses on a new part.
+func _draw_parts(ci: Control) -> void:
+	var ready := Run.spare_parts / Defs.TINKER_PARTS
+	var rem := Run.spare_parts % Defs.TINKER_PARTS
+	var col := Color("#d9cbb8")
+	var cy := 13.0
+	var x0 := ci.size.x / 2 - 22.0 - Defs.TINKER_PARTS * 9.0
+	Icons.draw(ci, "tinker", Vector2(x0, cy), 22.0 * (1.0 + 0.25 * _parts_pulse), Style.ACCENT if ready > 0 else col)
+	for i in Defs.TINKER_PARTS:
+		var p := Vector2(x0 + 22.0 + i * 18.0, cy)
+		ci.draw_circle(p, 6.0, Color(0, 0, 0, 0.45))
+		if i < rem:
+			ci.draw_circle(p, 4.5 + (1.5 * _parts_pulse if i == rem - 1 else 0.0), col)
+	if ready > 0:
+		ci.draw_string(Style.BODY_FONT, Vector2(x0 + 14.0 + Defs.TINKER_PARTS * 18.0, cy + 6.0), "+%d roll" % ready, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Style.ACCENT)

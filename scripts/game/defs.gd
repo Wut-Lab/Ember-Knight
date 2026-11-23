@@ -251,12 +251,13 @@ const UNLOCKS := {
 ## night 1). "icon" is an Icons kind; "role" is the short tag on the card.
 ## Their abilities are wired up member by member (blueprint: Caravan).
 const CARAVAN_SEATS := 2
+const TINKER_PARTS := 3  ## Terry, the Tinker: Ashes rolled per free reroll
 const COOK_HEAL := 5.0   ## Carson, the Cook: his own heal at each dawn
 const CARAVAN := {
 	"cook": {"name": "Carson, the Cook", "role": "Sustain", "icon": "cook", "cost": 30,
 		"desc": "Serves a hot broth at each dawn: +5 flame."},
-	"tinker": {"name": "Tinker", "role": "Dice", "icon": "tinker", "cost": 40,
-		"desc": "+1 reroll on wave 1 of each night."},
+	"tinker": {"name": "Terry, the Tinker", "role": "Dice", "icon": "tinker", "cost": 40,
+		"desc": "Keeps a part from every Ashes you roll. Every 3 parts make a free reroll next wave."},
 	"scout": {"name": "Scout", "role": "Information", "icon": "scout", "cost": 50,
 		"desc": "See each stop's wave modifiers and road event before you pick it."},
 	"hound": {"name": "Hound", "role": "Defense", "icon": "hound", "cost": 70,
