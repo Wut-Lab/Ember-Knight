@@ -14,8 +14,8 @@ extends RefCounted
 ##   wake   -> Brazier with a leaping spark (Ember Wake)
 ##   ash_heal -> ash heap with a small plus (Healing Ash)
 ##   sunrise -> half a sun on the horizon (Oath of Dawn Offerings)
-##   cook / tinker / scout / hound / smith -> caravan members (pot, gear,
-##       spyglass, paw, hammer on anvil)
+##   cook / tinker / cat / hound / smith -> caravan members (pot, gear,
+##       cat head, paw, hammer on anvil)
 ##   essence -> blue orb with a flame (the Essence currency; `t` waves the flame)
 
 
@@ -45,8 +45,8 @@ static func draw(ci: CanvasItem, kind: String, c: Vector2, s: float, col: Color,
 			_cook(ci, c, s, col)
 		"tinker":
 			_tinker(ci, c, s, col)
-		"scout":
-			_scout(ci, c, s, col)
+		"cat":
+			_cat(ci, c, s, col)
 		"hound":
 			_hound(ci, c, s, col)
 		"smith":
@@ -424,18 +424,19 @@ static func _tinker(ci: CanvasItem, c: Vector2, s: float, col: Color) -> void:
 	ci.draw_circle(c, s * 0.12, Color(0, 0, 0, 0.75))
 
 
-static func _scout(ci: CanvasItem, c: Vector2, s: float, col: Color) -> void:
-	# A spyglass, three segments narrowing to the eyepiece.
-	var d := Vector2(1, -0.55).normalized()
-	var n := Vector2(-d.y, d.x)
-	var base := c - d * s * 0.42
-	var segs := [[0.0, 0.32, 0.13], [0.3, 0.6, 0.1], [0.58, 0.84, 0.075]]
-	for g in segs:
-		var a: Vector2 = base + d * s * g[0]
-		var b: Vector2 = base + d * s * g[1]
-		var h: float = s * g[2]
-		ci.draw_colored_polygon(PackedVector2Array([a + n * h, b + n * h, b - n * h, a - n * h]), col)
-	ci.draw_circle(base + d * s * 0.84, s * 0.05, col)
+static func _cat(ci: CanvasItem, c: Vector2, s: float, col: Color) -> void:
+	# A cat's head: round face, two pointed ears, dark eyes.
+	var f := c + Vector2(0, s * 0.08)
+	for k in [-1, 1]:
+		ci.draw_colored_polygon(PackedVector2Array([
+			f + Vector2(k * s * 0.36, -s * 0.05), f + Vector2(k * s * 0.33, -s * 0.46),
+			f + Vector2(k * s * 0.08, -s * 0.24)]), col)
+	ci.draw_circle(f, s * 0.32, col)
+	var dark := Color(0, 0, 0, 0.7)
+	for k in [-1, 1]:
+		ci.draw_circle(f + Vector2(k * s * 0.13, -s * 0.04), s * 0.055, dark)
+	ci.draw_colored_polygon(PackedVector2Array([f + Vector2(-s * 0.05, s * 0.08),
+		f + Vector2(s * 0.05, s * 0.08), f + Vector2(0, s * 0.14)]), dark)
 
 
 static func _hound(ci: CanvasItem, c: Vector2, s: float, col: Color) -> void:

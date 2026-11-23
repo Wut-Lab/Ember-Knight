@@ -61,6 +61,10 @@ var _swarm_lane := -1
 var _gates_left := 0       ## gates Char can still cobble tonight
 var _ap_gate_t := 0.0
 var _mark_t := 0.0
+var _planned: Array = []      # Carl, the Caravan Cat: next wave's spawn queue, lanes fixed in prep
+var _carl_lanes: Array = []   # the lane(s) with the most spirits coming
+var _carl_count := 0
+var _carl_view: Control
 var _props: Array = []   ## the stagecoach and horse Char is guarding
 var _spawn_queue: Array = []
 var _spawn_timer := 0.0
@@ -126,6 +130,11 @@ func _ready() -> void:
 	_entities.y_sort_enabled = true
 	_world.add_child(_entities)
 	_world.add_child(_fx)
+	_carl_view = DrawProxy.new()
+	_carl_view.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_carl_view.visible = false
+	_carl_view.draw_fn = _draw_carl
+	_world.add_child(_carl_view)
 	add_child(_world)
 	if ambush:   # the camp sits in the fog
 		var mist := ColorRect.new()
@@ -243,6 +252,7 @@ func _start_prep() -> void:
 	_boss_intro = false
 	mod = "" if ambush or boss_wave else Defs.roll_wave_mod(Run.night, Run.rng)
 	_swarm_lane = Run.rng.randi() % board.lane_count if mod == "swarmy" else -1
+	_plan_carl()
 	_update_hud()
 	if ambush:
 		_show_banner("Ambush in the fog!")
@@ -267,6 +277,8 @@ func _start_prep() -> void:
 		_hint.text += "   " + _shift_hint()
 	if built > 0:
 		_hint.text += "   %s built %s from spare parts." % [Defs.CARAVAN["tinker"]["name"], "a free reroll" if built == 1 else "%d free rerolls" % built]
+	if not _carl_lanes.is_empty():
+		_hint.text += "   Carl's ears twitch toward %s." % ("the glowing trail" if _carl_lanes.size() == 1 else "the glowing trails")
 	_layout.call_deferred()
 
 
@@ -321,13 +333,10 @@ func begin_wave() -> void:
 	for d in _dice:
 		if not d.placed:
 			d.placed = true  # unused dice fade back into the bag
-	var kinds: Array = Defs.ambush_spirits(Run.night) if ambush else Defs.wave_spirits(Run.night, wave, Run.current_stop(), Run.rng, Run.boss_for(Run.night))
-	# Each queue entry: [kind, lane (-1 = random), hearty]
-	_spawn_queue = []
-	for k in kinds:
-		var lane := _swarm_lane if mod == "swarmy" and Run.rng.randf() < Defs.SWARM_SHARE else -1
-		var hearty: bool = mod == "hearty" and Run.rng.randf() < Defs.HEARTY_SHARE
-		_spawn_queue.append([k, lane, hearty])
+	_spawn_queue = _planned if not _planned.is_empty() else _plan_spawns(false)
+	_planned = []
+	_carl_lanes = []
+	_carl_view.visible = false
 	_spawn_timer = 0.6
 	if Run.autoplay and (ambush or mod != ""):
 		print("  night %d wave %d: %s" % [Run.night + 1, wave + 1, "fog ambush" if ambush else mod])
@@ -527,6 +536,8 @@ func _process(delta: float) -> void:
 			begin_wave()
 	if Run.autoplay and phase == Phase.PREP:
 		_autoplay_step(delta)
+	if _carl_view.visible:
+		_carl_view.queue_redraw()
 	if _swarm_lane >= 0 and phase == Phase.PREP:   # point out the swarm trail
 		_mark_t -= delta
 		if _mark_t <= 0.0:
@@ -609,6 +620,69 @@ func dim_at(at: Vector2) -> float:
 		if sp.dim > 0.0 and not sp.dead and at.distance_to(sp.aura_center()) <= sp.dim_range:
 			dim = maxf(dim, sp.dim)
 	return dim
+
+
+## Each queue entry: [kind, lane (-1 = random at spawn), hearty]. With
+## fix_lanes every lane is picked now, so Carl can tell where they'll come.
+func _plan_spawns(fix_lanes: bool) -> Array:
+	var kinds: Array = Defs.ambush_spirits(Run.night) if ambush else Defs.wave_spirits(Run.night, wave, Run.current_stop(), Run.rng, Run.boss_for(Run.night))
+	var q := []
+	for k in kinds:
+		var lane := _swarm_lane if mod == "swarmy" and Run.rng.randf() < Defs.SWARM_SHARE else -1
+		var hearty: bool = mod == "hearty" and Run.rng.randf() < Defs.HEARTY_SHARE
+		if fix_lanes and lane < 0:
+			lane = Run.rng.randi() % board.lane_count
+		q.append([k, lane, hearty])
+	return q
+
+
+## Carl, the Caravan Cat: plan the wave now and point at its busiest lane(s).
+func _plan_carl() -> void:
+	_planned = []
+	_carl_lanes = []
+	_carl_count = 0
+	if not Run.has_rider("cat"):
+		_carl_view.visible = false
+		return
+	_planned = _plan_spawns(true)
+	var per := []
+	per.resize(board.lane_count)
+	per.fill(0)
+	for e in _planned:
+		per[e[1]] += 1
+	_carl_count = per.max()
+	for i in board.lane_count:
+		if per[i] == _carl_count:
+			_carl_lanes.append(i)
+	_carl_view.visible = true
+	_carl_view.queue_redraw()
+
+
+func _draw_carl(ci: CanvasItem) -> void:
+	var t := Time.get_ticks_msec() / 1000.0
+	var gold := Color("#ffd58f")
+	for i in _carl_lanes:
+		var L: float = board.path_lengths[i]
+		var d := 0.0
+		while d < L * 0.9:
+			var a := 0.16 + 0.12 * sin(t * 3.0 - d / 60.0)
+			ci.draw_circle(board.path_point(i, d), 15.0, Color(gold, a))
+			d += 26.0
+		# Badge at the first spot on the trail that sits well inside the screen.
+		var xf: Transform2D = _carl_view.get_global_transform_with_canvas()
+		var safe := Rect2(Vector2.ZERO, get_viewport_rect().size).grow_individual(-80, -110, -80, -190)
+		var at: Vector2 = board.path_point(i, L * 0.5)
+		var s := 0.0
+		while s < L * 0.5:
+			if safe.has_point(xf * board.path_point(i, s)):
+				at = board.path_point(i, s)
+				break
+			s += 20.0
+		ci.draw_circle(at, 30.0, Color(0, 0, 0, 0.6))
+		ci.draw_arc(at, 30.0, 0, TAU, 32, gold, 2.0)
+		Icons.draw(ci, "cat", at + Vector2(0, -4), 40.0, gold)
+		ci.draw_string(ThemeDB.fallback_font, at + Vector2(-40, 50), "×%d" % _carl_count,
+			HORIZONTAL_ALIGNMENT_CENTER, 80, 22, gold)
 
 
 func _spawn(kind: String, lane := -1, hearty := false):

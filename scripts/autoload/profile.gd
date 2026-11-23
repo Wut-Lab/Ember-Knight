@@ -91,3 +91,6 @@ func _load() -> void:
 		stats = d.get("stats", {})
 		members = Array(d.get("members", []))
 		riders = Array(d.get("riders", []))
+		# The Scout became Carl, the Caravan Cat.
+		members = members.map(func(m): return "cat" if m == "scout" else m)
+		riders = riders.map(func(m): return "cat" if m == "scout" else m)
