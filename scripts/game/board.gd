@@ -160,7 +160,7 @@ func _build_layout() -> void:
 	var r := RandomNumberGenerator.new()
 	r.seed = layout_seed
 	for attempt in 30:   # a hill reshapes its spiral until a shortcut fits
-		for a in [paths, path_lengths, tiles, tile_defense, links, shapes, dock, tile_group, _patches]:
+		for a in [paths, path_lengths, tiles, tile_defense, links, shapes, dock, tile_group, _patches, _slabs]:
 			a.clear()
 		if not _build_once(r):
 			continue
@@ -1245,9 +1245,7 @@ func _draw() -> void:
 		var lit := maxf(light_at(w), 0.35)
 		var c := proj(w)
 		var rx := TILE_RADIUS * view_scale
-		_ellipse_xy(c + Vector2(0, 4 * view_scale), rx * 1.04, rx * K * 1.04, Color(0, 0, 0, 0.45))
-		_ellipse_xy(c, rx, rx * K, Color("#3a312f").lerp(Color("#7d6a5c"), lit))
-		_ellipse_xy(c - Vector2(0, 2 * view_scale), rx * 0.82, rx * K * 0.78, Color("#4a3f3a").lerp(Color("#97806c"), lit))
+		_draw_slab(i, w, lit)
 		var ok := glow_face != "" and can_place(glow_face, i)
 		if lift_tile >= 0:
 			ok = can_move_to(i)
@@ -1296,7 +1294,7 @@ var gates_left := 0          ## set by the battle: junctions glow while gates re
 
 
 ## Junction markers, and Char's gates with their cooldown flame.
-var _patches: Array = []   ## per group: [4 hulls, outer to inner, centre] (world)
+var _patches: Array = []   ## per group: [4 hulls outer to inner, centre, flecks] (world)
 
 ## Each group of 3 sits on a patch of trodden-down ground, so the groups
 ## (and which tiles a Guide Light reaches) read at a glance.
@@ -1327,6 +1325,13 @@ func _draw_group_patches() -> void:
 					hull[k] += out * 6.0 * sin(out.angle() * 4.0 + ph)
 				hulls.append(hull)
 			hulls.append(mid / maxf(n, 1))   # P[4]
+			var flecks := []   # P[5]: [world, size, pale]
+			var inner: PackedVector2Array = hulls[1]
+			for k in 26:
+				var q: Vector2 = hulls[4] + Vector2(r.randf_range(-1, 1), r.randf_range(-1, 1)) * TILE_RADIUS * 2.6
+				if Geometry2D.is_point_in_polygon(q, inner):
+					flecks.append([q, r.randf_range(1.2, 2.6), r.randf() < 0.65])
+			hulls.append(flecks)
 			_patches.append(hulls)
 	for P in _patches:
 		var lit := light_at(P[4]) * fire_glow
@@ -1334,7 +1339,81 @@ func _draw_group_patches() -> void:
 			var poly := PackedVector2Array()
 			for w in P[h]:
 				poly.append(proj(w))
-			draw_colored_polygon(poly, Color("#1e120b", 0.13 * clampf(lit + 0.35, 0.0, 1.0)))
+			var ash := Color("#2a221d").lerp(Color("#5e5750"), float(h) / 3.0)   # charred rim, grey ash middle
+			ash.a = (0.26 if h == 0 else 0.11) * clampf(lit + 0.4, 0.0, 1.0)
+			draw_colored_polygon(poly, ash)
+		for f in P[5]:   # flecks of ash and char
+			var fc := Color("#8d867d") if f[2] else Color("#17110d")
+			fc.a = 0.55 * clampf(lit + 0.3, 0.0, 1.0)
+			draw_circle(proj(f[0]), f[1] * view_scale, fc)
+
+
+var _slabs: Array = []   ## per tile: {edge, cracks, moss, ember} offsets (world)
+
+## An irregular flat stone: a lumpy outline at a random turn, a worn top face,
+## a crack or two, and now and then moss or a stray ember.
+func _slab_shape(i: int) -> Dictionary:
+	var r := RandomNumberGenerator.new()
+	r.seed = layout_seed * 131 + i * 7919
+	var n := r.randi_range(7, 10)
+	var rot := r.randf() * TAU
+	var edge := PackedVector2Array()
+	for k in n:
+		var a := rot + TAU * (k + r.randf_range(-0.25, 0.25)) / n
+		edge.append(Vector2.from_angle(a) * TILE_RADIUS * r.randf_range(0.86, 1.06))
+	var cracks := []
+	for k in r.randi_range(1, 2):
+		var p0: Vector2 = edge[r.randi() % n] * 0.78
+		var line := PackedVector2Array([p0])
+		var dir := -p0.normalized().rotated(r.randf_range(-0.6, 0.6))
+		for s in 3:
+			line.append(line[line.size() - 1] + dir.rotated(r.randf_range(-0.5, 0.5)) * TILE_RADIUS * r.randf_range(0.14, 0.24))
+		cracks.append(line)
+	var moss := []
+	if r.randf() < 0.4:
+		var at := Vector2.from_angle(r.randf() * TAU) * TILE_RADIUS * 0.62
+		for k in r.randi_range(3, 5):
+			moss.append([at + Vector2(r.randf_range(-9, 9), r.randf_range(-6, 6)), r.randf_range(2.5, 5.0)])
+	var ember = null
+	if r.randf() < 0.18:
+		ember = Vector2.from_angle(r.randf() * TAU) * TILE_RADIUS * r.randf_range(0.2, 0.6)
+	return {"edge": edge, "cracks": cracks, "moss": moss, "ember": ember}
+
+
+func _draw_slab(i: int, w: Vector2, lit: float) -> void:
+	if _slabs.size() != tiles.size():
+		_slabs.clear()
+		for k in tiles.size():
+			_slabs.append(_slab_shape(k))
+	var S: Dictionary = _slabs[i]
+	var up := Vector2(0, -2.0 * view_scale)
+	var side := PackedVector2Array()
+	var top := PackedVector2Array()
+	var shadow := PackedVector2Array()
+	for e in S["edge"]:
+		var q := proj(w + e)
+		side.append(q)
+		shadow.append(q + Vector2(2.0, 5.0) * view_scale)
+		top.append(proj(w + e * 0.86) + up)
+	draw_colored_polygon(shadow, Color(0, 0, 0, 0.45))
+	draw_colored_polygon(side, Color("#2e2725").lerp(Color("#6b5b4f"), lit))
+	draw_colored_polygon(top, Color("#463c37").lerp(Color("#93806f"), lit))
+	var hi := PackedVector2Array()   # a paler worn patch on the top face
+	for e in S["edge"]:
+		hi.append(proj(w + e * 0.5 + Vector2(-6, -4)) + up)
+	draw_colored_polygon(hi, Color(1, 0.95, 0.85, 0.07 * lit))
+	var crack_c := Color("#241d1a", 0.75)
+	for L in S["cracks"]:
+		var pts := PackedVector2Array()
+		for e in L:
+			pts.append(proj(w + e) + up)
+		draw_polyline(pts, crack_c, 1.4 * view_scale, true)
+	for m in S["moss"]:
+		var mc := Color("#3e4a22").lerp(Color("#6d7d34"), lit)
+		_ellipse_xy(proj(w + m[0]) + up, m[1] * view_scale, m[1] * view_scale * K, mc)
+	if S["ember"] != null:
+		var ec := Color("#ff8a3a", 0.5 + 0.35 * sin(_t * 2.3 + i))
+		draw_circle(proj(w + S["ember"]) + up, 1.8 * view_scale, ec)
 
 
 func _draw_forks(pulse: float) -> void:
