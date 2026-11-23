@@ -12,6 +12,8 @@ const SAVE_PATH := "user://profile.save"
 var essence := 0
 var unlocks: Array = []      ## Defs.UNLOCKS ids earned
 var stats := {}             ## stat name -> count, for unlock progress
+var members: Array = []     ## Defs.CARAVAN ids hired
+var riders: Array = []      ## last run's riders, offered again next run
 
 
 func _ready() -> void:
@@ -36,6 +38,22 @@ func spend_essence(n: int) -> bool:
 	return true
 
 
+## Hires a caravan member if there is enough Essence; returns whether it did.
+func hire(id: String) -> bool:
+	if id in members or not Defs.CARAVAN.has(id):
+		return false
+	if not spend_essence(int(Defs.CARAVAN[id]["cost"])):
+		return false
+	members.append(id)
+	_save()
+	return true
+
+
+func set_riders(ids: Array) -> void:
+	riders = ids.duplicate()
+	_save()
+
+
 func is_unlocked(id: String) -> bool:
 	return id in unlocks
 
@@ -58,7 +76,8 @@ func add_stat(name: String, n := 1) -> void:
 func _save() -> void:
 	var f := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if f:
-		f.store_string(JSON.stringify({"essence": essence, "unlocks": unlocks, "stats": stats}))
+		f.store_string(JSON.stringify({"essence": essence, "unlocks": unlocks, "stats": stats,
+			"members": members, "riders": riders}))
 
 
 func _load() -> void:
@@ -70,3 +89,5 @@ func _load() -> void:
 		essence = int(d.get("essence", 0))
 		unlocks = Array(d.get("unlocks", []))
 		stats = d.get("stats", {})
+		members = Array(d.get("members", []))
+		riders = Array(d.get("riders", []))

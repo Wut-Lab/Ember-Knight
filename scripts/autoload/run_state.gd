@@ -23,6 +23,8 @@ var nights_survived := 0
 var bosses: Array = []         ## boss id per leg (Defs.roll_bosses), rolled at the start of a run
 var perks: Dictionary = {}       ## lull permanent rewards: id (or "hone_<kind>") -> times picked
 var night_flames: Array = []   ## flame left at the end of each night cleared
+var riders: Array = []         ## Defs.CARAVAN ids riding along this run
+var riders_picked := false     ## the seat pick has been made this run
 var rng := RandomNumberGenerator.new()
 ## `-- --autoplay`: the game plays itself (for previews and balance checks).
 ## `-- --autoplay --quit-at-end` also prints the result and quits.
@@ -61,6 +63,8 @@ func new_run() -> void:
 	bonus_rerolls = 0
 	perks = {}
 	bosses = Defs.roll_bosses(rng)
+	riders.clear()
+	riders_picked = false
 	gates = Defs.GATES_FREE
 	shrine_seen = false
 	shrine_curse = false
@@ -80,6 +84,10 @@ func apply_loadout() -> void:
 
 func owned(id: String) -> int:
 	return pool.count(id)
+
+
+func has_rider(id: String) -> bool:
+	return id in riders
 
 
 func has_oath(id: String) -> bool:
@@ -204,6 +212,7 @@ func checkpoint() -> void:
 	_checkpoint["perks"] = perks.duplicate()
 	_checkpoint["bosses"] = bosses.duplicate()
 	_checkpoint["night_flames"] = night_flames.duplicate()
+	_checkpoint["riders"] = riders.duplicate()
 	for k in EXTRA_KEYS:
 		_checkpoint[k] = get(k)
 	# The RNG is saved too, so Save and Quit can't reroll anything (fog, ambush,
@@ -258,6 +267,8 @@ func load_run() -> bool:
 	bonus_rerolls = int(d.get("bonus_rerolls", 0))
 	perks = Dictionary(d.get("perks", {}))
 	bosses = Array(d.get("bosses", []))
+	riders = Array(d.get("riders", []))
+	riders_picked = true
 	shrine_seen = bool(d.get("shrine_seen", false))
 	shrine_curse = false
 	if d.has("rng_seed") and d.has("rng_state"):

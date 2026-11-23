@@ -13,6 +13,7 @@ const LoadoutScreen := preload("res://scripts/game/loadout_screen.gd")
 const OathsMenu := preload("res://scripts/ui/oaths_menu.gd")
 const FogEvent := preload("res://scripts/game/fog_event.gd")
 const ShrineEvent := preload("res://scripts/game/shrine_event.gd")
+const RiderScreen := preload("res://scripts/game/rider_screen.gd")
 
 const TITLE_SCENE := "res://scenes/title_screen.tscn"
 
@@ -39,7 +40,13 @@ func _ready() -> void:
 		Run.clear_save()
 		Run.new_run()
 	Run.resume = false
-	_show(_make_map(), false)
+	if not Run.riders_picked and not Profile.members.is_empty() and not Run.autoplay:
+		var r := RiderScreen.new()
+		r.done.connect(func(): _show(_make_map()))
+		_show(r, false)
+	else:
+		Run.riders_picked = true
+		_show(_make_map(), false)
 
 
 func _show(screen: Control, fade := true) -> void:

@@ -246,6 +246,26 @@ const UNLOCKS := {
 		"hint": "Survive night 3."},
 }
 
+## Caravan members: hired once with Essence (kept in Profile.members), then up
+## to CARAVAN_SEATS of them ride along on a run (Run.riders, picked before
+## night 1). "icon" is an Icons kind; "role" is the short tag on the card.
+## Their abilities are wired up member by member (blueprint: Caravan).
+const CARAVAN_SEATS := 2
+const CARAVAN := {
+	"cook": {"name": "Cook", "role": "Sustain", "icon": "cook", "cost": 30,
+		"desc": "Dawn heals 5 more flame."},
+	"tinker": {"name": "Tinker", "role": "Dice", "icon": "tinker", "cost": 40,
+		"desc": "+1 reroll on wave 1 of each night."},
+	"scout": {"name": "Scout", "role": "Information", "icon": "scout", "cost": 50,
+		"desc": "See each stop's wave modifiers and road event before you pick it."},
+	"hound": {"name": "Hound", "role": "Defense", "icon": "hound", "cost": 70,
+		"desc": "Bites the first spirit to get close to the fire each wave."},
+	"lamplighter": {"name": "Lamplighter", "role": "Synergy", "icon": "guide", "cost": 90,
+		"desc": "Guide Lights reach 15% farther."},
+	"smith": {"name": "Smith", "role": "Power", "icon": "smith", "cost": 120,
+		"desc": "Start the run with one die face turned into its \"+\" version."},
+}
+
 const GATHERED_FLAME_DIE := "torch"   ## the die Gathered Flame counts
 const HEALTHY_NIGHTS_MAX := 4.0  ## Oath of Healthy Nights: cap on the bonus heal
 const ASH_BUCKET_HEAL := 1.0     ## Oath of Ash Buckets: flame per unused Ashes

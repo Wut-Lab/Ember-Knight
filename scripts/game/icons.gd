@@ -14,6 +14,8 @@ extends RefCounted
 ##   wake   -> Brazier with a leaping spark (Ember Wake)
 ##   ash_heal -> ash heap with a small plus (Healing Ash)
 ##   sunrise -> half a sun on the horizon (Oath of Dawn Offerings)
+##   cook / tinker / scout / hound / smith -> caravan members (pot, gear,
+##       spyglass, paw, hammer on anvil)
 ##   essence -> blue orb with a flame (the Essence currency; `t` waves the flame)
 
 
@@ -39,6 +41,16 @@ static func draw(ci: CanvasItem, kind: String, c: Vector2, s: float, col: Color,
 			_star(ci, c, s, col)
 		"essence":
 			_essence(ci, c, s, t)
+		"cook":
+			_cook(ci, c, s, col)
+		"tinker":
+			_tinker(ci, c, s, col)
+		"scout":
+			_scout(ci, c, s, col)
+		"hound":
+			_hound(ci, c, s, col)
+		"smith":
+			_smith(ci, c, s, col)
 		"shift":
 			_shift(ci, c, s, col)
 		"hearth":
@@ -382,3 +394,70 @@ static func _hearth(ci: CanvasItem, c: Vector2, s: float, col: Color) -> void:
 		pts.append(c + Vector2(x, -y - 2.0) * s * 0.026)
 	ci.draw_polyline(pts, col, s * 0.08, true)
 	_flame(ci, c + Vector2(0, s * 0.02), s * 0.5, col)
+
+
+static func _cook(ci: CanvasItem, c: Vector2, s: float, col: Color) -> void:
+	# A round pot on a little fire, steam curling up.
+	var w := s * 0.08
+	var pot := PackedVector2Array()
+	for i in 17:
+		var a := PI * i / 16.0
+		pot.append(c + Vector2(cos(a) * s * 0.34, sin(a) * s * 0.26 - s * 0.02))
+	ci.draw_colored_polygon(pot, col)
+	ci.draw_line(c + Vector2(-s * 0.42, -s * 0.02), c + Vector2(s * 0.42, -s * 0.02), col, w, true)
+	ci.draw_arc(c + Vector2(-s * 0.36, s * 0.06), s * 0.07, PI * 0.5, PI * 1.5, 8, col, w * 0.6, true)
+	ci.draw_arc(c + Vector2(s * 0.36, s * 0.06), s * 0.07, -PI * 0.5, PI * 0.5, 8, col, w * 0.6, true)
+	for k in [-1, 1]:
+		var x: float = k * s * 0.1
+		ci.draw_arc(c + Vector2(x - s * 0.04, -s * 0.2), s * 0.06, PI * 0.5, PI * 1.5, 8, col, w * 0.55, true)
+		ci.draw_arc(c + Vector2(x + s * 0.04, -s * 0.32), s * 0.06, -PI * 0.5, PI * 0.5, 8, col, w * 0.55, true)
+
+
+static func _tinker(ci: CanvasItem, c: Vector2, s: float, col: Color) -> void:
+	# A cog with eight teeth.
+	var pts := PackedVector2Array()
+	for i in 64:
+		var a := TAU * i / 64.0
+		var r := s * (0.4 if (i / 4) % 2 == 0 else 0.3)
+		pts.append(c + Vector2(cos(a), sin(a)) * r)
+	ci.draw_colored_polygon(pts, col)
+	ci.draw_circle(c, s * 0.12, Color(0, 0, 0, 0.75))
+
+
+static func _scout(ci: CanvasItem, c: Vector2, s: float, col: Color) -> void:
+	# A spyglass, three segments narrowing to the eyepiece.
+	var d := Vector2(1, -0.55).normalized()
+	var n := Vector2(-d.y, d.x)
+	var base := c - d * s * 0.42
+	var segs := [[0.0, 0.32, 0.13], [0.3, 0.6, 0.1], [0.58, 0.84, 0.075]]
+	for g in segs:
+		var a: Vector2 = base + d * s * g[0]
+		var b: Vector2 = base + d * s * g[1]
+		var h: float = s * g[2]
+		ci.draw_colored_polygon(PackedVector2Array([a + n * h, b + n * h, b - n * h, a - n * h]), col)
+	ci.draw_circle(base + d * s * 0.84, s * 0.05, col)
+
+
+static func _hound(ci: CanvasItem, c: Vector2, s: float, col: Color) -> void:
+	# A paw print.
+	var pad := PackedVector2Array()
+	for i in 20:
+		var a := TAU * i / 20.0
+		pad.append(c + Vector2(cos(a) * s * 0.2, sin(a) * s * 0.16 + s * 0.14))
+	ci.draw_colored_polygon(pad, col)
+	for p in [Vector2(-0.27, -0.06), Vector2(-0.1, -0.24), Vector2(0.1, -0.24), Vector2(0.27, -0.06)]:
+		ci.draw_circle(c + p * s, s * 0.085, col)
+
+
+static func _smith(ci: CanvasItem, c: Vector2, s: float, col: Color) -> void:
+	# An anvil with a hammer raised over it.
+	var o := c + Vector2(0, s * 0.12)
+	ci.draw_colored_polygon(PackedVector2Array([
+		o + Vector2(-s * 0.42, -s * 0.1), o + Vector2(s * 0.3, -s * 0.1), o + Vector2(s * 0.4, -s * 0.02),
+		o + Vector2(s * 0.14, 0), o + Vector2(s * 0.1, s * 0.12), o + Vector2(s * 0.24, s * 0.24),
+		o + Vector2(-s * 0.24, s * 0.24), o + Vector2(-s * 0.1, s * 0.12), o + Vector2(-s * 0.14, 0),
+		o + Vector2(-s * 0.3, 0)]), col)
+	var hc := c + Vector2(s * 0.08, -s * 0.3)
+	ci.draw_line(hc, hc + Vector2(s * 0.3, s * 0.12), col, s * 0.06, true)
+	ci.draw_colored_polygon(PackedVector2Array([hc + Vector2(-s * 0.1, -s * 0.12), hc + Vector2(s * 0.04, -s * 0.06),
+		hc + Vector2(-s * 0.04, s * 0.12), hc + Vector2(-s * 0.18, s * 0.06)]), col)
