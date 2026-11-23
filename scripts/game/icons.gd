@@ -27,6 +27,10 @@ static func draw(ci: CanvasItem, kind: String, c: Vector2, s: float, col: Color,
 			_parchment(ci, c, s, col)
 		"hand":
 			_hand(ci, c, s, col)
+		"devotion":
+			_devotion(ci, c, s, col)
+		"hourglass":
+			_hourglass(ci, c, s, col)
 		"vent":
 			_steam(ci, c, s, col)
 		"kindle":
@@ -217,6 +221,46 @@ static func _hand(ci: CanvasItem, c: Vector2, s: float, col: Color) -> void:
 	var t1 := p + Vector2(-s * 0.22, -s * 0.04)
 	ci.draw_line(t0, t1, col, fw * 0.85, true)
 	ci.draw_circle(t1, fw * 0.42, col)
+
+
+## A heart outline with a single flame burning inside it.
+static func _devotion(ci: CanvasItem, c: Vector2, s: float, col: Color) -> void:
+	var pts := PackedVector2Array()
+	for i in 41:
+		var t := TAU * i / 40.0
+		var x := 16.0 * pow(sin(t), 3)
+		var y := -(13.0 * cos(t) - 5.0 * cos(2 * t) - 2.0 * cos(3 * t) - cos(4 * t))
+		pts.append(c + Vector2(x, y + 1.5) * s * 0.022)
+	ci.draw_polyline(pts, col, s * 0.065, true)
+	# The flame: a round base rising to a flickering tip.
+	var r := s * 0.075
+	var fc := c + Vector2(0, s * 0.13)
+	var f := PackedVector2Array()
+	for i in 13:
+		var a := PI * i / 12.0
+		f.append(fc + Vector2(cos(a), sin(a)) * r)
+	for q in [Vector2(-1.0, -0.4), Vector2(-0.95, -1.3), Vector2(-0.55, -2.1), Vector2(-0.05, -2.8), Vector2(0.0, -3.6), Vector2(0.4, -2.7), Vector2(0.6, -2.2), Vector2(0.85, -2.7), Vector2(1.05, -1.7), Vector2(1.05, -0.5)]:
+		f.append(fc + q * r)
+	ci.draw_colored_polygon(f, col)
+
+
+## An hourglass with speed lines streaming off one side.
+static func _hourglass(ci: CanvasItem, c: Vector2, s: float, col: Color) -> void:
+	var w := s * 0.2
+	var h := s * 0.3
+	var o := c + Vector2(s * 0.08, 0)
+	var line := s * 0.06
+	ci.draw_line(o + Vector2(-w * 1.25, -h), o + Vector2(w * 1.25, -h), col, line * 1.3, true)   # caps
+	ci.draw_line(o + Vector2(-w * 1.25, h), o + Vector2(w * 1.25, h), col, line * 1.3, true)
+	ci.draw_polyline(PackedVector2Array([o + Vector2(-w, -h), o + Vector2(0, 0), o + Vector2(-w, h)]), col, line, true)
+	ci.draw_polyline(PackedVector2Array([o + Vector2(w, -h), o + Vector2(0, 0), o + Vector2(w, h)]), col, line, true)
+	# Sand: a little left on top, a heap below.
+	ci.draw_colored_polygon(PackedVector2Array([o + Vector2(-w * 0.45, -h * 0.45), o + Vector2(w * 0.45, -h * 0.45), o + Vector2(0, -h * 0.02)]), col)
+	ci.draw_colored_polygon(PackedVector2Array([o + Vector2(-w * 0.85, h * 0.9), o + Vector2(w * 0.85, h * 0.9), o + Vector2(0, h * 0.35)]), col)
+	for i in 3:   # speed lines
+		var y := (i - 1) * h * 0.6
+		var x0 := o.x - w * 1.6 - s * (0.02 if i == 1 else 0.06)
+		ci.draw_line(Vector2(x0 - s * 0.16, c.y + y), Vector2(x0, c.y + y), col, line * 0.8, true)
 
 
 static func _star(ci: CanvasItem, c: Vector2, s: float, col: Color) -> void:

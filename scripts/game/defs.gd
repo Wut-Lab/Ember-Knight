@@ -145,14 +145,14 @@ const OATHS := {
 	"urgency": {
 		"rarity": "unique",
 		"name": "Oath of Urgency",
-		"icon": "bolt",
+		"icon": "hourglass",
 		"short": "Char and defenses fire 25% faster; half the spirits are 30% faster.",
 		"desc": "No time to waste. No time to rest.\n\nChar, Torches, Mortars and Steam Vents fire 25% faster, and Char deals 10% more damage. But half the spirits move 30% faster.",
 	},
 	"dedication": {
 		"rarity": "rare",
 		"name": "Oath of Dedication",
-		"icon": "hearth",
+		"icon": "devotion",
 		"short": "Your most shared face gets +10% per die that has it.",
 		"desc": "Char commits to one craft.\n\nThe face found on the most of tonight's dice gets +10% for each die that has it: damage (Torch, Mortar), slow (Steam Vent), healing (Kindle, Pine Log), HP (Ember Wall) or reach (Guide Light). Ashes don't count; ties go to the earlier die.",
 	},
