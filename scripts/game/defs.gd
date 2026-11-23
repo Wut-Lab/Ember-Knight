@@ -81,8 +81,8 @@ const OATHS := {
 		"rarity": "common",
 		"name": "Oath of the Bright Beacon",
 		"icon": "beacon",
-		"short": "Guide Light also gives its group +1 damage.",
-		"desc": "Guide Lights burn brighter.\n\nDefenses in a Guide Light's group deal +1 damage, on top of the longer reach.",
+		"short": "Guide Light also gives the rest of its patch +1 damage.",
+		"desc": "Guide Lights burn brighter.\n\nOther defenses on a Guide Light's ashy patch deal +1 damage, on top of the longer reach.",
 		"face_mods": {"guide": {"group_damage": 1.0}},
 	},
 	"healing_ash": {
@@ -416,7 +416,7 @@ const FACE_INFO := {
 	"mortar": {"name": "Cinder Mortar", "color": Color("#e0603a"),
 		"desc": "Lobs a cinder at the spirit farthest back on its trail. Slow, splashes, can't hit up close."},
 	"guide": {"name": "Guide Light", "color": Color("#ffe9a8"),
-		"desc": "A lantern on a pole. Neighbouring defenses reach a little farther and closer."},
+		"desc": "A lantern on a pole. Every other defense on its ashy patch reaches farther (Mortars fire closer in too). Doesn't stack."},
 	"wall": {"name": "Ember Wall", "color": Color("#d9743a"),
 		"desc": "Build across a trail: spirits stop and burn through it, scorched by its embers."},
 	"pine": {"name": "Pine Log", "color": Color("#c98a4a"),
@@ -466,8 +466,8 @@ const DEFENSES := {
 		{"range": 0.0, "boost": 1.25, "min_mult": 0.65},
 	],
 }
-## Guide Light boosts the other tiles in its group (the three tiles between
-## two trails: board tiles 3g, 3g+1, 3g+2).
+## Guide Light boosts every other defense in its group: three neighbouring
+## tiles on one ashy patch (board.tile_group).
 
 ## Char by kindle level 0..3. Kept weak on purpose: with no defenses or
 ## upgrades, a run should usually fail by night 4 or 5.

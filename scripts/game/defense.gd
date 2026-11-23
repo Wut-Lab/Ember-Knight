@@ -87,7 +87,7 @@ func stats() -> Dictionary:
 	return st
 
 
-## The best Guide Light on a neighbouring tile ({} if none). Guides don't
+## The best Guide Light elsewhere in this tile's group ({} if none). Guides don't
 ## boost each other.
 func guide_bonus() -> Dictionary:
 	if kind == "guide":
