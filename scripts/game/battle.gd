@@ -40,6 +40,7 @@ const Campfire := preload("res://scripts/title/campfire.gd")
 const CampProp := preload("res://scripts/game/camp_prop.gd")
 const FlameBar := preload("res://scripts/game/flame_bar.gd")
 const DrawProxy := preload("res://scripts/ui/draw_proxy.gd")
+const LitLamp := preload("res://scripts/game/lit_lamp.gd")
 
 enum Phase { PREP, FIGHT, DONE }
 
@@ -170,6 +171,11 @@ func _ready() -> void:
 	char_unit = CharUnit.new()
 	_entities.add_child(char_unit)
 	char_unit.setup(self, board)
+	if Run.has_rider("lamplighter"):   # Leopold's Lit Lamp
+		var lamp := LitLamp.new()
+		_entities.add_child(lamp)
+		lamp.setup(self, board)
+		_props.append(lamp)
 	if Run.has_oath("forest_friend"):
 		var dr := Dryad.new()
 		_entities.add_child(dr)
@@ -923,6 +929,14 @@ func shoot(origin_world: Vector2, muzzle: Vector2, target, damage: float, style:
 	p.burn = burn
 	p.position = board.proj(p.world) + Vector2(0, muzzle.y)
 	AudioDirector.play_sfx("bolt", -12.0 if style == "bolt" else -14.0)
+
+
+func add_lamp_shot(s) -> void:
+	_fx.add_child(s)
+
+
+func lamp_spark(at: Vector2) -> void:
+	_add_fx("spark", at, Color.WHITE)
 
 
 func ring_fx(at: Vector2, r: float, col: Color) -> void:

@@ -252,6 +252,11 @@ const UNLOCKS := {
 ## Their abilities are wired up member by member (blueprint: Caravan).
 const CARAVAN_SEATS := 2
 const TINKER_PARTS := 3  ## Terry, the Tinker: Ashes rolled per free reroll
+const LAMP_SHOTS := 8       ## Leopold, the Lamplighter: shots per ring
+const LAMP_EVERY := 4.0     ## seconds between rings
+const LAMP_DAMAGE := 1.0    ## each shot's damage, as a share of Char's
+const LAMP_RANGE := 0.75    ## reach, as a share of the farthest trail start
+const LAMP_TURN := PI / 8.0 ## the ring turns this much each volley
 const HOUND_SCARES := 1   ## Hella, the Caravan Hound: Wisps she scares off each wave
 const COOK_HEAL := 5.0   ## Carson, the Cook: his own heal at each dawn
 const CARAVAN := {
@@ -263,8 +268,8 @@ const CARAVAN := {
 		"desc": "His ears point to the lane the most Wisps will come down each wave."},
 	"hound": {"name": "Hella, the Caravan Hound", "role": "Defense", "icon": "hound", "cost": 70,
 		"desc": "Scares off the first Wisp to reach the fire each wave, back to the start of a random lane. Bosses ignore her."},
-	"lamplighter": {"name": "Lamplighter", "role": "Synergy", "icon": "guide", "cost": 90,
-		"desc": "Guide Lights reach 15% farther."},
+	"lamplighter": {"name": "Leopold, the Lamplighter", "role": "Synergy", "icon": "guide", "cost": 90,
+		"desc": "A Lit Lamp beside Char fires a ring of 8 white shots every few seconds."},
 	"smith": {"name": "Smith", "role": "Power", "icon": "smith", "cost": 120,
 		"desc": "Start the run with one die face turned into its \"+\" version."},
 }
