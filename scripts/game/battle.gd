@@ -1148,7 +1148,7 @@ func _autoplay_step(delta: float) -> void:
 			if t != null and t.kind == d.face and t.level < 3:
 				best = i
 				break
-		if best == -1 and d.face == "guide":   # next to an existing defense
+		if best == -1 and Defs.base_face(d.face) in Defs.SUPPORT_FACES:   # next to an existing defense
 			for i in board.tiles.size():
 				if board.tile_defense[i] == null and _has_neighbour(i):
 					best = i
@@ -1197,7 +1197,7 @@ func _autoplay_gates(delta: float) -> void:
 
 func _has_neighbour(i: int) -> bool:
 	for df in defenses:
-		if df.kind != "guide" and board.tile_group[df.tile] == board.tile_group[i]:
+		if not df.kind in Defs.SUPPORT_FACES and board.tile_group[df.tile] == board.tile_group[i]:
 			return true
 	return false
 

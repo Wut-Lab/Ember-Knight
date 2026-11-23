@@ -41,6 +41,8 @@ static func draw(ci: CanvasItem, kind: String, c: Vector2, s: float, col: Color,
 			_mortar(ci, c, s, col)
 		"guide":
 			_guide(ci, c, s, col)
+		"bellows":
+			_bellows(ci, c, s, col)
 		"wall":   # three courses of bricks
 			for row in 3:
 				var y := c.y + s * (0.18 - 0.2 * row)
@@ -118,6 +120,19 @@ static func _guide(ci: CanvasItem, c: Vector2, s: float, col: Color) -> void:
 	for a in [-0.35, 0.0, 0.35]:
 		var d := Vector2.from_angle(PI * 0.5 + a * PI)
 		ci.draw_line(c + Vector2(0, -s * 0.04) + d * s * 0.3, c + Vector2(0, -s * 0.04) + d * s * 0.44, col, s * 0.05, true)
+
+
+## Bellows: a wedge of two boards with a nozzle, a handle, and a puff of air.
+static func _bellows(ci: CanvasItem, c: Vector2, s: float, col: Color) -> void:
+	var tip := c + Vector2(s * 0.22, 0)
+	var back_t := c + Vector2(-s * 0.32, -s * 0.24)
+	var back_b := c + Vector2(-s * 0.32, s * 0.2)
+	ci.draw_polyline(PackedVector2Array([tip, back_t, back_b, tip]), col, s * 0.07, true)
+	ci.draw_line(back_t + Vector2(s * 0.08, s * 0.1), back_b + Vector2(s * 0.08, -s * 0.1), col, s * 0.04, true)   # fold
+	ci.draw_line(tip, tip + Vector2(s * 0.12, 0), col, s * 0.1)   # nozzle
+	ci.draw_line(back_t, back_t + Vector2(-s * 0.1, -s * 0.1), col, s * 0.06, true)   # handle
+	for k in 2:   # puff
+		ci.draw_arc(tip + Vector2(s * 0.24, 0), s * (0.06 + 0.07 * k), -0.9, 0.9, 8, col, s * 0.04, true)
 
 
 ## Ashes: a small grey heap with a wisp of smoke.

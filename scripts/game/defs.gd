@@ -5,7 +5,7 @@ extends RefCounted
 # ------------------------------------------------------------ dice
 ## Every face that exists. "kindle" (star) goes on the fire to power up Char.
 ## Every other face must be a key in DEFENSES.
-const DIE_FACES := ["kindle", "torch", "vent", "mortar", "guide", "wall", "pine", "ward", "ashes"]
+const DIE_FACES := ["kindle", "torch", "vent", "mortar", "guide", "bellows", "wall", "pine", "ward", "ashes"]
 ## Fire faces go on the fire instead of a tile.
 const FIRE_FACES := ["kindle", "pine", "ward"]
 ## A die is a D6: a list of 6 faces. Opposite sides are i and 5 - i.
@@ -37,11 +37,13 @@ const DICE := {
 	"ashen_vent": {"name": "Ashen Vent Die", "faces": ["vent++", "ashes", "ashes", "vent+", "ashes", "ashes"]},
 	## Mason Die: Ember Walls hold spirits where the Mortars can land on them.
 	"mason": {"name": "Mason Die", "faces": ["wall", "mortar", "wall+", "ashes", "mortar", "wall"]},
-	## Wayfinder Die: Guide Lights with Torches to light and a Wall to hold the line.
 	"ward": {"name": "Ward Die", "faces": ["ward", "vent", "kindle", "ward", "vent", "kindle"]},
 	"crazy": {"name": "Crazy Die", "faces": ["torch", "mortar", "vent", "wall", "guide", "ashes"]},
+	## Wayfinder Die: Guide Lights with Torches to light and a Wall to hold the line.
 	"wayfinder": {"name": "Wayfinder Die", "faces": ["guide", "torch", "guide", "wall", "torch", "ashes"]},
 	"bombardment": {"name": "Bombardment Die", "faces": ["mortar+", "ashes", "vent+", "kindle", "ashes", "mortar+"]},
+	## Forge Die: two Bellows to drive a patch of Torches and Vents.
+	"forge": {"name": "Forge Die", "faces": ["bellows", "torch", "vent", "ashes", "torch", "bellows"]},
 }
 
 ## A "+" face ("torch+") acts as its base face but adds two levels at once;
@@ -417,6 +419,8 @@ const FACE_INFO := {
 		"desc": "Lobs a cinder at the spirit farthest back on its trail. Slow, splashes, can't hit up close."},
 	"guide": {"name": "Guide Light", "color": Color("#ffe9a8"),
 		"desc": "A lantern on a pole. Every other defense on its ashy patch reaches farther (Mortars fire closer in too). Doesn't stack."},
+	"bellows": {"name": "Bellows", "color": Color("#d9a06a"),
+		"desc": "A leather bellows on a frame. Every other defense on its patch attacks faster. Doesn't stack."},
 	"wall": {"name": "Ember Wall", "color": Color("#d9743a"),
 		"desc": "Build across a trail: spirits stop and burn through it, scorched by its embers."},
 	"pine": {"name": "Pine Log", "color": Color("#c98a4a"),
@@ -464,6 +468,13 @@ const DEFENSES := {
 		{"range": 0.0, "boost": 1.15, "min_mult": 0.75},
 		{"range": 0.0, "boost": 1.2, "min_mult": 0.7},
 		{"range": 0.0, "boost": 1.25, "min_mult": 0.65},
+	],
+	## No attack. Defenses on the other tiles of its group attack "haste"
+	## times as often. Several Bellows don't stack: the best one counts.
+	"bellows": [
+		{"range": 0.0, "haste": 1.15},
+		{"range": 0.0, "haste": 1.2},
+		{"range": 0.0, "haste": 1.25},
 	],
 }
 ## Guide Light boosts every other defense in its group: three neighbouring
@@ -540,6 +551,8 @@ const BOSS_ESCORT := 0.5         ## the boss wave brings this share of a normal 
 const BOSS_DAWN_HEAL := 30.0     ## extra dawn heal after beating a leg's boss
 ## Light-based defenses: a Dark Wisp dims these (they fire slower near him).
 const LIGHT_DEFENSES := ["torch", "mortar"]
+## Faces that boost the rest of their tile group instead of attacking.
+const SUPPORT_FACES := ["guide", "bellows"]
 
 
 ## Is this the boss wave? Wave 3 of each leg's 4th night (0-based night/wave).

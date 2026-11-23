@@ -77,6 +77,9 @@ func stats() -> Dictionary:
 		st["damage"] *= 1.0 + battle.banked
 	if battle.stoked and st.has("rate"):   # lull reward: Stoke
 		st["rate"] *= Defs.STOKE_RATE
+	var bw := group_best("bellows", "haste")
+	if not bw.is_empty() and st.has("rate"):
+		st["rate"] *= bw["haste"]
 	var g := guide_bonus()
 	if not g.is_empty():
 		st["range"] *= g["boost"]
@@ -90,14 +93,20 @@ func stats() -> Dictionary:
 ## The best Guide Light elsewhere in this tile's group ({} if none). Guides don't
 ## boost each other.
 func guide_bonus() -> Dictionary:
-	if kind == "guide":
+	return group_best("guide", "boost")
+
+
+## The best `src` support (Guide Light, Bellows) elsewhere in this tile's
+## group, compared by `key` ({} if none). Supports don't boost each other.
+func group_best(src: String, key: String) -> Dictionary:
+	if kind in Defs.SUPPORT_FACES:
 		return {}
 	var best := {}
 	for o in battle.defenses:
-		if o == self or o.kind != "guide" or board.tile_group[o.tile] != board.tile_group[tile]:
+		if o == self or o.kind != src or board.tile_group[o.tile] != board.tile_group[tile]:
 			continue
-		var g: Dictionary = Defs.DEFENSES["guide"][o.level - 1]
-		if best.is_empty() or g["boost"] > best["boost"]:
+		var g: Dictionary = Defs.DEFENSES[src][o.level - 1]
+		if best.is_empty() or g[key] > best[key]:
 			best = g
 	return best
 
@@ -223,5 +232,32 @@ func _draw_kind(v: float, lit: float) -> void:
 			draw_circle(lp, (16.0 + 4.0 * level) * v * f, Color(1.0, 0.92, 0.6, 0.12))
 			draw_rect(Rect2(lp + Vector2(-5 * v, -7 * v), Vector2(10 * v, 13 * v)), Color("#4a4038"))
 			draw_rect(Rect2(lp + Vector2(-3.5 * v, -5 * v), Vector2(7 * v, 9 * v)), Color("#ffe9a8"))
+		"bellows":
+			# Two hinged boards with a leather middle on a little stand,
+			# pumping (fast while a wave is on) toward an iron nozzle.
+			var u := v * 1.75
+			var pump := 0.5 + 0.5 * sin(_t * (9.0 if battle.fighting else 2.0))
+			var leather := Color("#6e4a30")
+			draw_rect(Rect2(-12 * u, -14 * u, 3 * u, 16 * u), wood)
+			draw_rect(Rect2(9 * u, -14 * u, 3 * u, 16 * u), wood)
+			var hinge := Vector2(13 * u, -20 * u)
+			var back := Vector2(-15 * u, -20 * u)
+			var open_ := (4.0 + 6.0 * pump) * u
+			var top := PackedVector2Array([hinge, back + Vector2(0, -open_), back + Vector2(0, -open_ - 3 * u), hinge + Vector2(0, -3 * u)])
+			var bot := PackedVector2Array([hinge, back + Vector2(0, open_ * 0.4), back + Vector2(0, open_ * 0.4 + 3 * u), hinge + Vector2(0, 3 * u)])
+			draw_colored_polygon(PackedVector2Array([hinge, back + Vector2(0, -open_), back + Vector2(-2 * u, 0), back + Vector2(0, open_ * 0.4)]), leather)
+			for k in 2:   # leather folds
+				var x := lerpf(back.x, hinge.x, 0.25 + 0.25 * k)
+				var h := lerpf(open_, 0.0, 0.25 + 0.25 * k)
+				draw_line(Vector2(x, back.y - h), Vector2(x, back.y + h * 0.4), leather.darkened(0.35), 1.2 * u)
+			draw_colored_polygon(top, wood.lightened(0.1))
+			draw_colored_polygon(bot, wood.darkened(0.1))
+			draw_line(back + Vector2(0, -open_ - 1.5 * u), back + Vector2(-7 * u, -open_ - 5 * u), wood, 2.5 * u)   # handle
+			draw_rect(Rect2(hinge + Vector2(0, -2 * u), Vector2(7 * u, 4 * u)), Color("#4a4038"))   # nozzle
+			for k in level - 1:   # brass bands per level
+				var x := lerpf(back.x, hinge.x, 0.55 + 0.15 * k)
+				draw_line(Vector2(x, back.y - open_ * 0.5 - 2 * u), Vector2(x, back.y - open_ * 0.5 + 1 * u), Color("#d9b45a"), 2.0 * u)
+			if battle.fighting and pump < 0.3:   # a puff of air
+				draw_circle(hinge + Vector2(12 * u, 0), (2.0 + 3.0 * (0.3 - pump) * 10.0) * u, Color(1, 0.9, 0.75, 0.18))
 		_:
 			draw_rect(Rect2(-4 * v, -40 * v, 8 * v, 42 * v), wood)

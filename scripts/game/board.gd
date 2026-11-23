@@ -415,7 +415,7 @@ func _scatter_tiles(r: RandomNumberGenerator, want: int) -> void:
 
 
 ## Groups of 3 neighbouring tiles: the most outlying tile left takes its two
-## nearest. A Guide Light boosts every other defense in its group.
+## nearest. A Guide Light or Bellows boosts every other defense in its group.
 func _group_tiles() -> void:
 	tile_group.clear()
 	tile_group.resize(tiles.size())
@@ -1265,7 +1265,7 @@ func _draw() -> void:
 				if Defs.DEFENSES.has(face_now) and Defs.DEFENSES[face_now][0].has("min"):
 					var mn: float = Defs.DEFENSES[face_now][0]["min"] * guide_boost_at(i, face_now).get("min_mult", 1.0)
 					_ring(c, mn * view_scale, mn * view_scale * K, Color(1, 0.4, 0.3, 0.3), 2.0)
-				if face_now == "guide":   # light up the tiles it would boost
+				if face_now in Defs.SUPPORT_FACES:   # light up the tiles it would boost
 					for j in tiles.size():
 						if j != i and tile_group[j] == tile_group[i]:
 							var cj := proj(tiles[j])
@@ -1297,7 +1297,7 @@ var gates_left := 0          ## set by the battle: junctions glow while gates re
 var _patches: Array = []   ## per group: [4 hulls outer to inner, centre, flecks] (world)
 
 ## Each group of 3 sits on a patch of trodden-down ground, so the groups
-## (and which defenses a Guide Light boosts) read at a glance.
+## (and which defenses a Guide Light or Bellows boosts) read at a glance.
 func _draw_group_patches() -> void:
 	if _patches.size() != group_count:
 		_patches.clear()
@@ -1531,7 +1531,7 @@ func _preview_range(face: String, i: int) -> float:
 ## The best Guide Light boost a `face` defense on tile i would get from the
 ## rest of its group ({} if none). The tile being moved off doesn't count.
 func guide_boost_at(i: int, face: String) -> Dictionary:
-	if face == "guide" or i < 0 or i >= tile_group.size():
+	if face in Defs.SUPPORT_FACES or i < 0 or i >= tile_group.size():
 		return {}
 	var best := {}
 	for j in tiles.size():
