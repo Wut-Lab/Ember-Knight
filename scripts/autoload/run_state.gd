@@ -121,12 +121,35 @@ func take_perk(o: Dictionary) -> void:
 
 ## Flame healed by one Kindle die (Hearth-Bound adds to it).
 func kindle_heal() -> float:
-	return Defs.KINDLE_HEAL + (Defs.HEARTH_KINDLE_BONUS if has_oath("hearth_bound") else 0.0) + healthy_bonus()
+	return (Defs.KINDLE_HEAL + (Defs.HEARTH_KINDLE_BONUS if has_oath("hearth_bound") else 0.0) + healthy_bonus()) * (1.0 + dedication("kindle"))
 
 
 ## Flame healed by one Pine Log.
 func pine_heal() -> float:
-	return Defs.PINE_HEAL + healthy_bonus()
+	return (Defs.PINE_HEAL + healthy_bonus()) * (1.0 + dedication("pine"))
+
+
+## Oath of Dedication: the bonus share for a base face (0 unless it is the
+## face found on the most of tonight's dice; ties go to the earlier die).
+func dedication(face: String) -> float:
+	if not has_oath("dedication"):
+		return 0.0
+	var counts := {}
+	var order := []
+	for faces in dice:
+		var seen := []
+		for f in faces:
+			var b := Defs.base_face(f)
+			if b != "ashes" and not b in seen:
+				seen.append(b)
+				counts[b] = counts.get(b, 0) + 1
+				if not b in order:
+					order.append(b)
+	var best := ""
+	for b in order:
+		if best == "" or counts[b] > counts[best]:
+			best = b
+	return Defs.DEDICATION_PER_DIE * counts[best] if best == face else 0.0
 
 
 ## Oath of Healthy Nights: +1 per two nights passed, between 1 and the cap.

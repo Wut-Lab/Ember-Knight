@@ -69,6 +69,14 @@ func stats() -> Dictionary:
 			if is_instance_valid(o) and o.kind == "vent":
 				vents += o.level
 		st["min"] *= 1.0 - minf(Defs.DECIMATION_CAP, Defs.DECIMATION_PER_VENT * vents)
+	var ded := Run.dedication(kind)   # Oath of Dedication
+	if ded > 0.0:
+		if st.has("damage") and kind != "vent":
+			st["damage"] *= 1.0 + ded
+		if st.has("slow"):
+			st["slow"] *= 1.0 + ded
+	if Run.has_oath("urgency") and st.has("rate") and kind in ["torch", "mortar", "vent"]:
+		st["rate"] *= Defs.URGENCY_RATE
 	if st.has("slow"):
 		st["slow"] = minf(st["slow"], Defs.SLOW_CAP)
 	if st.has("rate") and kind in Defs.LIGHT_DEFENSES:   # a Dark Wisp's dimming
@@ -96,7 +104,10 @@ func guide_bonus() -> Dictionary:
 	for o in battle.defenses:
 		if o == self or o.kind != "guide" or o.tile / 3 != tile / 3:
 			continue
-		var g: Dictionary = Defs.DEFENSES["guide"][o.level - 1]
+		var g: Dictionary = Defs.DEFENSES["guide"][o.level - 1].duplicate()
+		var ded := Run.dedication("guide")   # Oath of Dedication: more reach
+		if ded > 0.0:
+			g["boost"] = 1.0 + (g["boost"] - 1.0) * (1.0 + ded)
 		if best.is_empty() or g["boost"] > best["boost"]:
 			best = g
 	return best
