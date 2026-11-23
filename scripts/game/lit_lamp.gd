@@ -48,6 +48,12 @@ func _volley() -> void:
 	_turn += Defs.LAMP_TURN
 	_flash = 1.0
 	AudioDirector.play_sfx("lamp", -12.0)
+	battle.member_react("lamplighter")
+
+
+## 0..1 toward the next volley, for Leopold's badge.
+func progress() -> float:
+	return clampf(1.0 - _cool / Defs.LAMP_EVERY, 0.0, 1.0)
 
 
 ## Glows brighter as the next volley nears.

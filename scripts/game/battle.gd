@@ -40,6 +40,7 @@ const Campfire := preload("res://scripts/title/campfire.gd")
 const CampProp := preload("res://scripts/game/camp_prop.gd")
 const FlameBar := preload("res://scripts/game/flame_bar.gd")
 const DrawProxy := preload("res://scripts/ui/draw_proxy.gd")
+const MemberFigure := preload("res://scripts/game/member_figure.gd")
 const LitLamp := preload("res://scripts/game/lit_lamp.gd")
 
 enum Phase { PREP, FIGHT, DONE }
@@ -87,8 +88,10 @@ var _shift_free := false   ## lull reward Adjustment: the next move costs nothin
 var _parts_view: Control     ## Terry, the Tinker: cog + pips above the Roll button
 var _parts_pulse := 0.0
 var _hella_left := 0          # Hella, the Caravan Hound: scares left this wave
-var _hella_view: Control
-var _hella_pulse := 0.0
+var _badges := {}   ## rider id -> HUD badge (DrawProxy)
+var _badge_pulse := {}
+var _lamp = null
+var _figures := {}   ## rider id -> MemberFigure by the fire
 var _lull_rerolls := 0     ## lull reward Spare Luck: extra rerolls next prep
 var banked := 0.0          ## Oath of the Banked Fire: + damage this wave (read by Defense, Char)
 var wards := 0             ## Ash Wards on the fire this wave, waiting to pulse
@@ -175,7 +178,19 @@ func _ready() -> void:
 		var lamp := LitLamp.new()
 		_entities.add_child(lamp)
 		lamp.setup(self, board)
+		_lamp = lamp
 		_props.append(lamp)
+	var spots := [Vector2(70, 118), Vector2(170, -80)]   # seat spots, clear of lanes
+	var seated: Array = Run.riders.duplicate()
+	if seated.has("lamplighter"):   # Leopold stands nearer his lamp
+		seated.erase("lamplighter")
+		seated.push_front("lamplighter")
+	for i in mini(seated.size(), spots.size()):
+		var fig := MemberFigure.new()
+		_entities.add_child(fig)
+		fig.setup(seated[i], spots[i], board)
+		_props.append(fig)
+		_figures[seated[i]] = fig
 	if Run.has_oath("forest_friend"):
 		var dr := Dryad.new()
 		_entities.add_child(dr)
@@ -241,8 +256,8 @@ func _start_prep() -> void:
 	_sixth_used = false
 	_lull_rerolls = 0
 	_hella_left = Defs.HOUND_SCARES if Run.has_rider("hound") else 0
-	_hella_view.visible = Run.has_rider("hound")
-	_hella_view.queue_redraw()
+	if wave == 0:
+		member_react("cook")   # Carson's stew is on for the night
 	var n: int = Run.dice.size()
 	for d in _dice:
 		d.queue_free()
@@ -296,6 +311,7 @@ func _start_prep() -> void:
 		_hint.text += "   %s built %s from spare parts." % [Defs.CARAVAN["tinker"]["name"], "a free reroll" if built == 1 else "%d free rerolls" % built]
 	if Run.night == 0 and wave == 0 and Run.forge_text() != "":
 		_hint.text += "   Simon, the Smith forged a %s." % Run.forge_text()
+		member_react("smith")
 	if not _carl_lanes.is_empty():
 		_hint.text += "   Carl's ears twitch toward %s." % ("the glowing trail" if _carl_lanes.size() == 1 else "the glowing trails")
 	elif not _planned.is_empty():
@@ -320,6 +336,7 @@ func _roll(first := false) -> void:
 		any = true
 		if d.faces[side] == "ashes" and Run.has_rider("tinker"):
 			Run.spare_parts += 1
+			member_react("tinker")
 			_parts_pulse = 1.0
 	if any:
 		AudioDirector.play_sfx("dice_roll", -3.0)
@@ -523,9 +540,9 @@ func _process(delta: float) -> void:
 	# The board's light follows the campfire's flicker.
 	board.fire_glow = 0.9 + 0.1 * sin(Time.get_ticks_msec() * 0.006) * sin(Time.get_ticks_msec() * 0.0017)
 	board.hover_tile = _hover
-	if _hella_pulse > 0.0:
-		_hella_pulse = maxf(0.0, _hella_pulse - delta * 2.0)
-		_hella_view.queue_redraw()
+	for id in _badges:
+		_badge_pulse[id] = maxf(0.0, _badge_pulse[id] - delta * 1.6)
+		_badges[id].queue_redraw()
 	if _parts_pulse > 0.0:
 		_parts_pulse = maxf(0.0, _parts_pulse - delta * 2.5)
 		_parts_view.queue_redraw()
@@ -684,6 +701,8 @@ func _plan_carl() -> void:
 		_carl_lanes = []
 	_carl_view.visible = true
 	_carl_view.queue_redraw()
+	if not _carl_lanes.is_empty():
+		member_react("cat")
 
 
 ## Carl's trail: a soft gold band down the lane (under the spirits and Char),
@@ -854,8 +873,7 @@ func _hella_scare(sp) -> bool:
 	if _hella_left <= 0 or sp.boss or phase != Phase.FIGHT:
 		return false
 	_hella_left -= 1
-	_hella_pulse = 1.0
-	_hella_view.queue_redraw()
+	member_react("hound")
 	_add_fx("ring", sp.world, Color("#e0b07a"), 70.0)
 	_add_fx("ring", Vector2.ZERO, Color("#e0b07a"), 140.0)
 	_add_fx("text", sp.world, Color("#ffd58f"), 100.0, "Scared!")
@@ -1461,13 +1479,16 @@ func _build_hud() -> void:
 	_flame_bar = FlameBar.new()
 	_flame_bar.position = Vector2(20, 18)
 	add_child(_flame_bar)
-	_hella_view = DrawProxy.new()   # Hella's paw: bright while she's on guard
-	_hella_view.position = Vector2(328, 18)
-	_hella_view.size = Vector2(36, 36)
-	_hella_view.visible = false
-	_hella_view.draw_fn = _draw_hella
-	_hella_view.tooltip_text = "Hella, the Caravan Hound"
-	add_child(_hella_view)
+	for i in mini(Run.riders.size(), Defs.CARAVAN_SEATS):   # a badge per riding member
+		var id: String = Run.riders[i]
+		var bv := DrawProxy.new()
+		bv.position = Vector2(328 + i * 46, 18)
+		bv.size = Vector2(40, 40)
+		bv.draw_fn = _draw_badge.bind(id)
+		bv.tooltip_text = Defs.CARAVAN[id]["name"]
+		add_child(bv)
+		_badges[id] = bv
+		_badge_pulse[id] = 0.0
 	_boss_bar = BossBar.new()
 	add_child(_boss_bar)
 
@@ -1729,10 +1750,29 @@ func _draw_parts(ci: Control) -> void:
 		ci.draw_string(Style.BODY_FONT, Vector2(x0 + 14.0 + Defs.TINKER_PARTS * 18.0, cy + 6.0), "+%d roll" % ready, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Style.ACCENT)
 
 
-func _draw_hella(ci: CanvasItem) -> void:
-	var c := Vector2(18, 16)
-	var on := _hella_left > 0
-	ci.draw_circle(c, 17.0, Color(0, 0, 0, 0.45))
-	if _hella_pulse > 0.0:
-		ci.draw_arc(c, 17.0 + 10.0 * (1.0 - _hella_pulse), 0, TAU, 32, Color("#ffd58f", _hella_pulse), 2.0)
-	Icons.draw(ci, "hound", c, 24.0, Style.ACCENT if on else Color(0.55, 0.5, 0.45, 0.6))
+## A riding member's badge: their icon on a warm disc. It rings when their
+## ability fires; Hella's dims once her scare is spent, and Leopold's fills
+## like a clock toward the lamp's next volley.
+func _draw_badge(ci: CanvasItem, id: String) -> void:
+	var c := Vector2(20, 18)
+	var p: float = _badge_pulse.get(id, 0.0)
+	var on := not (id == "hound" and _hella_left <= 0)
+	ci.draw_circle(c + Vector2(0, 2), 19.0, Color(0, 0, 0, 0.35))
+	ci.draw_circle(c, 18.0, Color("#3a2418"))
+	ci.draw_circle(c + Vector2(-2, -3), 13.0, Color("#5a3820", 0.8))
+	if id == "lamplighter" and _lamp != null and fighting:
+		var f: float = _lamp.progress()
+		ci.draw_arc(c, 15.0, -PI / 2, -PI / 2 + TAU * f, 32, Color("#fff2c8", 0.55), 3.0, true)
+	ci.draw_arc(c, 18.0, 0, TAU, 40, Style.ACCENT.lerp(Color.WHITE, p * 0.6) if on else Color(0.4, 0.34, 0.3), 2.0, true)
+	if p > 0.0:
+		ci.draw_arc(c, 18.0 + 12.0 * (1.0 - p), 0, TAU, 40, Color("#ffd58f", p), 2.0, true)
+	var col: Color = Color("#ffe3b0").lerp(Color.WHITE, p) if on else Color(0.55, 0.5, 0.45, 0.6)
+	Icons.draw(ci, Defs.CARAVAN[id]["icon"], c, 24.0 * (1.0 + 0.15 * sin(PI * p)), col)
+
+
+## A riding member's figure hops and glows (their ability just fired).
+func member_react(id: String) -> void:
+	if _figures.has(id):
+		_figures[id].react()
+	if _badges.has(id):
+		_badge_pulse[id] = 1.0
