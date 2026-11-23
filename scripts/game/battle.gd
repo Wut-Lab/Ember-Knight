@@ -859,7 +859,7 @@ func _hella_scare(sp) -> bool:
 	_add_fx("ring", sp.world, Color("#e0b07a"), 70.0)
 	_add_fx("ring", Vector2.ZERO, Color("#e0b07a"), 140.0)
 	_add_fx("text", sp.world, Color("#ffd58f"), 100.0, "Scared!")
-	AudioDirector.play_sfx("flare", -3.0)
+	AudioDirector.play_sfx("hound", -2.0)
 	sp.scared_to(Run.rng.randi() % board.lane_count)
 	return true
 

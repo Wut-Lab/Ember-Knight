@@ -47,7 +47,7 @@ func _volley() -> void:
 		s.setup(battle, board, world, Vector2.from_angle(_turn + TAU * i / Defs.LAMP_SHOTS), reach, dmg)
 	_turn += Defs.LAMP_TURN
 	_flash = 1.0
-	AudioDirector.play_sfx("chime", -14.0)
+	AudioDirector.play_sfx("lamp", -12.0)
 
 
 ## Glows brighter as the next volley nears.

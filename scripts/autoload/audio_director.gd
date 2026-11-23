@@ -48,7 +48,7 @@ var _sfx_pool: Array[AudioStreamPlayer] = []
 var _sfx_next := 0
 
 const SFX_NAMES := ["dice_roll", "place", "bolt", "flare", "pop", "hurt", "tap", "chime", "wave", "button", "charge_hum", "zap",
-	"wind", "dark_arrive", "thief_arrive", "helio_arrive", "dash", "snuff", "ember_pickup", "vine"]
+	"wind", "dark_arrive", "thief_arrive", "helio_arrive", "dash", "snuff", "ember_pickup", "vine", "hound", "lamp"]
 const SFX_VOICES := 12
 
 
