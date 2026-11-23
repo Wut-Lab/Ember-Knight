@@ -11,6 +11,7 @@ extends RefCounted
 ##   hearth -> flame cradled in a heart (Hearth-Bound)
 ##   beacon -> Guide Light lantern with a crown of rays (Bright Beacon)
 ##   forge  -> Bellows blowing on a flame (Roaring Forge)
+##   wake   -> Brazier with a leaping spark (Ember Wake)
 ##   ash_heal -> ash heap with a small plus (Healing Ash)
 ##   sunrise -> half a sun on the horizon (Oath of Dawn Offerings)
 ##   essence -> blue orb with a flame (the Essence currency; `t` waves the flame)
@@ -44,6 +45,12 @@ static func draw(ci: CanvasItem, kind: String, c: Vector2, s: float, col: Color,
 			_guide(ci, c, s, col)
 		"bellows":
 			_bellows(ci, c, s, col)
+		"brazier":
+			_brazier(ci, c, s, col)
+		"wake":   # a brazier with a spark leaping off it (Ember Wake)
+			_brazier(ci, c + Vector2(-s * 0.14, s * 0.06), s * 0.8, col)
+			ci.draw_arc(c + Vector2(s * 0.12, -s * 0.12), s * 0.26, -PI * 0.9, -PI * 0.15, 10, col, s * 0.05, true)
+			ci.draw_circle(c + Vector2(s * 0.36, -s * 0.06), s * 0.07, col)
 		"forge":   # Bellows blowing on a flame (Roaring Forge)
 			_bellows(ci, c + Vector2(-s * 0.16, s * 0.12), s * 0.7, col)
 			var fl := c + Vector2(s * 0.3, -s * 0.02)
@@ -139,6 +146,21 @@ static func _bellows(ci: CanvasItem, c: Vector2, s: float, col: Color) -> void:
 	ci.draw_line(back_t, back_t + Vector2(-s * 0.1, -s * 0.1), col, s * 0.06, true)   # handle
 	for k in 2:   # puff
 		ci.draw_arc(tip + Vector2(s * 0.24, 0), s * (0.06 + 0.07 * k), -0.9, 0.9, 8, col, s * 0.04, true)
+
+
+## Ember Brazier: a bowl on legs with three flames.
+static func _brazier(ci: CanvasItem, c: Vector2, s: float, col: Color) -> void:
+	var bowl := PackedVector2Array()
+	for k in 9:
+		var a := PI * k / 8.0
+		bowl.append(c + Vector2(cos(a) * s * 0.34, s * 0.02 + sin(a) * s * 0.18))
+	ci.draw_colored_polygon(bowl, col)
+	for lx in [-0.22, 0.0, 0.22]:
+		ci.draw_line(c + Vector2(lx * s * 0.6, s * 0.18), c + Vector2(lx * s, s * 0.4), col, s * 0.06, true)
+	for k in 3:
+		var fx := (-0.16 + k * 0.16) * s
+		var h := s * (0.36 if k == 1 else 0.24)
+		ci.draw_colored_polygon(PackedVector2Array([c + Vector2(fx - s * 0.08, 0), c + Vector2(fx, -h), c + Vector2(fx + s * 0.08, 0)]), col)
 
 
 ## Ashes: a small grey heap with a wisp of smoke.

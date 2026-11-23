@@ -10,6 +10,7 @@ var target
 var damage := 1.0
 var style := "bolt"
 var splash := 0.0           ## > 0: hits every spirit this close to the impact
+var burn := Vector2.ZERO    ## Ember Brazier: (dps, seconds) to set the hit smouldering
 var height := 40.0          ## screen-space lift above the ground
 var world := Vector2.ZERO
 var _aim := Vector2.ZERO
@@ -45,6 +46,7 @@ func _process(delta: float) -> void:
 		if splash > 0.0:
 			for sp in battle.spirits_in_range(_aim, splash):
 				sp.hit(damage)
+				sp.ignite(burn.x, burn.y)
 				if style == "mortar" and Run.has_oath("crossfire"):
 					sp.scorch_t = Defs.CROSSFIRE_SCORCH
 			battle.ring_fx(_aim, splash, Color("#e0603a"))
@@ -52,6 +54,7 @@ func _process(delta: float) -> void:
 			if style == "torch" and target.scorch_t > 0.0:   # Oath of Crossfire
 				damage *= Defs.CROSSFIRE_TORCH
 			target.hit(damage)
+			target.ignite(burn.x, burn.y)
 			if style == "char" and target.dead:
 				battle.char_kill(target.world)
 		battle.spark_fx(_aim, style)

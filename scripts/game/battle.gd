@@ -640,6 +640,15 @@ func _on_summoned(boss, count: int) -> void:
 
 func _on_banished(sp) -> void:
 	spirits.erase(sp)
+	if sp.smoulder_t > 0.0 and Run.has_oath("smouldering_wake"):   # the burn jumps on
+		var best = null
+		for o in spirits:
+			if not o.dead and o.world.distance_to(sp.world) <= Defs.WAKE_RANGE and (best == null or o.world.distance_to(sp.world) < best.world.distance_to(sp.world)):
+				best = o
+		if best != null:
+			best.smoulder_t = 0.0
+			best.ignite(sp.smoulder_dps, Defs.DEFENSES["brazier"][0]["burn_t"])
+			_add_fx("spark", best.world, Color("#ff7a3a"))
 	Run.spirits_banished += 1
 	_add_fx("poof", sp.world, Color("#bfc8ff"))
 	AudioDirector.play_sfx("pop", -6.0)
@@ -750,11 +759,12 @@ func spirits_in_range(at: Vector2, rng: float) -> Array:
 	return out
 
 
-func shoot(origin_world: Vector2, muzzle: Vector2, target, damage: float, style: String, splash := 0.0) -> void:
+func shoot(origin_world: Vector2, muzzle: Vector2, target, damage: float, style: String, splash := 0.0, burn := Vector2.ZERO) -> void:
 	var p := Projectile.new()
 	_fx.add_child(p)
 	p.setup(self, board, origin_world + Vector2(muzzle.x / board.view_scale, 0), -muzzle.y / board.view_scale, target, damage, style)
 	p.splash = splash
+	p.burn = burn
 	p.position = board.proj(p.world) + Vector2(0, muzzle.y)
 	AudioDirector.play_sfx("bolt", -12.0 if style == "bolt" else -14.0)
 

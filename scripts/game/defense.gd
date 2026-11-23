@@ -80,6 +80,9 @@ func stats() -> Dictionary:
 	var bw := group_best("bellows", "haste")
 	if not bw.is_empty() and st.has("rate"):
 		st["rate"] *= bw["haste"]
+	var br := group_best("brazier", "burn_dps")
+	if not br.is_empty():
+		st["burn"] = Vector2(br["burn_dps"], br["burn_t"])
 	var g := guide_bonus()
 	if not g.is_empty():
 		st["range"] *= g["boost"]
@@ -144,7 +147,7 @@ func _act(delta: float, st: Dictionary) -> void:
 			if _cool <= 0.0:
 				var target = battle.pick_target(world, st["range"])
 				if target:
-					battle.shoot(world, Vector2(0, -46.0 * board.view_scale * _scale()), target, st["damage"], "torch")
+					battle.shoot(world, Vector2(0, -46.0 * board.view_scale * _scale()), target, st["damage"], "torch", 0.0, st.get("burn", Vector2.ZERO))
 					_cool = 1.0 / st["rate"]
 		"vent":
 			_cool -= delta
@@ -153,6 +156,8 @@ func _act(delta: float, st: Dictionary) -> void:
 				if not near.is_empty():
 					for sp in near:
 						sp.hit(st["damage"])
+						var bn: Vector2 = st.get("burn", Vector2.ZERO)
+						sp.ignite(bn.x, bn.y)
 					battle.ring_fx(world, st["range"], Color("#cfeee9"))
 					_puff = 1.0
 					_cool = 1.0 / st["rate"]
@@ -161,7 +166,7 @@ func _act(delta: float, st: Dictionary) -> void:
 			if _cool <= 0.0:
 				var target = battle.pick_rear_target(world, st["min"], st["range"])
 				if target:
-					battle.shoot(world, Vector2(0, -30.0 * board.view_scale * _scale()), target, st["damage"], "mortar", st["splash"])
+					battle.shoot(world, Vector2(0, -30.0 * board.view_scale * _scale()), target, st["damage"], "mortar", st["splash"], st.get("burn", Vector2.ZERO))
 					_puff = 1.0
 					_cool = 1.0 / st["rate"]
 
@@ -232,6 +237,32 @@ func _draw_kind(v: float, lit: float) -> void:
 			draw_circle(lp, (16.0 + 4.0 * level) * v * f, Color(1.0, 0.92, 0.6, 0.12))
 			draw_rect(Rect2(lp + Vector2(-5 * v, -7 * v), Vector2(10 * v, 13 * v)), Color("#4a4038"))
 			draw_rect(Rect2(lp + Vector2(-3.5 * v, -5 * v), Vector2(7 * v, 9 * v)), Color("#ffe9a8"))
+		"brazier":
+			# An iron bowl on three legs, heaped with glowing coals and
+			# flickering flames that grow with its level.
+			var iron := Color("#3a3330")
+			for lx in [-11.0, 0.0, 11.0]:
+				draw_line(Vector2(lx * 0.6 * v, -18 * v), Vector2(lx * v, 2 * v), iron, 2.5 * v)
+			var bowl := PackedVector2Array()
+			for k in 9:
+				var a := PI * k / 8.0
+				bowl.append(Vector2(cos(a) * 15 * v, -20 * v + sin(a) * 8 * v))
+			draw_colored_polygon(bowl, iron)
+			var rim := PackedVector2Array()
+			for k in 16:
+				rim.append(Vector2(cos(TAU * k / 16.0) * 15 * v, -20 * v + sin(TAU * k / 16.0) * 5 * v))
+			draw_colored_polygon(rim, Color("#5a2410"))
+			for k in 6:   # coals
+				var cx := (-10.0 + k * 4.0) * v
+				var glow := 0.6 + 0.4 * sin(_t * 3.0 + k * 1.3)
+				draw_circle(Vector2(cx, -21 * v + (k % 2) * 2 * v), 2.6 * v, Color("#ff5a1e").lerp(Color("#ffc46a"), glow * 0.6))
+			var fh := (10.0 + 4.0 * level) * v
+			for k in 3:   # flames
+				var fx := (-6.0 + k * 6.0) * v
+				var h := fh * (0.75 + 0.25 * sin(_t * 7.0 + k * 2.1)) * (1.0 if k == 1 else 0.7)
+				draw_colored_polygon(PackedVector2Array([Vector2(fx - 4 * v, -22 * v), Vector2(fx, -22 * v - h), Vector2(fx + 4 * v, -22 * v)]),
+					Color(1.0, 0.55 + 0.15 * k, 0.15, 0.85))
+			draw_circle(Vector2(0, -24 * v), (18.0 + 3.0 * level) * v, Color(1.0, 0.5, 0.2, 0.08))
 		"bellows":
 			# Two hinged boards with a leather middle on a little stand,
 			# pumping (fast while a wave is on) toward an iron nozzle.

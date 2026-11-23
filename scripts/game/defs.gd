@@ -5,7 +5,7 @@ extends RefCounted
 # ------------------------------------------------------------ dice
 ## Every face that exists. "kindle" (star) goes on the fire to power up Char.
 ## Every other face must be a key in DEFENSES.
-const DIE_FACES := ["kindle", "torch", "vent", "mortar", "guide", "bellows", "wall", "pine", "ward", "ashes"]
+const DIE_FACES := ["kindle", "torch", "vent", "mortar", "guide", "bellows", "brazier", "wall", "pine", "ward", "ashes"]
 ## Fire faces go on the fire instead of a tile.
 const FIRE_FACES := ["kindle", "pine", "ward"]
 ## A die is a D6: a list of 6 faces. Opposite sides are i and 5 - i.
@@ -44,6 +44,8 @@ const DICE := {
 	"bombardment": {"name": "Bombardment Die", "faces": ["mortar+", "ashes", "vent+", "kindle", "ashes", "mortar+"]},
 	## Forge Die: two Bellows to drive a patch of Torches and Vents.
 	"forge": {"name": "Forge Die", "faces": ["bellows", "torch", "vent", "ashes", "torch", "bellows"]},
+	## Kiln Die: two Ember Braziers to set a patch of Torches and Mortars smouldering.
+	"kiln": {"name": "Kiln Die", "faces": ["brazier", "torch", "mortar", "ashes", "torch", "brazier"]},
 }
 
 ## A "+" face ("torch+") acts as its base face but adds two levels at once;
@@ -93,6 +95,13 @@ const OATHS := {
 		"icon": "forge",
 		"short": "Each Bellows also makes Char attack 6% faster.",
 		"desc": "The bellows fan the campfire too.\n\nFor each Bellows on the board, Char attacks 6% faster, on top of the faster attacks on its patch.",
+	},
+	"smouldering_wake": {
+		"rarity": "uncommon",
+		"name": "Oath of the Ember Wake",
+		"icon": "wake",
+		"short": "A banished spirit passes its burn on.",
+		"desc": "Embers find new fuel.\n\nWhen a smouldering spirit is banished, its burn jumps to the nearest spirit close by, fresh and at full strength.",
 	},
 	"healing_ash": {
 		"rarity": "common",
@@ -428,6 +437,8 @@ const FACE_INFO := {
 		"desc": "A lantern on a pole. Every other defense on its ashy patch reaches farther (Mortars fire closer in too). Doesn't stack."},
 	"bellows": {"name": "Bellows", "color": Color("#d9a06a"),
 		"desc": "A leather bellows on a frame. Every other defense on its patch attacks faster. Doesn't stack."},
+	"brazier": {"name": "Ember Brazier", "color": Color("#ff7a3a"),
+		"desc": "An iron bowl of hot coals. Hits from every other defense on its patch leave spirits smouldering. Doesn't stack."},
 	"wall": {"name": "Ember Wall", "color": Color("#d9743a"),
 		"desc": "Build across a trail: spirits stop and burn through it, scorched by its embers."},
 	"pine": {"name": "Pine Log", "color": Color("#c98a4a"),
@@ -478,6 +489,14 @@ const DEFENSES := {
 	],
 	## No attack. Defenses on the other tiles of its group attack "haste"
 	## times as often. Several Bellows don't stack: the best one counts.
+	## No attack. Hits from defenses on the other tiles of its group set
+	## spirits smouldering: "burn_dps" damage a second for "burn_t" seconds
+	## (a fresh hit restarts it; the strongest burn counts).
+	"brazier": [
+		{"range": 0.0, "burn_dps": 1.5, "burn_t": 3.0},
+		{"range": 0.0, "burn_dps": 2.25, "burn_t": 3.0},
+		{"range": 0.0, "burn_dps": 3.0, "burn_t": 3.0},
+	],
 	"bellows": [
 		{"range": 0.0, "haste": 1.15},
 		{"range": 0.0, "haste": 1.2},
@@ -559,7 +578,8 @@ const BOSS_DAWN_HEAL := 30.0     ## extra dawn heal after beating a leg's boss
 ## Light-based defenses: a Dark Wisp dims these (they fire slower near him).
 const LIGHT_DEFENSES := ["torch", "mortar"]
 ## Faces that boost the rest of their tile group instead of attacking.
-const SUPPORT_FACES := ["guide", "bellows"]
+const SUPPORT_FACES := ["guide", "bellows", "brazier"]
+const WAKE_RANGE := 140.0   ## Oath of the Ember Wake: how far a burn jumps
 const FORGE_CHAR_RATE := 0.06   ## Oath of the Roaring Forge: Char's rate per Bellows
 
 

@@ -23,6 +23,8 @@ var dist := 0.0
 var world := Vector2.ZERO
 var slow := 0.0            ## 0..1, set by the battle from nearby slowing defenses
 var scorch_t := 0.0        ## Oath of Crossfire: time left scorched by a Mortar (Torches hit harder)
+var smoulder_dps := 0.0   ## Ember Brazier burn: damage a second while smoulder_t lasts
+var smoulder_t := 0.0
 var vine_t := 0.0          ## time left wrapped in the Forest Friend's vines
 var dead := false
 var zap_range := 0.0       ## >0: stops this close to the fire and zaps it
@@ -121,11 +123,21 @@ func progress() -> float:
 	return dist / board.path_lengths[path_idx]
 
 
-func hit(amount: float) -> void:
+## Set smouldering (Ember Brazier): the strongest burn counts, a fresh hit restarts it.
+func ignite(dps: float, t: float) -> void:
+	if dead or dps <= 0.0:
+		return
+	if smoulder_t <= 0.0 or dps >= smoulder_dps:
+		smoulder_dps = dps
+	smoulder_t = maxf(smoulder_t, t)
+
+
+func hit(amount: float, flash := true) -> void:
 	if dead:
 		return
 	hp -= amount
-	_flash = 0.12
+	if flash:
+		_flash = 0.12
 	if hp <= 0.0:
 		dead = true
 		banished.emit(self)
@@ -143,6 +155,11 @@ func _process(delta: float) -> void:
 		queue_redraw()
 		return
 	_arc = maxf(0.0, _arc - delta)
+	if smoulder_t > 0.0:
+		smoulder_t -= delta
+		hit(smoulder_dps * delta, false)
+		if dead:
+			return
 	if zap_range > 0.0 and world.length() <= zap_range:
 		# In range: hold still and zap the fire.
 		_zap_t -= delta
@@ -216,6 +233,8 @@ func _helio_tick(delta: float) -> void:
 
 
 func _draw() -> void:
+	if smoulder_t > 0.0 and not dead:
+		_draw_smoulder()
 	if burn_range > 0.0:
 		_draw_helio()
 		return
@@ -291,6 +310,16 @@ func _draw() -> void:
 ## Carl, the Dark Wisp: a big black ball with a faint lavender glow, white and
 ## purple swirls that wrap around it every few seconds, and a dim circle on the
 ## ground that bobs up and down with him.
+## Smouldering: a few sparks rising off the spirit.
+func _draw_smoulder() -> void:
+	var s: float = 15.0 * size_k * board.view_scale
+	var a := clampf(smoulder_t, 0.0, 1.0)
+	for k in 4:
+		var u := fmod(_t * 1.3 + k * 0.25, 1.0)
+		var p := Vector2(sin(_t * 2.0 + k * 1.7) * s * 0.6, s * 0.3 - u * s * 1.8)
+		draw_circle(p, (2.2 - 1.4 * u) * board.view_scale, Color(1.0, 0.55 + 0.3 * u, 0.2, (1.0 - u) * 0.85 * a))
+
+
 func _draw_dark() -> void:
 	var s: float = 15.0 * size_k * board.view_scale
 	var alpha := _fade_in * (1.0 - _death / 0.35)
