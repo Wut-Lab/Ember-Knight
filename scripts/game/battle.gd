@@ -64,7 +64,8 @@ var _mark_t := 0.0
 var _planned: Array = []      # Carl, the Caravan Cat: next wave's spawn queue, lanes fixed in prep
 var _carl_lanes: Array = []   # the lane(s) with the most spirits coming
 var _carl_count := 0
-var _carl_view: Control
+var _carl_view: Control       # the badge, over everything
+var _carl_trail: Control      # the glowing lane, under spirits and Char
 var _props: Array = []   ## the stagecoach and horse Char is guarding
 var _spawn_queue: Array = []
 var _spawn_timer := 0.0
@@ -128,6 +129,10 @@ func _ready() -> void:
 	board.spirits_ref = spirits   # the lake draws their reflections
 	_world.add_child(board)
 	_entities.y_sort_enabled = true
+	_carl_trail = DrawProxy.new()
+	_carl_trail.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_carl_trail.draw_fn = _draw_carl_trail
+	_world.add_child(_carl_trail)
 	_world.add_child(_entities)
 	_world.add_child(_fx)
 	_carl_view = DrawProxy.new()
@@ -279,6 +284,8 @@ func _start_prep() -> void:
 		_hint.text += "   %s built %s from spare parts." % [Defs.CARAVAN["tinker"]["name"], "a free reroll" if built == 1 else "%d free rerolls" % built]
 	if not _carl_lanes.is_empty():
 		_hint.text += "   Carl's ears twitch toward %s." % ("the glowing trail" if _carl_lanes.size() == 1 else "the glowing trails")
+	elif not _planned.is_empty():
+		_hint.text += "   Carl yawns: the Wisps are spread evenly."
 	_layout.call_deferred()
 
 
@@ -337,6 +344,7 @@ func begin_wave() -> void:
 	_planned = []
 	_carl_lanes = []
 	_carl_view.visible = false
+	_carl_trail.queue_redraw()
 	_spawn_timer = 0.6
 	if Run.autoplay and (ambush or mod != ""):
 		print("  night %d wave %d: %s" % [Run.night + 1, wave + 1, "fog ambush" if ambush else mod])
@@ -538,6 +546,7 @@ func _process(delta: float) -> void:
 		_autoplay_step(delta)
 	if _carl_view.visible:
 		_carl_view.queue_redraw()
+		_carl_trail.queue_redraw()
 	if _swarm_lane >= 0 and phase == Phase.PREP:   # point out the swarm trail
 		_mark_t -= delta
 		if _mark_t <= 0.0:
@@ -654,8 +663,42 @@ func _plan_carl() -> void:
 	for i in board.lane_count:
 		if per[i] == _carl_count:
 			_carl_lanes.append(i)
+	if _carl_lanes.size() > 2:   # spread evenly: nothing worth pointing at
+		_carl_lanes = []
 	_carl_view.visible = true
 	_carl_view.queue_redraw()
+
+
+## Carl's trail: a soft gold band down the lane (under the spirits and Char),
+## fading in and out at the ends, with sparks drifting toward camp.
+func _draw_carl_trail(ci: CanvasItem) -> void:
+	var t := Time.get_ticks_msec() / 1000.0
+	var gold := Color("#ffd58f")
+	var breathe := 0.85 + 0.15 * sin(t * 2.2)
+	for i in _carl_lanes:
+		var L: float = board.path_lengths[i] * 0.93
+		var pts := PackedVector2Array()
+		var outer := PackedColorArray()
+		var inner := PackedColorArray()
+		var d := 0.0
+		while d <= L:
+			var f := clampf(minf(d / 160.0, (L - d) / 90.0), 0.0, 1.0)
+			pts.append(board.path_point(i, d))
+			outer.append(Color(gold, 0.13 * f * breathe))
+			inner.append(Color(gold, 0.26 * f * breathe))
+			d += 10.0
+		if pts.size() < 2:
+			continue
+		ci.draw_polyline_colors(pts, outer, 46.0, true)
+		ci.draw_polyline_colors(pts, inner, 16.0, true)
+		var gap := 110.0
+		var s := fmod(t * 70.0, gap)
+		while s < L:
+			var f := clampf(minf(s / 160.0, (L - s) / 90.0), 0.0, 1.0)
+			var p: Vector2 = board.path_point(i, s)
+			ci.draw_circle(p, 7.0, Color(gold, 0.18 * f))
+			ci.draw_circle(p, 3.5, Color(1, 0.95, 0.8, 0.75 * f))
+			s += gap
 
 
 func _draw_carl(ci: CanvasItem) -> void:
@@ -663,17 +706,12 @@ func _draw_carl(ci: CanvasItem) -> void:
 	var gold := Color("#ffd58f")
 	for i in _carl_lanes:
 		var L: float = board.path_lengths[i]
-		var d := 0.0
-		while d < L * 0.9:
-			var a := 0.16 + 0.12 * sin(t * 3.0 - d / 60.0)
-			ci.draw_circle(board.path_point(i, d), 15.0, Color(gold, a))
-			d += 26.0
 		# Badge at the first spot on the trail that sits well inside the screen.
 		var xf: Transform2D = _carl_view.get_global_transform_with_canvas()
-		var safe := Rect2(Vector2.ZERO, get_viewport_rect().size).grow_individual(-80, -110, -80, -190)
+		var safe := Rect2(Vector2.ZERO, get_viewport_rect().size).grow_individual(-80, -110, -80, -240)
 		var at: Vector2 = board.path_point(i, L * 0.5)
 		var s := 0.0
-		while s < L * 0.5:
+		while s < L * 0.9:
 			if safe.has_point(xf * board.path_point(i, s)):
 				at = board.path_point(i, s)
 				break
