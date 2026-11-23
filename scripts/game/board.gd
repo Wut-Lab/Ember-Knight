@@ -160,7 +160,7 @@ func _build_layout() -> void:
 	var r := RandomNumberGenerator.new()
 	r.seed = layout_seed
 	for attempt in 30:   # a hill reshapes its spiral until a shortcut fits
-		for a in [paths, path_lengths, tiles, tile_defense, links, shapes, dock, tile_group]:
+		for a in [paths, path_lengths, tiles, tile_defense, links, shapes, dock, tile_group, _patches]:
 			a.clear()
 		if not _build_once(r):
 			continue
@@ -1196,6 +1196,7 @@ func _draw() -> void:
 		_draw_hill()
 	elif stop == "lake":
 		_draw_lake()
+	_draw_group_patches()
 	# Trails, lighter packed dirt, fading into the dark.
 	var trails: Array = paths.slice(0, lane_count)
 	if stop == "lake":   # the water crossing stays a dashed wake all the way in
@@ -1295,6 +1296,47 @@ var gates_left := 0          ## set by the battle: junctions glow while gates re
 
 
 ## Junction markers, and Char's gates with their cooldown flame.
+var _patches: Array = []   ## per group: [4 hulls, outer to inner, centre] (world)
+
+## Each group of 3 sits on a patch of trodden-down ground, so the groups
+## (and which tiles a Guide Light reaches) read at a glance.
+func _draw_group_patches() -> void:
+	if _patches.size() != group_count:
+		_patches.clear()
+		var r := RandomNumberGenerator.new()
+		r.seed = layout_seed + 77
+		for g in group_count:
+			var hulls := []
+			var mid := Vector2.ZERO
+			var n := 0
+			for i in tiles.size():
+				if tile_group[i] == g:
+					mid += tiles[i]
+					n += 1
+			var ph := r.randf() * TAU
+			for rad in [TILE_RADIUS * 1.75, TILE_RADIUS * 1.5, TILE_RADIUS * 1.25, TILE_RADIUS * 1.0]:
+				var pts := PackedVector2Array()
+				for i in tiles.size():
+					if tile_group[i] == g:
+						for k in 18:
+							pts.append(tiles[i] + Vector2.from_angle(TAU * k / 18.0) * rad)
+				var hull := Geometry2D.convex_hull(pts)
+				hull.remove_at(hull.size() - 1)
+				for k in hull.size():   # a gently uneven, trodden edge
+					var out := (hull[k] - mid / n).normalized()
+					hull[k] += out * 6.0 * sin(out.angle() * 4.0 + ph)
+				hulls.append(hull)
+			hulls.append(mid / maxf(n, 1))   # P[4]
+			_patches.append(hulls)
+	for P in _patches:
+		var lit := light_at(P[4]) * fire_glow
+		for h in 4:   # stacked soft layers: darkest in the middle
+			var poly := PackedVector2Array()
+			for w in P[h]:
+				poly.append(proj(w))
+			draw_colored_polygon(poly, Color("#1e120b", 0.13 * clampf(lit + 0.35, 0.0, 1.0)))
+
+
 func _draw_forks(pulse: float) -> void:
 	for L in links:
 		var pts: PackedVector2Array = L["pts"]
