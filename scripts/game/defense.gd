@@ -237,7 +237,7 @@ func _draw_kind(v: float, lit: float) -> void:
 			# pumping (fast while a wave is on) toward an iron nozzle.
 			var u := v * 1.75
 			var pump := 0.5 + 0.5 * sin(_t * (9.0 if battle.fighting else 2.0))
-			var leather := Color("#6e4a30")
+			var leather := Color("#3f271a")
 			draw_rect(Rect2(-12 * u, -14 * u, 3 * u, 16 * u), wood)
 			draw_rect(Rect2(9 * u, -14 * u, 3 * u, 16 * u), wood)
 			var hinge := Vector2(13 * u, -20 * u)
@@ -245,11 +245,33 @@ func _draw_kind(v: float, lit: float) -> void:
 			var open_ := (4.0 + 6.0 * pump) * u
 			var top := PackedVector2Array([hinge, back + Vector2(0, -open_), back + Vector2(0, -open_ - 3 * u), hinge + Vector2(0, -3 * u)])
 			var bot := PackedVector2Array([hinge, back + Vector2(0, open_ * 0.4), back + Vector2(0, open_ * 0.4 + 3 * u), hinge + Vector2(0, 3 * u)])
-			draw_colored_polygon(PackedVector2Array([hinge, back + Vector2(0, -open_), back + Vector2(-2 * u, 0), back + Vector2(0, open_ * 0.4)]), leather)
-			for k in 2:   # leather folds
-				var x := lerpf(back.x, hinge.x, 0.25 + 0.25 * k)
-				var h := lerpf(open_, 0.0, 0.25 + 0.25 * k)
-				draw_line(Vector2(x, back.y - h), Vector2(x, back.y + h * 0.4), leather.darkened(0.35), 1.2 * u)
+			# The leather accordion: pleats that bulge out at the back and
+			# alternate lit / shadowed faces, outlined dark.
+			var pleats := 5
+			var outline := PackedVector2Array([hinge])
+			for k in range(pleats, -1, -1):
+				var f := float(k) / pleats * 0.62
+				var x := lerpf(back.x, hinge.x, f)
+				var h := lerpf(open_, 0.0, f) + (1.6 * u if k % 2 == 0 else -0.4 * u)
+				outline.append(Vector2(x - (1.5 * u if k % 2 == 0 else 0.0), back.y - h))
+			for k in range(0, pleats + 1):
+				var f := float(k) / pleats * 0.62
+				var x := lerpf(back.x, hinge.x, f)
+				var h := lerpf(open_ * 0.4, 0.0, f) + (1.0 * u if k % 2 == 0 else -0.3 * u)
+				outline.append(Vector2(x - (1.5 * u if k % 2 == 0 else 0.0), back.y + h))
+			draw_colored_polygon(outline, leather)
+			for k in pleats:
+				var f0 := float(k) / pleats * 0.62
+				var f1 := float(k + 1) / pleats * 0.62
+				var x0 := lerpf(back.x, hinge.x, f0)
+				var x1 := lerpf(back.x, hinge.x, f1)
+				var h0 := lerpf(open_, 0.0, f0)
+				var h1 := lerpf(open_, 0.0, f1)
+				var face := PackedVector2Array([Vector2(x0, back.y - h0), Vector2(x1, back.y - h1),
+					Vector2(x1, back.y + h1 * 0.4), Vector2(x0, back.y + h0 * 0.4)])
+				draw_colored_polygon(face, leather.lightened(0.18) if k % 2 == 0 else leather.darkened(0.3))
+				draw_line(Vector2(x0, back.y - h0), Vector2(x0, back.y + h0 * 0.4), Color("#1a0f09"), 1.0 * u)
+			draw_polyline(outline + PackedVector2Array([outline[0]]), Color("#1a0f09"), 1.2 * u, true)
 			draw_colored_polygon(top, wood.lightened(0.1))
 			draw_colored_polygon(bot, wood.darkened(0.1))
 			draw_line(back + Vector2(0, -open_ - 1.5 * u), back + Vector2(-7 * u, -open_ - 5 * u), wood, 2.5 * u)   # handle

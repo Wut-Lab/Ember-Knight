@@ -87,6 +87,13 @@ const OATHS := {
 		"desc": "Guide Lights burn brighter.\n\nOther defenses on a Guide Light's ashy patch deal +1 damage, on top of the longer reach.",
 		"face_mods": {"guide": {"group_damage": 1.0}},
 	},
+	"roaring_forge": {
+		"rarity": "common",
+		"name": "Oath of the Roaring Forge",
+		"icon": "forge",
+		"short": "Each Bellows also makes Char attack 6% faster.",
+		"desc": "The bellows fan the campfire too.\n\nFor each Bellows on the board, Char attacks 6% faster, on top of the faster attacks on its patch.",
+	},
 	"healing_ash": {
 		"rarity": "common",
 		"name": "Oath of the Healing Ash",
@@ -553,6 +560,7 @@ const BOSS_DAWN_HEAL := 30.0     ## extra dawn heal after beating a leg's boss
 const LIGHT_DEFENSES := ["torch", "mortar"]
 ## Faces that boost the rest of their tile group instead of attacking.
 const SUPPORT_FACES := ["guide", "bellows"]
+const FORGE_CHAR_RATE := 0.06   ## Oath of the Roaring Forge: Char's rate per Bellows
 
 
 ## Is this the boss wave? Wave 3 of each leg's 4th night (0-based night/wave).

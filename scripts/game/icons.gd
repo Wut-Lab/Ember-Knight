@@ -10,6 +10,7 @@ extends RefCounted
 ##   shift  -> flame with a curved arrow (Oath of Shifting Embers)
 ##   hearth -> flame cradled in a heart (Hearth-Bound)
 ##   beacon -> Guide Light lantern with a crown of rays (Bright Beacon)
+##   forge  -> Bellows blowing on a flame (Roaring Forge)
 ##   ash_heal -> ash heap with a small plus (Healing Ash)
 ##   sunrise -> half a sun on the horizon (Oath of Dawn Offerings)
 ##   essence -> blue orb with a flame (the Essence currency; `t` waves the flame)
@@ -43,6 +44,11 @@ static func draw(ci: CanvasItem, kind: String, c: Vector2, s: float, col: Color,
 			_guide(ci, c, s, col)
 		"bellows":
 			_bellows(ci, c, s, col)
+		"forge":   # Bellows blowing on a flame (Roaring Forge)
+			_bellows(ci, c + Vector2(-s * 0.16, s * 0.12), s * 0.7, col)
+			var fl := c + Vector2(s * 0.3, -s * 0.02)
+			ci.draw_colored_polygon(PackedVector2Array([fl + Vector2(-s * 0.12, s * 0.2), fl + Vector2(-s * 0.08, -s * 0.06),
+				fl + Vector2(0, -s * 0.34), fl + Vector2(s * 0.09, -s * 0.06), fl + Vector2(s * 0.12, s * 0.2)]), col)
 		"wall":   # three courses of bricks
 			for row in 3:
 				var y := c.y + s * (0.18 - 0.2 * row)

@@ -42,6 +42,12 @@ func stats() -> Dictionary:
 	var s: Dictionary = Defs.CHAR_STATS[kindle].duplicate()
 	if Run.has_oath("simplicity"):
 		s["rate"] *= Defs.SIMPLICITY_RATE
+	if Run.has_oath("roaring_forge"):
+		var n := 0
+		for d in battle.defenses:
+			if is_instance_valid(d) and d.kind == "bellows":
+				n += 1
+		s["rate"] *= 1.0 + Defs.FORGE_CHAR_RATE * n
 	if Run.flame < Run.max_flame * Defs.COMEBACK_AT:   # cornered, Char fights harder
 		s["rate"] *= Defs.COMEBACK_RATE
 	if battle.heavy:   # lull reward: Heavy Support Fire
