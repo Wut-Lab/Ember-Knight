@@ -94,7 +94,9 @@ func _card(id: String) -> Button:
 	name.text = m["name"]
 	name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	name.add_theme_font_override("font", Style.display_font(600))
-	name.add_theme_font_size_override("font_size", 28)
+	name.add_theme_font_size_override("font_size", 26)
+	name.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	name.custom_minimum_size = Vector2(CARD.x - 24, 0)
 	name.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	box.add_child(name)
 	var desc := Label.new()

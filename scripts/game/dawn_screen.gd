@@ -29,11 +29,19 @@ func _ready() -> void:
 	root.add_child(h)
 	var sub := Label.new()
 	var healed := Run.dawn_heal() + (Defs.BOSS_DAWN_HEAL if Defs.ends_leg(Run.night) else 0.0)
-	sub.text = "The spirits fade with the sunrise. Char's flame recovers (+%d%s)." % [roundi(healed),
-		", %d from the Cook's broth" % roundi(Defs.COOK_DAWN) if Run.has_rider("cook") else ""]
+	sub.text = "The spirits fade with the sunrise. Char's flame recovers (+%d)." % roundi(healed)
 	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	sub.add_theme_font_size_override("font_size", 22)
 	root.add_child(sub)
+	if Run.has_rider("cook"):
+		var cook := Label.new()
+		var who: String = Defs.CARAVAN["cook"]["name"]
+		cook.text = ("%s, ladles out a hot broth:  +%d flame." % [who, roundi(Run.cook_healed)]) if Run.cook_healed >= 0.5 \
+			else "%s, ladles out a hot broth, but Char's flame is already full." % who
+		cook.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		cook.add_theme_font_size_override("font_size", 22)
+		cook.add_theme_color_override("font_color", Color("#ffd58f"))
+		root.add_child(cook)
 	if Defs.ends_leg(Run.night):
 		var leg := Label.new()
 		leg.text = "%s is banished!  Leg %d of the road complete:  +1 dice slot, and an %s joins your bag." % [Defs.SPIRITS[Run.boss_for(Run.night)]["name"], Defs.leg_of(Run.night) + 1, Defs.DICE[Defs.LEG_REWARD_DIE]["name"]]

@@ -24,6 +24,7 @@ var bosses: Array = []         ## boss id per leg (Defs.roll_bosses), rolled at 
 var perks: Dictionary = {}       ## lull permanent rewards: id (or "hone_<kind>") -> times picked
 var night_flames: Array = []   ## flame left at the end of each night cleared
 var riders: Array = []         ## Defs.CARAVAN ids riding along this run
+var cook_healed := 0.0        ## flame the Cook actually healed this dawn (for the dawn screen)
 var riders_picked := false     ## the seat pick has been made this run
 var rng := RandomNumberGenerator.new()
 ## `-- --autoplay`: the game plays itself (for previews and balance checks).
@@ -88,6 +89,12 @@ func owned(id: String) -> int:
 
 func has_rider(id: String) -> bool:
 	return id in riders
+
+
+## Carson, the Cook: his own dawn heal, kept apart from dawn_heal() so it
+## can be tuned (and boosted) on its own.
+func cook_heal() -> float:
+	return Defs.COOK_HEAL if has_rider("cook") else 0.0
 
 
 func has_oath(id: String) -> bool:
@@ -171,8 +178,7 @@ func healthy_bonus() -> float:
 func dawn_heal() -> float:
 	return Defs.DAWN_HEAL - (Defs.HEARTH_DAWN_PENALTY if has_oath("hearth_bound") else 0.0) \
 		+ Defs.HEARTHSTONE_HEAL * perk("hearthstones") \
-		+ (Defs.SIMPLICITY_DAWN * (Defs.leg_of(night) + 1) if has_oath("simplicity") else 0.0) \
-		+ (Defs.COOK_DAWN if has_rider("cook") else 0.0)
+		+ (Defs.SIMPLICITY_DAWN * (Defs.leg_of(night) + 1) if has_oath("simplicity") else 0.0)
 
 
 ## 2-3 camps drawn at random from the pool of stops (Defs.STOPS).

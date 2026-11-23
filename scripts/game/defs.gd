@@ -251,10 +251,10 @@ const UNLOCKS := {
 ## night 1). "icon" is an Icons kind; "role" is the short tag on the card.
 ## Their abilities are wired up member by member (blueprint: Caravan).
 const CARAVAN_SEATS := 2
-const COOK_DAWN := 5.0   ## Cook: + dawn heal
+const COOK_HEAL := 5.0   ## Carson, the Cook: his own heal at each dawn
 const CARAVAN := {
-	"cook": {"name": "Cook", "role": "Sustain", "icon": "cook", "cost": 30,
-		"desc": "Dawn heals 5 more flame."},
+	"cook": {"name": "Carson, the Cook", "role": "Sustain", "icon": "cook", "cost": 30,
+		"desc": "Serves a hot broth at each dawn: +5 flame."},
 	"tinker": {"name": "Tinker", "role": "Dice", "icon": "tinker", "cost": 40,
 		"desc": "+1 reroll on wave 1 of each night."},
 	"scout": {"name": "Scout", "role": "Information", "icon": "scout", "cost": 50,
