@@ -31,7 +31,7 @@ func setup(b, bd, at: Vector2, tan: Vector2) -> void:
 
 func _set_level(l: int) -> void:
 	level = clampi(l, 1, 3)
-	max_hp = Defs.WALL[level - 1]["hp"] * (Defs.STURDY_WALL if Run.has_oath("sturdy_stones") else 1.0)
+	max_hp = Defs.WALL[level - 1]["hp"] * (Defs.STURDY_WALL if Run.has_oath("sturdy_stones") else 1.0) * (1.0 + Run.dedication("wall"))
 	hp = max_hp
 
 

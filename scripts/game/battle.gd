@@ -608,6 +608,8 @@ func _spawn(kind: String, lane := -1, hearty := false):
 		sp.size_k *= 1.2
 	if mod == "angry":
 		sp.speed *= Defs.ANGRY_SPEED
+	if Run.has_oath("urgency") and Run.rng.randf() < Defs.URGENCY_SHARE:
+		sp.speed *= Defs.URGENCY_SPEED
 	if board.stop == "hill":
 		sp.speed *= Defs.HILL_SPEED
 	sp.banished.connect(_on_banished)

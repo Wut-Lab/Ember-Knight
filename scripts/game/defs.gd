@@ -160,6 +160,20 @@ const OATHS := {
 		"short": "Once per wave, choose a die's face.",
 		"desc": "The dice answer to Char now.\n\nOnce per wave, pick one of your dice and choose which of its faces it shows (the Choose button by Roll).",
 	},
+	"urgency": {
+		"rarity": "unique",
+		"name": "Oath of Urgency",
+		"icon": "hourglass",
+		"short": "Char and defenses fire 25% faster; half the spirits are 30% faster.",
+		"desc": "No time to waste. No time to rest.\n\nChar, Torches, Mortars and Steam Vents fire 25% faster, and Char deals 10% more damage. But half the spirits move 30% faster.",
+	},
+	"dedication": {
+		"rarity": "rare",
+		"name": "Oath of Dedication",
+		"icon": "devotion",
+		"short": "Your most shared face gets +10% per die that has it.",
+		"desc": "Char commits to one craft.\n\nThe face found on the most of tonight's dice gets +10% for each die that has it: damage (Torch, Mortar), slow (Steam Vent), healing (Kindle, Pine Log), HP (Ember Wall) or reach (Guide Light). Ashes don't count; ties go to the earlier die.",
+	},
 	"immortals": {
 		"rarity": "unique",
 		"name": "Oath of the Immortals",
@@ -286,6 +300,11 @@ const WARD_AT := 0.5       ## Ash Ward pulses when the fire falls to this share 
 const WARD_SLOW := 0.5     ## multiplies with other slows
 const WARD_TIME := 3.0
 const WARD_EXTRA := 1.5    ## seconds per extra Ash Ward on the fire that wave
+const URGENCY_RATE := 1.25     ## Oath of Urgency: Char and firing defenses
+const URGENCY_DAMAGE := 1.1    ## ...Char damage
+const URGENCY_SHARE := 0.5     ## ...share of spirits sped up
+const URGENCY_SPEED := 1.3
+const DEDICATION_PER_DIE := 0.10   ## Oath of Dedication
 const COMEBACK_AT := 0.3    ## below this share of max flame...
 const COMEBACK_RATE := 1.3  ## ...Char fires this much faster
 const MIN_SPEED := 0.2     ## spirits never drop below this share of their speed

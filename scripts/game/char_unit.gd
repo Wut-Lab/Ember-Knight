@@ -48,6 +48,9 @@ func stats() -> Dictionary:
 			if is_instance_valid(d) and d.kind == "bellows":
 				n += 1
 		s["rate"] *= 1.0 + Defs.FORGE_CHAR_RATE * n
+	if Run.has_oath("urgency"):
+		s["rate"] *= Defs.URGENCY_RATE
+		s["damage"] *= Defs.URGENCY_DAMAGE
 	if Run.flame < Run.max_flame * Defs.COMEBACK_AT:   # cornered, Char fights harder
 		s["rate"] *= Defs.COMEBACK_RATE
 	if battle.heavy:   # lull reward: Heavy Support Fire

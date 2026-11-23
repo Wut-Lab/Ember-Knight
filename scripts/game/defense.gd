@@ -69,6 +69,14 @@ func stats() -> Dictionary:
 			if is_instance_valid(o) and o.kind == "vent":
 				vents += o.level
 		st["min"] *= 1.0 - minf(Defs.DECIMATION_CAP, Defs.DECIMATION_PER_VENT * vents)
+	var ded := Run.dedication(kind)   # Oath of Dedication
+	if ded > 0.0:
+		if st.has("damage") and kind != "vent":
+			st["damage"] *= 1.0 + ded
+		if st.has("slow"):
+			st["slow"] *= 1.0 + ded
+	if Run.has_oath("urgency") and st.has("rate") and kind in ["torch", "mortar", "vent"]:
+		st["rate"] *= Defs.URGENCY_RATE
 	if st.has("slow"):
 		st["slow"] = minf(st["slow"], Defs.SLOW_CAP)
 	if st.has("rate") and kind in Defs.LIGHT_DEFENSES:   # a Dark Wisp's dimming
@@ -96,7 +104,12 @@ func stats() -> Dictionary:
 ## The best Guide Light elsewhere in this tile's group ({} if none). Guides don't
 ## boost each other.
 func guide_bonus() -> Dictionary:
-	return group_best("guide", "boost")
+	var g := group_best("guide", "boost")
+	var ded := Run.dedication("guide")   # Oath of Dedication: more reach
+	if not g.is_empty() and ded > 0.0:
+		g = g.duplicate()
+		g["boost"] = 1.0 + (g["boost"] - 1.0) * (1.0 + ded)
+	return g
 
 
 ## The best `src` support (Guide Light, Bellows) elsewhere in this tile's
