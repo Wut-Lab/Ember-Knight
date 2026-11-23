@@ -1360,7 +1360,7 @@ func _slab_shape(i: int) -> Dictionary:
 	var edge := PackedVector2Array()
 	for k in n:
 		var a := rot + TAU * (k + r.randf_range(-0.25, 0.25)) / n
-		var lump := r.randf_range(0.95, 1.02) if stop == "lake" else r.randf_range(0.86, 1.06)
+		var lump := r.randf_range(0.95, 1.02) if _is_dock_tile(i) else r.randf_range(0.86, 1.06)
 		edge.append(Vector2.from_angle(a) * TILE_RADIUS * lump)
 	var cracks := []
 	for k in r.randi_range(1, 2):
@@ -1371,7 +1371,7 @@ func _slab_shape(i: int) -> Dictionary:
 			line.append(line[line.size() - 1] + dir.rotated(r.randf_range(-0.5, 0.5)) * TILE_RADIUS * r.randf_range(0.14, 0.24))
 		cracks.append(line)
 	var moss := []
-	if r.randf() < {"hill": 0.75, "cliff": 0.55, "lake": 0.0}.get(stop, 0.4):
+	if r.randf() < (0.0 if _is_dock_tile(i) else {"hill": 0.75, "cliff": 0.55}.get(stop, 0.4)):
 		var at := Vector2.from_angle(r.randf() * TAU) * TILE_RADIUS * 0.62
 		for k in r.randi_range(3, 5):
 			moss.append([at + Vector2(r.randf_range(-9, 9), r.randf_range(-6, 6)), r.randf_range(2.5, 5.0)])
@@ -1386,7 +1386,8 @@ const SLAB_LOOK := {
 	"road": ["#2e2725", "#6b5b4f", "#463c37", "#93806f", "#3e4a22", "#6d7d34"],   # warm fieldstone
 	"cliff": ["#262a30", "#56606a", "#3a4048", "#8a939c", "#6b6a4c", "#aaa77a"],  # cold slate, pale lichen
 	"hill": ["#2b2a22", "#5b5844", "#3d3c2f", "#837d5f", "#3d5222", "#73923a"],   # weathered, mossy
-	"lake": ["#2a1d14", "#5e4430", "#3e2b1d", "#8a6644", "", ""],                # wooden decking
+	"lake": ["#272624", "#5c5650", "#3b3936", "#8c8379", "#34472a", "#5f7a3e"],   # damp river stone
+	"dock": ["#2a1d14", "#5e4430", "#3e2b1d", "#8a6644", "", ""],                # wooden decking
 }
 
 
@@ -1405,11 +1406,12 @@ func _draw_slab(i: int, w: Vector2, lit: float) -> void:
 		side.append(q)
 		shadow.append(q + Vector2(2.0, 5.0) * view_scale)
 		top.append(proj(w + e * 0.86) + up)
-	var look: Array = SLAB_LOOK.get(stop, SLAB_LOOK["road"])
+	var deck := _is_dock_tile(i)
+	var look: Array = SLAB_LOOK["dock"] if deck else SLAB_LOOK.get(stop, SLAB_LOOK["road"])
 	draw_colored_polygon(shadow, Color(0, 0, 0, 0.45))
 	draw_colored_polygon(side, Color(look[0]).lerp(Color(look[1]), lit))
 	draw_colored_polygon(top, Color(look[2]).lerp(Color(look[3]), lit))
-	if stop == "lake":
+	if deck:
 		_draw_planks(S, w, up, lit)
 		return
 	var hi := PackedVector2Array()   # a paler worn patch on the top face
@@ -1430,7 +1432,12 @@ func _draw_slab(i: int, w: Vector2, lit: float) -> void:
 		draw_circle(proj(w + S["ember"]) + up, 1.8 * view_scale, ec)
 
 
-## Lakeside tiles are little wooden decks: planks with dark seams and nails.
+## The dock's tile is built first, so it is tile 0.
+func _is_dock_tile(i: int) -> bool:
+	return i == 0 and stop == "lake" and not dock.is_empty()
+
+
+## The dock's tile is a little wooden deck: planks with dark seams and nails.
 func _draw_planks(S: Dictionary, w: Vector2, up: Vector2, lit: float) -> void:
 	var poly := PackedVector2Array()
 	for e in S["edge"]:
