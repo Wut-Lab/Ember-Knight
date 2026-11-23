@@ -1154,9 +1154,10 @@ func _autoplay_step(delta: float) -> void:
 					best = i
 					break
 		if best == -1:
-			for k in board.group_count * 3:  # inner tiles round the fire first
-				var i: int = (k % board.group_count) * 3 + k / board.group_count
-				if i < board.tiles.size() and board.tile_defense[i] == null:
+			var order := range(board.tiles.size())   # tiles nearest the fire first
+			order.sort_custom(func(x, y): return board.tiles[x].length() < board.tiles[y].length())
+			for i in order:
+				if board.tile_defense[i] == null:
 					best = i
 					break
 		if best != -1:
@@ -1196,7 +1197,7 @@ func _autoplay_gates(delta: float) -> void:
 
 func _has_neighbour(i: int) -> bool:
 	for df in defenses:
-		if df.kind != "guide" and df.tile / 3 == i / 3:
+		if df.kind != "guide" and board.tile_group[df.tile] == board.tile_group[i]:
 			return true
 	return false
 

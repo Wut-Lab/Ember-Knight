@@ -645,8 +645,6 @@ const HILL_SPEED := 1.6
 const FORKS_MIN := 1
 const FORKS_MAX := 3
 ## Tiles sit in two rows with a clear ring between them where the forks cross.
-const INNER_TILE_R := 150.0
-const OUTER_TILE_R := 330.0
 const FORK_RADIUS := 258.0    ## road forks leave their trail this far out ...
 const MERGE_RADIUS := 222.0   ## ... and join the next trail here (between the tile rows)
 const GATES_FREE := 1       ## every night Char has this many gates to cobble

@@ -94,7 +94,7 @@ func guide_bonus() -> Dictionary:
 		return {}
 	var best := {}
 	for o in battle.defenses:
-		if o == self or o.kind != "guide" or o.tile / 3 != tile / 3:
+		if o == self or o.kind != "guide" or board.tile_group[o.tile] != board.tile_group[tile]:
 			continue
 		var g: Dictionary = Defs.DEFENSES["guide"][o.level - 1]
 		if best.is_empty() or g["boost"] > best["boost"]:

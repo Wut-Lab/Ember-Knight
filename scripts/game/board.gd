@@ -160,7 +160,7 @@ func _build_layout() -> void:
 	var r := RandomNumberGenerator.new()
 	r.seed = layout_seed
 	for attempt in 30:   # a hill reshapes its spiral until a shortcut fits
-		for a in [paths, path_lengths, tiles, tile_defense, links, shapes, dock]:
+		for a in [paths, path_lengths, tiles, tile_defense, links, shapes, dock, tile_group]:
 			a.clear()
 		if not _build_once(r):
 			continue
@@ -225,22 +225,8 @@ func _build_once(r: RandomNumberGenerator) -> bool:
 		for k in range(1, pts.size()):
 			length += pts[k].distance_to(pts[k - 1])
 		path_lengths.append(length)
-	# A tile group sits between each pair of neighbouring lanes, centred in the gap.
-	for i in n:
-		var inner := _gap_mid(i, Defs.INNER_TILE_R)
-		tiles.append(Vector2(cos(inner[0]), sin(inner[0])) * Defs.INNER_TILE_R)
-		var outer := _gap_mid(i, Defs.OUTER_TILE_R)
-		var spread := minf(deg_to_rad(23.0), outer[1] / 2.0 - deg_to_rad(14.0))
-		for s in [-1.0, 1.0]:
-			var a: float = outer[0] + s * spread
-			tiles.append(Vector2(cos(a), sin(a)) * Defs.OUTER_TILE_R)
-	for t in tiles:
-		tile_defense.append(null)
 	lane_count = n
-	group_count = n
-	if Defs.has_forks(stop):
-		_build_forks(r)
-	return true
+	return _finish(r, 3 * n)
 
 
 ## Cliff Edge: 2-3 trails fan in from the front and sides, none from behind
@@ -299,44 +285,7 @@ func _build_cliff(r: RandomNumberGenerator) -> bool:
 			length += pts[k].distance_to(pts[k - 1])
 		path_lengths.append(length)
 	lane_count = n
-	for i in n - 1:
-		var inner := _gap_mid(i, Defs.INNER_TILE_R)
-		tiles.append(Vector2(cos(inner[0]), sin(inner[0])) * Defs.INNER_TILE_R)
-		var outer := _gap_mid(i, Defs.OUTER_TILE_R)
-		var spread := minf(deg_to_rad(23.0), outer[1] / 2.0 - deg_to_rad(14.0))
-		for s in [-1.0, 1.0]:
-			var a: float = outer[0] + s * spread
-			tiles.append(Vector2(cos(a), sin(a)) * Defs.OUTER_TILE_R)
-	for side in [[0, -1.0], [n - 1, 1.0]]:
-		if not _flank_group(side[0], side[1]):
-			return false
-	group_count = tiles.size() / 3
-	for t in tiles:
-		tile_defense.append(null)
-	if Defs.has_forks(stop):
-		_build_forks(r)
-	return true
-
-
-## Three tiles on the open side of an outer cliff trail (toward the drop),
-## inner one first. False if they can't fit.
-func _flank_group(lane: int, side: float) -> bool:
-	for want in [[150.0, 210.0], [300.0, 380.0], [300.0, 380.0]]:
-		var placed := false
-		for rad in range(int(want[0]), int(want[1]) + 1, 15):
-			var base := _lane_angle(lane, _f_at(rad))
-			for step in range(8, 120, 4):
-				var a := base + side * deg_to_rad(step)
-				var p := Vector2(cos(a), sin(a)) * rad
-				if _tile_spot_ok(p):
-					tiles.append(p)
-					placed = true
-					break
-			if placed:
-				break
-		if not placed:
-			return false
-	return true
+	return _finish(r, 3 * (n + 1))
 
 
 func _tile_spot_ok(p: Vector2) -> bool:
@@ -351,11 +300,144 @@ func _tile_spot_ok(p: Vector2) -> bool:
 	for t in tiles:
 		if p.distance_to(t) < TILE_RADIUS * 2.3:
 			return false
-	for i in lane_count:
-		for q in paths[i]:
+	if absf(p.y) > VIEW_FIT.y - 10.0 or p.length() < 115.0:
+		return false
+	for pts in paths:   # trails and fork routes
+		for q in pts:
 			if p.distance_to(q) < TILE_RADIUS + 34.0:
 				return false
+	for L in links:
+		for q in L["pts"]:
+			if p.distance_to(q) < TILE_RADIUS + 34.0:
+				return false
+	if not dock.is_empty() and Geometry2D.get_closest_point_to_segment(p, dock[0], dock[1]).distance_to(p) < TILE_RADIUS + 20.0:
+		return false
 	return true
+
+
+# ------------------------------------------------------------ tiles
+const TILE_REACH := 180.0        ## just under the shortest defense range (Frost)
+const TILE_MIN_COVER := 6        ## trail samples (15 units each) a tile must reach
+const TILE_SPACING := TILE_RADIUS * 2.3
+
+## Forks first, then tiles scattered round them. False if too few fit.
+func _finish(r: RandomNumberGenerator, want: int) -> bool:
+	if Defs.has_forks(stop):
+		_build_forks(r)
+	_scatter_tiles(r, want)
+	if tiles.size() < want - 1:
+		return false
+	_group_tiles()
+	for t in tiles:
+		tile_defense.append(null)
+	return true
+
+
+## Candidate spots on a jittered grid, each scored by how much trail lies
+## within reach (bonus for reaching two trails). Picks are weighted-random,
+## favouring trails and rings (near / far) that are still short of tiles.
+func _scatter_tiles(r: RandomNumberGenerator, want: int) -> void:
+	var samples := []   # [pos, trail id]
+	for i in lane_count:
+		var d := 0.0
+		while d < path_lengths[i]:
+			samples.append([path_point(i, d), i])
+			d += 15.0
+	for k in links.size():
+		for q in links[k]["pts"]:
+			samples.append([q, 100 + k])
+	var cands := []   # [pos, cover, trail ids]
+	var step := 26.0
+	var x := -VIEW_FIT.x
+	while x <= VIEW_FIT.x:
+		var y := -VIEW_FIT.y
+		while y <= VIEW_FIT.y:
+			var p := Vector2(x, y) + Vector2(r.randf_range(-11.0, 11.0), r.randf_range(-11.0, 11.0))
+			y += step
+			if not _tile_spot_ok(p):
+				continue
+			var per := {}
+			var cover := 0
+			for sm in samples:
+				if p.distance_to(sm[0]) < TILE_REACH:
+					cover += 1
+					per[sm[1]] = per.get(sm[1], 0) + 1
+			if cover < TILE_MIN_COVER:
+				continue
+			var ids := []
+			for id in per:
+				if per[id] >= 3 and id < 100:
+					ids.append(id)
+			cands.append([p, cover, ids])
+		x += step
+	var lane_hits := {}
+	var near := 0
+	while tiles.size() < want:
+		var weights := PackedFloat32Array()
+		var total := 0.0
+		var fair := float(tiles.size()) / maxf(1.0, lane_count)
+		for c in cands:
+			var p: Vector2 = c[0]
+			var gap := INF
+			var crowd := 0   # tiles already nearby: spread them over the clearing
+			for t in tiles:
+				var dt := p.distance_to(t)
+				gap = minf(gap, dt)
+				if dt < 240.0:
+					crowd += 1
+			var w := 0.0
+			if gap >= TILE_SPACING:
+				w = float(c[1]) / (1.0 + 1.3 * crowd) * (1.0 + 0.5 * maxf(0.0, c[2].size() - 1))
+				for id in c[2]:
+					if lane_hits.get(id, 0) < fair:
+						w *= 1.7
+						break
+				var is_near := p.length() < 230.0
+				if is_near != (near * 3 < tiles.size() + 1):
+					w *= 0.6
+			weights.append(w)
+			total += w
+		if total <= 0.0:
+			return
+		var roll := r.randf() * total
+		var pick := 0
+		for k in weights.size():
+			roll -= weights[k]
+			if roll <= 0.0 and weights[k] > 0.0:
+				pick = k
+				break
+		var c: Array = cands[pick]
+		tiles.append(c[0])
+		for id in c[2]:
+			lane_hits[id] = lane_hits.get(id, 0) + 1
+		if c[0].length() < 230.0:
+			near += 1
+
+
+## Groups of 3 neighbouring tiles: the most outlying tile left takes its two
+## nearest. Guide Light boosts within its group.
+func _group_tiles() -> void:
+	tile_group.clear()
+	tile_group.resize(tiles.size())
+	tile_group.fill(-1)
+	group_count = 0
+	var left := range(tiles.size())
+	while not left.is_empty():
+		var mid := Vector2.ZERO
+		for i in left:
+			mid += tiles[i]
+		mid /= left.size()
+		var seed_i: int = left[0]
+		for i in left:
+			if tiles[i].distance_to(mid) > tiles[seed_i].distance_to(mid):
+				seed_i = i
+		left.erase(seed_i)
+		left.sort_custom(func(a, b): return tiles[a].distance_to(tiles[seed_i]) < tiles[b].distance_to(tiles[seed_i]))
+		var members := [seed_i] + left.slice(0, 2)
+		for i in members:
+			tile_group[i] = group_count
+			left.erase(i)
+		group_count += 1
 
 
 # ------------------------------------------------------------ lake
@@ -449,40 +531,9 @@ func _build_lake(r: RandomNumberGenerator) -> bool:
 			length += pts[k].distance_to(pts[k - 1])
 		path_lengths.append(length)
 	lane_count = n
-	# Land gaps (between two land trails): a group of 3, or two in a wide gap.
-	for i in range(1, n - 1):
-		var g := _gap_mid(i, 330.0)
-		var centres := [0.5] if g[1] < deg_to_rad(160.0) else [0.3, 0.7]
-		for c in centres:
-			for want in [[[150.0, 175.0], [120.0, 210.0]], [[325.0, 400.0], [290.0, 430.0], [130.0, 205.0]],
-					[[325.0, 400.0], [290.0, 430.0], [130.0, 205.0]]]:
-				var placed := false
-				for rng_ in want:
-					if _place_in_gap(i, rng_[0], rng_[1], c, 0.2 if centres.size() > 1 else 0.44):
-						placed = true
-						break
-				if not placed:
-					return false
-	# The shore: 1-2 tiles between the water crossing and the shore trails,
-	# then the dock's tile; together they make the last group.
-	var want_shore := 1 if r.randf() < 0.5 else 2
-	var shore_gaps := [0, n - 1]
-	if r.randf() < 0.5:
-		shore_gaps.reverse()
-	var got := 0
-	for gi in shore_gaps:
-		if got < want_shore and _place_in_gap(gi, 140.0, 260.0, 0.5, 0.44):
-			got += 1
-	if got == 0:
-		return false
 	if not _build_dock(r):
 		return false
-	group_count = (tiles.size() + 2) / 3
-	for t in tiles:
-		tile_defense.append(null)
-	if Defs.has_forks(stop):
-		_build_forks(r)
-	return true
+	return _finish(r, 3 * (n - 1))
 
 
 var _shore_tables := []   ## per shore trail: angle offset from the crossing, per step
@@ -507,22 +558,6 @@ func _shore_table(water_a: float, sgn: float) -> PackedFloat32Array:
 			sm[k] = (out[k - 1] + out[k] * 2.0 + out[k + 1]) / 4.0
 		out = sm
 	return out
-
-
-## One tile in gap i (lane i to i+1), as near `centre` (fraction across the gap) as fits.
-func _place_in_gap(i: int, rad_lo: float, rad_hi: float, centre := 0.5, spread := 0.44) -> bool:
-	for rad in range(int(rad_lo), int(rad_hi) + 1, 15):
-		var g := _gap_mid(i, rad)
-		var a0: float = g[0] - g[1] / 2.0
-		for t in [0.0, 0.1, -0.1, 0.2, -0.2, 0.3, -0.3, 0.38, -0.38, 0.44, -0.44]:
-			if absf(t) > spread:
-				continue
-			var a: float = a0 + g[1] * (centre + t)
-			var p := Vector2.from_angle(a) * rad
-			if _tile_spot_ok(p):
-				tiles.append(p)
-				return true
-	return false
 
 
 ## A short dock out into the lake beside the crossing, with one tile at its end.
@@ -564,22 +599,13 @@ func _build_dock(r: RandomNumberGenerator) -> bool:
 var _lanes := []
 var _steps := 36
 var lane_count := 0          ## real trails; paths past this index are fork routes
-var group_count := 0         ## tile groups of 3 (inner tile first)
+var group_count := 0         ## tile groups of 3 neighbours
+var tile_group: Array[int] = []   ## group id per tile
 ## One-way forks. Each: from (lane), to (lane), at (dist on `from` where it forks),
 ## path (index of the route that takes the fork), pts (connector, for drawing),
 ## gate (Char has cobbled one here), cross (gate sends spirits down the fork),
 ## cool (seconds until the gate can be switched again).
 var links: Array = []
-
-
-## [mid angle, gap width] between lane i and lane i+1 at this radius.
-func _gap_mid(i: int, rad: float) -> Array:
-	var f := _f_at(rad)
-	var a: Array = _lanes[i]
-	var b: Array = _lanes[(i + 1) % _lanes.size()]
-	var a0: float = a[0] + _offset(a[1], f, a[2], a[3])
-	var gap := wrapf(b[0] + _offset(b[1], f, b[2], b[3]) - a0, 0.0, TAU)
-	return [a0 + gap / 2.0, gap]
 
 
 ## How many forks a stop's map gets with this seed (for the loadout screen).
@@ -1242,7 +1268,7 @@ func _draw() -> void:
 					_ring(c, mn * view_scale, mn * view_scale * K, Color(1, 0.4, 0.3, 0.3), 2.0)
 				if face_now == "guide":   # light up the tiles it would boost
 					for j in tiles.size():
-						if j != i and j / 3 == i / 3:
+						if j != i and tile_group[j] == tile_group[i]:
 							var cj := proj(tiles[j])
 							_ring(cj, rx * 1.3, rx * K * 1.3, Color(1, 0.92, 0.6, 0.45), 2.5 * view_scale)
 	_draw_forks(pulse)
