@@ -826,6 +826,8 @@ func _spawn(kind: String, lane := -1, hearty := false):
 	sp.summoned.connect(_on_summoned)
 	if sp.zap_range > 0.0:
 		AudioDirector.play_sfx("charge_hum", -5.0)
+	if sp.ring_every > 0.0:   # a Bellringer drifts in tolling
+		AudioDirector.play_sfx("bell_toll", -6.0, 0.03)
 	if sp.boss:
 		AudioDirector.play_sfx(Defs.SPIRITS[kind].get("arrive_sfx", "charge_hum"), -4.0, 0.0)
 		AudioDirector.start_boss_music()
