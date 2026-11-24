@@ -337,8 +337,8 @@ static func outfit_svg(svg: String, id: String) -> String:
 	if back != "":
 		var at := svg.find("</defs>") + 7
 		svg = svg.substr(0, at) + back + svg.substr(at)
-	if o.get("wide", false):   # 40 more each side, for wings; still centred on x = 100
-		svg = svg.replace('width="160" height="252" viewBox="20 0 160 252"', 'width="240" height="252" viewBox="-20 0 240 252"')
+	if o.get("wide", false):   # 60 more each side, for wings; still centred on x = 100
+		svg = svg.replace('width="160" height="252" viewBox="20 0 160 252"', 'width="280" height="252" viewBox="-40 0 280 252"')
 	var extra: String = OutfitArt.OVERLAYS.get(id, "")
 	if extra != "":
 		var at := svg.rfind("</svg>")
