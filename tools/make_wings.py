@@ -51,5 +51,6 @@ minx,miny=min(xs),min(ys)
 # fit inside x >= -16, y >= 4, scaling about the shoulder
 k=min(1,(S[0]+36)/(S[0]-minx),(S[1]-4)/(S[1]-miny))
 import sys; print(f'minx {minx:.1f} miny {miny:.1f} k {k:.2f}',file=sys.stderr)
-print(f'<g transform="translate({S[0]} {S[1]}) scale({k:.3f}) translate({-S[0]} {-S[1]})">')
+DY = 24   # lowers the whole wing so its root sits behind Char's back
+print(f'<g transform="translate({S[0]} {S[1]+DY}) scale({k:.3f}) translate({-S[0]} {-S[1]})">')
 print('\n'.join(out)); print('</g>')

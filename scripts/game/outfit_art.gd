@@ -112,7 +112,7 @@ const ANGEL_BACK := """
 </defs>
 <ellipse cx="100" cy="24" rx="34" ry="12" fill="url(#oAura)"/>
 <path d="M76 26 Q100 14 124 26" stroke="url(#oGold)" stroke-width="3.2" fill="none" opacity=".85"/>
-<g transform="translate(84 134) scale(0.814) translate(-84 -134)">
+<g transform="translate(84 158) scale(0.814) translate(-84 -134)">
 <g transform="translate(44.8 33.5) rotate(-176.0)"><path d="M0 0 C7.6 -11.5 8.0 -46.1 0 -64.0 C-5.6 -51.2 -6.8 -14.1 0 0Z" fill="url(#oFeather)" stroke="#a89a84" stroke-width=".6"/><path d="M0 -2 L0 -58.9" stroke="#cfc4b2" stroke-width=".8"/></g>
 <g transform="translate(51.0 42.5) rotate(-177.1)"><path d="M0 0 C7.6 -11.1 8.0 -44.2 0 -61.4 C-5.6 -49.1 -6.8 -13.5 0 0Z" fill="url(#oFeather)" stroke="#a89a84" stroke-width=".6"/><path d="M0 -2 L0 -56.5" stroke="#cfc4b2" stroke-width=".8"/></g>
 <g transform="translate(56.9 52.5) rotate(-178.3)"><path d="M0 0 C7.6 -10.6 8.0 -42.4 0 -58.9 C-5.6 -47.1 -6.8 -12.9 0 0Z" fill="url(#oFeather)" stroke="#a89a84" stroke-width=".6"/><path d="M0 -2 L0 -54.1" stroke="#cfc4b2" stroke-width=".8"/></g>
@@ -168,7 +168,7 @@ const ANGEL_BACK := """
 <path d="M37 34 Q42 37 47 34" stroke="#a89a84" stroke-width=".8" fill="none"/>
 </g>
 <g transform="translate(200 0) scale(-1 1)">
-<g transform="translate(84 134) scale(0.814) translate(-84 -134)">
+<g transform="translate(84 158) scale(0.814) translate(-84 -134)">
 <g transform="translate(44.8 33.5) rotate(-176.0)"><path d="M0 0 C7.6 -11.5 8.0 -46.1 0 -64.0 C-5.6 -51.2 -6.8 -14.1 0 0Z" fill="url(#oFeather)" stroke="#a89a84" stroke-width=".6"/><path d="M0 -2 L0 -58.9" stroke="#cfc4b2" stroke-width=".8"/></g>
 <g transform="translate(51.0 42.5) rotate(-177.1)"><path d="M0 0 C7.6 -11.1 8.0 -44.2 0 -61.4 C-5.6 -49.1 -6.8 -13.5 0 0Z" fill="url(#oFeather)" stroke="#a89a84" stroke-width=".6"/><path d="M0 -2 L0 -56.5" stroke="#cfc4b2" stroke-width=".8"/></g>
 <g transform="translate(56.9 52.5) rotate(-178.3)"><path d="M0 0 C7.6 -10.6 8.0 -42.4 0 -58.9 C-5.6 -47.1 -6.8 -12.9 0 0Z" fill="url(#oFeather)" stroke="#a89a84" stroke-width=".6"/><path d="M0 -2 L0 -54.1" stroke="#cfc4b2" stroke-width=".8"/></g>
