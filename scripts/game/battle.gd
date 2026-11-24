@@ -94,6 +94,7 @@ var _lamp = null
 var _figures := {}   ## rider id -> MemberFigure by the fire
 var _lull_rerolls := 0     ## lull reward Spare Luck: extra rerolls next prep
 var banked := 0.0          ## Oath of the Banked Fire: + damage this wave (read by Defense, Char)
+var shield := 0.0          ## Reliquaries on the fire: damage left to soak up this wave
 var wards := 0             ## Ash Wards on the fire this wave, waiting to pulse
 var ward_t := 0.0          ## seconds left on the Ash Ward slow
 var pine_logs := 0         ## Pine Logs on the fire this wave (Torches reach farther; read by Defense)
@@ -409,6 +410,8 @@ func _wave_cleared() -> void:
 	fighting = false
 	pine_logs = 0
 	wards = 0
+	shield = 0.0
+	board.shield = 0.0
 	ward_t = 0.0
 	banked = 0.0
 	AudioDirector.set_tension(false)
@@ -863,7 +866,15 @@ func _on_banished(sp) -> void:
 	if sp.kind == "mud_wisp":
 		Profile.add_essence(Defs.MUD_ESSENCE)
 		_add_fx("text", sp.world, Color("#9fd0ff"), 100.0, "+%d" % Defs.MUD_ESSENCE)
-	elif sp.kind == "bellringer":
+	var mend := 0.0   # Votive Candles: the strongest one in reach mends the fire
+	for d in defenses:
+		if d.kind == "votive" and d.world.distance_to(sp.world) <= d.stats()["range"]:
+			mend = maxf(mend, d.stats()["heal"])
+	if mend > 0.0 and phase != Phase.DONE:
+		Run.flame = minf(Run.max_flame, Run.flame + mend)
+		_add_fx("text", sp.world + Vector2(0, -20), Color("#ffd98a"), 100.0, "+%s" % str(mend).trim_suffix(".0"))
+		_update_hud()
+	if sp.kind == "bellringer":
 		Profile.add_essence(Defs.BELL_ESSENCE)
 		_add_fx("text", sp.world, Color("#9fd0ff"), 100.0, "+%d" % Defs.BELL_ESSENCE)
 	if sp.smoulder_t > 0.0 and Run.has_oath("smouldering_wake"):   # the burn jumps on
@@ -954,7 +965,17 @@ func _on_zapped(sp) -> void:
 func _hurt_fire(sp, sfx := "hurt") -> void:
 	if phase == Phase.DONE:
 		return
-	Run.flame = maxf(0.0, Run.flame - sp.damage)
+	var dmg: float = sp.damage
+	if shield > 0.0:   # the Reliquary takes it first
+		var soak := minf(shield, dmg)
+		shield -= soak
+		dmg -= soak
+		board.shield = shield
+		_add_fx("ring", Vector2.ZERO, Color("#ffe39a"), 120.0)
+		if dmg <= 0.0:
+			AudioDirector.play_sfx("chime", -8.0)
+			return
+	Run.flame = maxf(0.0, Run.flame - dmg)
 	char_unit.hurt()
 	_flame_bar.flash()
 	_add_fx("ring", Vector2.ZERO, Color("#8fa0ff"), 110.0)
@@ -1283,10 +1304,14 @@ func _try_place(d, local: Vector2) -> bool:
 		return false
 	if target == -2 and d.face == "pine":
 		pine_logs += 1
-		Run.flame = minf(Run.max_flame, Run.flame + Run.pine_heal())
+		Run.flame = minf(Run.max_flame, Run.flame + Run.pine_heal() * (1.0 + Defs.PINE_PLUS_HEAL * (d.levels - 1)))
 		_add_fx("ring", Vector2.ZERO, Color("#c98a4a"), 130.0)
+	elif target == -2 and d.face == "reliquary":
+		shield += Defs.RELIQUARY[mini(d.levels, 3) - 1]
+		board.shield = shield
+		_add_fx("ring", Vector2.ZERO, Color("#e8c66a"), 130.0)
 	elif target == -2 and d.face == "ward":
-		wards += 1
+		wards += d.levels
 		_add_fx("ring", Vector2.ZERO, Color("#b9a8d8"), 130.0)
 	elif target == -2:
 		char_unit.kindle_up()

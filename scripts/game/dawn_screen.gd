@@ -58,6 +58,14 @@ func _ready() -> void:
 		sw.add_theme_color_override("font_color", Color("#9fc9a0"))
 		root.add_child(sw)
 		_row("A NEW DIE  ·  TAKE ONE", "die", Defs.swamp_dawn_dice(Run.rng, Run.pool))
+	elif Run.current_stop() == "chapel":
+		var ch := Label.new()
+		ch.text = "Candlelight lingers in the chapel:  one of its dice is on offer."
+		ch.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		ch.add_theme_font_size_override("font_size", 20)
+		ch.add_theme_color_override("font_color", Color("#ffd98a"))
+		root.add_child(ch)
+		_row("A NEW DIE  ·  TAKE ONE", "die", Defs.swamp_dawn_dice(Run.rng, Run.pool, Defs.CHAPEL_DICE))
 	else:
 		_row("A NEW DIE  ·  TAKE ONE", "die", Defs.dawn_dice(Run.rng, Run.pool))
 	_row("AN OATH  ·  SWEAR ONE", "oath", Defs.dawn_oaths(Run.rng, Run.oaths, Run.night))

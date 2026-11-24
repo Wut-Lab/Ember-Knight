@@ -5,9 +5,9 @@ extends RefCounted
 # ------------------------------------------------------------ dice
 ## Every face that exists. "kindle" (star) goes on the fire to power up Char.
 ## Every other face must be a key in DEFENSES.
-const DIE_FACES := ["kindle", "torch", "vent", "mortar", "guide", "bellows", "brazier", "wall", "mire", "lure", "pine", "ward", "ashes"]
+const DIE_FACES := ["kindle", "torch", "vent", "mortar", "guide", "bellows", "brazier", "wall", "mire", "lure", "votive", "pine", "ward", "reliquary", "ashes"]
 ## Fire faces go on the fire instead of a tile.
-const FIRE_FACES := ["kindle", "pine", "ward"]
+const FIRE_FACES := ["kindle", "pine", "ward", "reliquary"]
 ## A die is a D6: a list of 6 faces. Opposite sides are i and 5 - i.
 ## The player starts every run with STARTING_DICE copies of the starter die.
 const STARTER_DIE := ["torch", "vent", "kindle", "kindle", "vent", "torch"]
@@ -53,8 +53,17 @@ const DICE := {
 	"will_o_wisp": {"name": "Will-o'-Wisp Die", "faces": ["lure", "mortar", "brazier", "ashes", "mortar", "lure"]},
 	## Bone Die: no Ashes at all, three "+" faces. Plain, raw power.
 	"bone": {"name": "Bone Die", "faces": ["torch+", "mortar+", "guide", "wall", "vent+", "kindle"]},
+	## Chapel dice (CHAPEL_DICE): only offered at dawn after a Sunken Chapel night.
+	## Votive Die: candles that mend the fire as spirits fall near them.
+	"votive": {"name": "Votive Die", "faces": ["votive", "torch+", "kindle", "ashes", "vent", "votive+"]},
+	## Reliquary Die: a blessed box on the fire soaks up the first hurts of a wave.
+	"reliquary": {"name": "Reliquary Die", "faces": ["reliquary", "mortar", "ward", "ashes", "torch", "reliquary+"]},
+	## Pilgrim Die: heal, ward and wall; next to no attack of its own.
+	"pilgrim": {"name": "Pilgrim Die", "faces": ["pine+", "ward+", "kindle", "wall", "guide", "pine"]},
 }
 const SWAMP_DICE := ["bog", "will_o_wisp", "bone"]
+## Chapel dice (CHAPEL_DICE): only offered at dawn after a Sunken Chapel night.
+const CHAPEL_DICE := ["votive", "reliquary", "pilgrim"]
 
 ## A "+" face ("torch+") acts as its base face but adds two levels at once;
 ## a "++" face adds three (a level-3 defense in one die).
@@ -527,7 +536,7 @@ const UNIQUE_EARLY_CHANCE := 0.02
 static func dawn_dice(rng: RandomNumberGenerator, dice_owned: Array) -> Array:
 	var pool := []
 	for id in DICE:
-		if dice_owned.count(id) < MAX_DIE_COPIES and not id in SWAMP_DICE and (not id in LOCKED_DICE or Profile.is_unlocked(id)):
+		if dice_owned.count(id) < MAX_DIE_COPIES and not id in SWAMP_DICE and not id in CHAPEL_DICE and (not id in LOCKED_DICE or Profile.is_unlocked(id)):
 			pool.append(id)
 	var out := []
 	while out.size() < DAWN_DICE and not pool.is_empty():
@@ -536,8 +545,8 @@ static func dawn_dice(rng: RandomNumberGenerator, dice_owned: Array) -> Array:
 
 ## Dawn after a Swamp Turnpike night: one swamp die (SWAMP_DICE) and one from
 ## the normal pool.
-static func swamp_dawn_dice(rng: RandomNumberGenerator, dice_owned: Array) -> Array:
-	var bog := SWAMP_DICE.filter(func(id): return dice_owned.count(id) < MAX_DIE_COPIES)
+static func swamp_dawn_dice(rng: RandomNumberGenerator, dice_owned: Array, own: Array = SWAMP_DICE) -> Array:
+	var bog := own.filter(func(id): return dice_owned.count(id) < MAX_DIE_COPIES)
 	var out := []
 	if not bog.is_empty():
 		out.append(bog[rng.randi() % bog.size()])
@@ -614,6 +623,10 @@ const FACE_INFO := {
 		"desc": "Build across a trail: spirits stop and burn through it, scorched by its embers."},
 	"pine": {"name": "Pine Log", "color": Color("#c98a4a"),
 		"desc": "Place on the fire: heals 3 flame, and every Torch reaches 10% farther this wave."},
+	"votive": {"name": "Votive Candles", "color": Color("#ffd98a"),
+		"desc": "A stand of chapel candles. Each spirit banished in their glow mends the fire a little (1 / 1.5 / 2 flame). Doesn't stack."},
+	"reliquary": {"name": "Reliquary", "color": Color("#e8c66a"),
+		"desc": "Place on the fire: a blessed box that soaks up the first 8 / 12 / 16 damage the fire takes this wave."},
 	"ward": {"name": "Ash Ward", "color": Color("#b9a8d8"),
 		"desc": "Place on the fire. When the fire falls to half flame this wave, it pulses: every spirit 50% slower for 3s (+1.5s per extra Ward)."},
 	"ashes": {"name": "Ashes", "color": Color("#8a8078"),
@@ -670,6 +683,12 @@ const DEFENSES := {
 	],
 	## Wisp Lantern: spirits in range with another spirit in range behind them on
 	## their trail (over LURE_GAP back) are slowed by "lure", so packs close up.
+	## Votive Candles: spirits banished within "range" heal the fire by "heal".
+	"votive": [
+		{"range": 150.0, "heal": 1.0},
+		{"range": 165.0, "heal": 1.5},
+		{"range": 180.0, "heal": 2.0},
+	],
 	"lure": [
 		{"range": 210.0, "lure": 0.3},
 		{"range": 225.0, "lure": 0.4},
@@ -860,6 +879,8 @@ const LAKE_FOUR_LANE_CHANCE := 0.5
 ## Swamp Turnpike: murky pools (trails wade through, no tiles), dead trees,
 ## faint drifting orbs. Offered from night 5 once unlocked; spirits are
 ## tougher, but the night pays double Essence (and +1 per Mud Wisp banished).
+const RELIQUARY := [8.0, 12.0, 16.0]   ## fire damage a Reliquary soaks up, by level
+const PINE_PLUS_HEAL := 0.5      ## Pine Log+: heals this much more per extra level
 const CHAPEL_HP := 1.2          ## Sunken Chapel: spirits a bit tougher than the swamp's
 const CHAPEL_ESSENCE := 2        ## dawn Essence multiplier at the chapel
 const BELL_ESSENCE := 2          ## Essence for each Bellringer banished

@@ -33,6 +33,7 @@ var glow_face := ""                   ## face being placed: valid tiles glow
 var hover_tile := -1
 var lift_tile := -1                 ## defense being moved (Oath of Shifting Embers)
 var shift_glow := false             ## a move is available: defenses / empty tiles glow
+var shield := 0.0      ## set by the battle: a Reliquary's soak left this wave (gold ring)
 var fire_glow := 1.0                  ## set by the battle (flicker, swells)
 
 var _t := 0.0
@@ -1905,7 +1906,12 @@ func _draw() -> void:
 				if last != Vector2.INF:
 					draw_line(proj(last), proj(q), wc, 7.0 * view_scale)
 				last = q
-	if glow_face in ["kindle", "pine", "ward"]:
+	if shield > 0.0:   # a Reliquary on the fire: a faint golden shield ring
+		var sr := (78.0 + 2.0 * sin(_t * 2.0)) * view_scale
+		var sa := clampf(shield / 8.0, 0.35, 1.0)
+		_ring(Vector2.ZERO, sr, sr * K, Color(1.0, 0.85, 0.45, 0.45 * sa), 3.0 * view_scale)
+		_ring(Vector2.ZERO, sr * 1.08, sr * 1.08 * K, Color(1.0, 0.9, 0.6, 0.15 * sa), 6.0 * view_scale)
+	if glow_face in Defs.FIRE_FACES:
 		var gc := Color("#fff0b0")
 		gc.a = 0.35 + 0.4 * pulse + (0.25 if hover_tile == -2 else 0.0)
 		_ring(Vector2.ZERO, 92.0 * view_scale, 92.0 * view_scale * K, gc, 4.0 * view_scale)

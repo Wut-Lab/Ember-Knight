@@ -51,6 +51,23 @@ static func draw(ci: CanvasItem, kind: String, c: Vector2, s: float, col: Color,
 			ci.draw_arc(c + Vector2(-s * 0.1, 0.0), s * 0.07, 0.0, TAU, 12, col, s * 0.05, true)
 			ci.draw_arc(c + Vector2(s * 0.12, s * 0.1), s * 0.05, 0.0, TAU, 12, col, s * 0.05, true)
 			ci.draw_arc(c + Vector2(s * 0.03, -s * 0.24), s * 0.04, 0.0, TAU, 10, col, s * 0.04, true)
+		"votive":   # three candles of different heights, flames lit
+			for k in 3:
+				var x := (k - 1) * s * 0.22
+				var h := s * (0.3 + 0.12 * (1 - absi(k - 1)))
+				var b := c + Vector2(x, s * 0.32)
+				ci.draw_line(b, b - Vector2(0, h), col, s * 0.1, true)
+				var tip := b - Vector2(0, h + s * 0.2)
+				ci.draw_colored_polygon(PackedVector2Array([b - Vector2(s * 0.05, h + s * 0.05), tip, b - Vector2(-s * 0.05, h + s * 0.05), b - Vector2(0, h)]), col)
+			ci.draw_line(c + Vector2(-s * 0.36, s * 0.34), c + Vector2(s * 0.36, s * 0.34), col, s * 0.06, true)
+		"reliquary":   # a small casket with a peaked lid and a ring of light
+			var bx := Rect2(c + Vector2(-s * 0.26, -s * 0.02), Vector2(s * 0.52, s * 0.3))
+			ci.draw_rect(bx, col, false, s * 0.06)
+			ci.draw_colored_polygon(PackedVector2Array([c + Vector2(-s * 0.3, -s * 0.02), c + Vector2(0, -s * 0.2), c + Vector2(s * 0.3, -s * 0.02)]), col)
+			ci.draw_line(c + Vector2(0, -s * 0.2), c + Vector2(0, -s * 0.34), col, s * 0.05, true)
+			ci.draw_line(c + Vector2(-s * 0.07, -s * 0.28), c + Vector2(s * 0.07, -s * 0.28), col, s * 0.05, true)
+			ci.draw_circle(c + Vector2(0, s * 0.13), s * 0.05, col)
+			ci.draw_arc(c + Vector2(0, s * 0.05), s * 0.44, PI * 1.15, PI * 1.85, 20, col, s * 0.035, true)
 		"lure":   # an orb in a wire cage hanging from a hook
 			ci.draw_line(c + Vector2(-s * 0.18, -s * 0.38), c + Vector2(0, -s * 0.38), col, s * 0.06, true)
 			ci.draw_line(c + Vector2(0, -s * 0.38), c + Vector2(0, -s * 0.22), col, s * 0.05, true)
