@@ -160,7 +160,7 @@ func _build_layout() -> void:
 	var r := RandomNumberGenerator.new()
 	r.seed = layout_seed
 	for attempt in 30:   # a hill reshapes its spiral until a shortcut fits
-		for a in [paths, path_lengths, tiles, tile_defense, links, shapes, dock, tile_group, _patches, _slabs]:
+		for a in [paths, path_lengths, tiles, tile_defense, links, shapes, dock, tile_group, _patches, _slabs, pools]:
 			a.clear()
 		if not _build_once(r):
 			continue
@@ -226,6 +226,8 @@ func _build_once(r: RandomNumberGenerator) -> bool:
 			length += pts[k].distance_to(pts[k - 1])
 		path_lengths.append(length)
 	lane_count = n
+	if stop == "swamp":
+		_build_pools(r)
 	return _finish(r, 3 * n)
 
 
@@ -294,6 +296,8 @@ func _tile_spot_ok(p: Vector2) -> bool:
 	if stop == "cliff" and p.y < Defs.cliff_edge_y(p.x) + TILE_RADIUS + 25.0:
 		return false
 	if stop == "lake" and _near_lake(p, TILE_RADIUS + 12.0):
+		return false
+	if stop == "swamp" and _near_pool(p, TILE_RADIUS + 12.0):
 		return false
 	if absf(p.x) > VIEW_FIT.x - 10.0:
 		return false
@@ -1007,6 +1011,198 @@ func _draw_hill() -> void:
 		_ellipse_xy(c - Vector2(sz * 0.2, sz * 0.18), sz * 0.5, sz * 0.25, Color("#2e2a2a").lerp(Color("#a8927e"), lit))
 
 
+# ------------------------------------------------------------ swamp
+## Swamp Turnpike: 1-3 murky pools the trails may wade through (no tiles on
+## them), 1-3 gnarled dead trees, a grey haze and a few faint drifting orbs.
+var pools: Array = []        ## [centre (world), rx, ry, phase]
+var _trees: Array = []       ## [world, height, lean, seed]
+var _swamp_reeds: Array = [] ## [world, height]
+var _orbs: Array = []        ## [phase x, phase y, speed, size]
+
+
+func in_pool(w: Vector2) -> bool:
+	for P in pools:
+		var d: Vector2 = w - P[0]
+		var q := Vector2(d.x / P[1], d.y / P[2])
+		if q.length() < _pool_r(P, d.angle()):
+			return true
+	return false
+
+
+func _pool_r(P: Array, ang: float) -> float:
+	return 1.0 + 0.1 * sin(3.0 * ang + P[3]) + 0.06 * sin(5.0 * ang + P[3] * 1.7)
+
+
+func _near_pool(w: Vector2, margin: float) -> bool:
+	if in_pool(w):
+		return true
+	for k in 8:
+		if in_pool(w + Vector2.from_angle(TAU * k / 8.0) * margin):
+			return true
+	return false
+
+
+func pool_point(P: Array, ang: float) -> Vector2:
+	return P[0] + Vector2(cos(ang) * P[1], sin(ang) * P[2]) * _pool_r(P, ang)
+
+
+## The first pool sits across a trail; the rest anywhere clear of the camp.
+func _build_pools(r: RandomNumberGenerator) -> void:
+	var want := r.randi_range(Defs.SWAMP_POOLS_MIN, Defs.SWAMP_POOLS_MAX)
+	for attempt in 60:
+		if pools.size() >= want:
+			break
+		var c: Vector2
+		if pools.is_empty():
+			var pts: PackedVector2Array = paths[r.randi() % paths.size()]
+			c = pts[int(pts.size() * r.randf_range(0.5, 0.68))]
+		else:
+			c = Vector2(r.randf_range(-VIEW_FIT.x, VIEW_FIT.x) * 0.85, r.randf_range(-VIEW_FIT.y, VIEW_FIT.y) * 0.8)
+		var rx := r.randf_range(55.0, 95.0)
+		var ry := rx * r.randf_range(0.6, 0.85)
+		if c.length() < 210.0 or Defs.COACH_ZONE.grow(rx + 20.0).has_point(c):
+			continue
+		var ok := true
+		for P in pools:
+			if c.distance_to(P[0]) < rx + P[1] + 50.0:
+				ok = false
+		if ok:
+			pools.append([c, rx, ry, r.randf() * TAU])
+
+
+func _build_swamp_art() -> void:
+	var r := RandomNumberGenerator.new()
+	r.seed = layout_seed + 71
+	var want := r.randi_range(1, 3)
+	for attempt in 200:
+		if _trees.size() >= want:
+			break
+		var w := Vector2(r.randf_range(-VIEW_FIT.x - 30.0, VIEW_FIT.x + 30.0), r.randf_range(-VIEW_FIT.y + 150.0, VIEW_FIT.y - 20.0))
+		if w.length() < 190.0 or Defs.COACH_ZONE.grow(60.0).has_point(w) or _near_pool(w, 30.0):
+			continue
+		var h := r.randf_range(110.0, 160.0)
+		var top := w - Vector2(0, h * 1.2 / K)   # the crown, in ground terms
+		var ok := Geometry2D.get_closest_point_to_segment(Vector2.ZERO, w, top).length() > 230.0
+		for t in tiles:
+			if Geometry2D.get_closest_point_to_segment(t, w, top).distance_to(t) < TILE_RADIUS + 50.0:
+				ok = false
+		for p in paths:
+			for q in p:
+				if q.distance_to(w) < 55.0:
+					ok = false
+		for T in _trees:
+			if T[0].distance_to(w) < 200.0:
+				ok = false
+		if ok:
+			_trees.append([w, h, r.randf_range(-0.25, 0.25), r.randi()])
+	for P in pools:
+		for k in 18:
+			if r.randf() < 0.4:
+				var e := pool_point(P, TAU * k / 18.0)
+				if not _near_water_path(e):
+					_swamp_reeds.append([e, r.randf_range(12.0, 24.0)])
+	for k in Defs.SWAMP_ORBS:
+		_orbs.append([r.randf() * TAU, r.randf() * TAU, r.randf_range(0.04, 0.08), r.randf_range(0.8, 1.2)])
+
+
+func _draw_swamp_ground() -> void:
+	if _orbs.is_empty():
+		_build_swamp_art()
+	var s := view_scale
+	for P in pools:
+		var bank := PackedVector2Array()
+		var water := PackedVector2Array()
+		for k in 65:
+			var a := TAU * k / 64.0
+			bank.append(proj(P[0] + (pool_point(P, a) - P[0]) * 1.08))
+			water.append(proj(pool_point(P, a)))
+		var lit := light_at(P[0]) * fire_glow
+		draw_colored_polygon(bank, Color("#161812").lerp(Color("#3a3628"), lit * 0.8))
+		draw_colored_polygon(water, Color("#0f1712").lerp(Color("#24302a"), lit * 0.6))
+		var inner := PackedVector2Array()
+		for k in 65:
+			inner.append(proj(P[0] + (pool_point(P, TAU * k / 64.0) - P[0]) * 0.6))
+		draw_colored_polygon(inner, Color(0.02, 0.04, 0.03, 0.35))
+		# Scum and a slow bubble.
+		for k in 3:
+			var a: float = P[3] + k * 1.3
+			var c := proj(P[0] + Vector2(cos(a) * P[1] * 0.5, sin(a) * P[2] * 0.45))
+			_ellipse_xy(c, (14.0 + 4.0 * k) * s, (5.0 + k) * s * K, Color(0.3, 0.38, 0.24, 0.1 + 0.12 * lit))
+		var ph := fmod(_t * 0.3 + P[3], 1.0)
+		var bc := proj(P[0] + Vector2(P[1] * 0.2, -P[2] * 0.15))
+		_ring(bc, (3.0 + ph * 18.0) * s, (3.0 + ph * 18.0) * s * K, Color(0.6, 0.7, 0.6, 0.16 * (1.0 - ph)), 1.3 * s)
+		for k in range(1, water.size()):
+			draw_line(water[k - 1], water[k], Color(0.5, 0.56, 0.48, 0.1 + 0.25 * lit), 1.6 * s, true)
+	for rd in _swamp_reeds:
+		var c := proj(rd[0])
+		var h: float = rd[1] * s
+		var lit := maxf(light_at(rd[0]) * fire_glow, 0.12)
+		var col := Color("#1a1e16").lerp(Color("#5d5c3a"), lit)
+		for b in 3:
+			var lean := (b - 1.0) * 0.22 + sin(_t * 0.6 + rd[0].x * 0.05) * 0.05
+			draw_line(c + Vector2((b - 1) * 2.0 * s, 0), c + Vector2(sin(lean), -cos(lean)) * h * (0.8 + 0.1 * b), col, 1.5 * s, true)
+
+
+## Dead trees and a grey haze over the ground, under the tiles.
+func _draw_swamp_trees() -> void:
+	for T in _trees:
+		_draw_dead_tree(T)
+	draw_rect(Rect2(-2000, -2000, 4000, 4000), Color(0.42, 0.46, 0.44, 0.07))
+
+
+## A few faint orbs drifting listlessly over the board (just for mood).
+func _draw_swamp_orbs() -> void:
+	var s := view_scale
+	for k in _orbs.size():
+		var O: Array = _orbs[k]
+		var w := Vector2(sin(_t * O[2] + O[0]) * VIEW_FIT.x * 1.05, cos(_t * O[2] * 0.8 + O[1]) * VIEW_FIT.y * 0.95)
+		w += Vector2(sin(_t * 0.37 + k), cos(_t * 0.29 + k * 2.0)) * 30.0
+		var c := proj(w) - Vector2(0, (30.0 + sin(_t * 0.5 + k) * 10.0) * s)
+		var glow := 0.6 + 0.4 * sin(_t * 0.7 + k * 1.9)
+		var sz: float = O[3] * s
+		draw_circle(c, 14.0 * sz, Color(0.7, 0.9, 0.85, 0.035 * glow))
+		draw_circle(c, 7.0 * sz, Color(0.75, 0.95, 0.9, 0.06 * glow))
+		draw_circle(c, 2.4 * sz, Color(0.85, 1.0, 0.95, 0.22 * glow))
+
+
+## A gnarled dead tree: a twisted, tapering trunk splitting into crooked bare
+## branches, with roots splayed into the mud.
+func _draw_dead_tree(T: Array) -> void:
+	var s := view_scale
+	var base := proj(T[0])
+	var lit := maxf(light_at(T[0]) * fire_glow, 0.3)
+	var bark := Color("#1c1b18").lerp(Color("#6a6052"), lit)
+	var r := RandomNumberGenerator.new()
+	r.seed = T[3]
+	_ellipse_xy(base + Vector2(10.0 * s, 4.0 * s), 30.0 * s, 9.0 * s, Color(0, 0, 0, 0.3))
+	for k in 4:   # roots
+		var a := PI * (0.05 + 0.3 * k) + r.randf_range(-0.1, 0.1)
+		var d := Vector2(cos(a) * 26.0, sin(a) * 7.0 - 2.0) * s
+		if k >= 2:
+			d.x = -d.x
+		draw_line(base, base + d, bark, 7.0 * s, true)
+	_branch(r, base, -PI / 2 + T[2], T[1] * s, 18.0 * s, bark, 0)
+
+
+func _branch(r: RandomNumberGenerator, from: Vector2, ang: float, length: float, width: float, col: Color, depth: int) -> void:
+	var p := from
+	var a := ang
+	var segs := 4
+	for k in segs:   # a crooked limb: a few kinked segments
+		a += r.randf_range(-0.35, 0.35)
+		var q := p + Vector2.from_angle(a) * length / segs
+		var w := lerpf(width, width * 0.55, float(k + 1) / segs)
+		draw_line(p, q, col, w, true)
+		draw_circle(q, w * 0.5, col)
+		if depth < 3 and k >= 1 and r.randf() < 0.55:
+			var side := -1.0 if r.randf() < 0.5 else 1.0
+			_branch(r, q, a + side * r.randf_range(0.5, 1.0), length * 0.45, w * 0.6, col, depth + 1)
+		p = q
+	if depth < 3:   # fork at the tip
+		_branch(r, p, a - r.randf_range(0.3, 0.6), length * 0.5, width * 0.45, col, depth + 1)
+		_branch(r, p, a + r.randf_range(0.3, 0.6), length * 0.45, width * 0.4, col, depth + 1)
+
+
 # ------------------------------------------------------------ lake art
 var _pads: Array = []      ## lily pads: [world, size, has flower]
 var _reeds: Array = []     ## reed clumps: [world, height]
@@ -1189,6 +1385,8 @@ func _draw() -> void:
 		var lit := clampf(1.0 - (rad - 140.0) / (LIGHT_RADIUS * 1.15), 0.0, 1.0)
 		lit = pow(lit, 1.4) * fire_glow
 		var col := Color("#0a080b").lerp(Color("#5e3d26"), clampf(lit, 0.0, 1.0))
+		if stop == "swamp":   # boggy, grey-green murk
+			col = Color("#0a0c0b").lerp(Color("#4a4434"), clampf(lit, 0.0, 1.0))
 		_ellipse(Vector2.ZERO, rad, col)
 	if stop == "cliff":
 		_draw_cliff()
@@ -1196,6 +1394,8 @@ func _draw() -> void:
 		_draw_hill()
 	elif stop == "lake":
 		_draw_lake()
+	elif stop == "swamp":
+		_draw_swamp_ground()
 	_draw_group_patches()
 	# Trails, lighter packed dirt, fading into the dark.
 	var trails: Array = paths.slice(0, lane_count)
@@ -1211,6 +1411,13 @@ func _draw() -> void:
 			var lit := light_at(mid) * fire_glow
 			var col := Color("#17110f").lerp(Color("#7a5236"), clampf(lit, 0.0, 1.0))
 			col.a = 0.55 + 0.45 * lit
+			if stop == "swamp":   # murkier, greyer trails
+				col = Color("#121412").lerp(Color("#5e5444"), clampf(lit, 0.0, 1.0))
+				col.a = 0.55 + 0.45 * lit
+				if in_pool(mid):   # wading through a pool: a faint dashed wake
+					if k % 2 == 0:
+						draw_line(proj(p[k - 1]), proj(p[k]), Color(0.62, 0.7, 0.6, 0.18 + 0.2 * lit), 6.0 * view_scale, true)
+					continue
 			if stop == "lake" and in_lake(mid):   # crossing the water: a faint wake
 				if k % 2 == 0:
 					var dc := Color(0.7, 0.82, 1.0, 0.3 + 0.25 * lit)
@@ -1226,7 +1433,7 @@ func _draw() -> void:
 	for tf in _tufts:
 		var w: Vector2 = tf[0]
 		var lit := light_at(w) * fire_glow
-		if lit < 0.05 or (stop == "cliff" and w.y < Defs.cliff_edge_y(w.x) + 20.0) or _near_lake(w, 14.0):
+		if lit < 0.05 or (stop == "cliff" and w.y < Defs.cliff_edge_y(w.x) + 20.0) or _near_lake(w, 14.0) or _near_pool(w, 14.0):
 			continue
 		var p := proj(w)
 		var s: float = tf[1] * view_scale
@@ -1238,6 +1445,8 @@ func _draw() -> void:
 			for b in 3:
 				var ang := -PI / 2 + (b - 1) * 0.45
 				draw_line(p, p + Vector2(cos(ang), sin(ang)) * 9.0 * s, g, 2.0 * s, true)
+	if stop == "swamp":
+		_draw_swamp_trees()
 	# Tiles: flat stone slabs. Valid ones glow while a die is being placed.
 	var pulse := 0.5 + 0.5 * sin(_t * 4.0)
 	for i in tiles.size():
@@ -1270,6 +1479,8 @@ func _draw() -> void:
 						if j != i and tile_group[j] == tile_group[i]:
 							var cj := proj(tiles[j])
 							_ring(cj, rx * 1.3, rx * K * 1.3, Color(1, 0.92, 0.6, 0.45), 2.5 * view_scale)
+	if stop == "swamp":
+		_draw_swamp_orbs()
 	_draw_forks(pulse)
 	# Fire target ring for the Kindle (★) die.
 	if glow_face == "wall":   # the stretch of each trail a wall can go on
@@ -1387,6 +1598,7 @@ const SLAB_LOOK := {
 	"cliff": ["#262a30", "#56606a", "#3a4048", "#8a939c", "#6b6a4c", "#aaa77a"],  # cold slate, pale lichen
 	"hill": ["#2b2a22", "#5b5844", "#3d3c2f", "#837d5f", "#3d5222", "#73923a"],   # weathered, mossy
 	"lake": ["#272624", "#5c5650", "#3b3936", "#8c8379", "#34472a", "#5f7a3e"],   # damp river stone
+	"swamp": ["#22241f", "#4e5148", "#33362f", "#74776a", "#2c3a22", "#55693a"],  # grey bog stone, thick moss
 	"dock": ["#2a1d14", "#5e4430", "#3e2b1d", "#8a6644", "", ""],                # wooden decking
 }
 

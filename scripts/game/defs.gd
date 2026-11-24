@@ -790,6 +790,8 @@ const STOPS := {
 	"cliff": {"name": "Cliff Edge", "desc": "A sheer drop behind camp. 2-3 trails, front and sides."},
 	"lake": {"name": "Quiet Lakeside", "desc": "Camp by a calm lake. Spirits drift across the water; mist rises.",
 		"mist_bonus": 0.15},
+	"swamp": {"name": "Swamp Turnpike", "desc": "A causeway through the bog. 3-4 trails wade murky pools under dead trees.",
+		"locked": true},
 }
 ## Quiet Lakeside: a lake fills one side, its near shore this far from the fire.
 ## Spirits crossing the water drift slower. 2-3 land trails + 1 water crossing.
@@ -798,6 +800,11 @@ const LAKE_RX := 380.0
 const LAKE_RY := 330.0
 const LAKE_WATER_SPEED := 0.6
 const LAKE_FOUR_LANE_CHANCE := 0.5
+## Swamp Turnpike: murky pools (trails wade through, no tiles), dead trees,
+## faint drifting orbs. Kept out of the camp choices until it is wired up.
+const SWAMP_POOLS_MIN := 1
+const SWAMP_POOLS_MAX := 3
+const SWAMP_ORBS := 5
 const STOP_CHOICES_MIN := 2   ## camps offered each night, drawn from STOPS
 const STOP_CHOICES_MAX := 3
 ## Cliff Edge: the drop runs behind the stagecoach. Its edge sits this far

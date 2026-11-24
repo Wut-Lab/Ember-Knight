@@ -31,6 +31,7 @@ var riders_picked := false     ## the seat pick has been made this run
 var rng := RandomNumberGenerator.new()
 ## `-- --autoplay`: the game plays itself (for previews and balance checks).
 ## `-- --autoplay --quit-at-end` also prints the result and quits.
+var test_stop := ""   ## --stop=<id>: every night uses this map (testing)
 var autoplay := "--autoplay" in OS.get_cmdline_user_args()
 ## `-- --autoplay --speed=6` runs battles faster (balance checks only).
 var test_speed := 1.0
@@ -38,6 +39,8 @@ var test_speed := 1.0
 
 func _init() -> void:
 	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with("--stop="):   # test: force every camp to this map
+			test_stop = arg.trim_prefix("--stop=")
 		if arg.begins_with("--speed="):
 			test_speed = maxf(1.0, arg.trim_prefix("--speed=").to_float())
 
@@ -222,7 +225,7 @@ func dawn_heal() -> float:
 
 ## 2-3 camps drawn at random from the pool of stops (Defs.STOPS).
 func roll_stop_options() -> Array:
-	var ids: Array = Defs.STOPS.keys()
+	var ids: Array = Defs.STOPS.keys().filter(func(id): return not Defs.STOPS[id].get("locked", false))
 	for i in range(ids.size() - 1, 0, -1):   # shuffle with the run's RNG
 		var j := rng.randi_range(0, i)
 		var t = ids[i]; ids[i] = ids[j]; ids[j] = t
@@ -231,6 +234,8 @@ func roll_stop_options() -> Array:
 
 
 func current_stop() -> String:
+	if test_stop != "":
+		return test_stop
 	return chosen_stops[night] if night < chosen_stops.size() else "road"
 
 
