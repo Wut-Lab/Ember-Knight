@@ -223,9 +223,16 @@ const OATHS := {
 		"short": "Rerolls never land on Ashes.",
 		"desc": "Char's hands are steady now; nothing slips into the ashes.\n\nWhen you reroll, dice never land on an Ashes face. The first roll each wave is unchanged.",
 	},
+	"ash_clouds": {
+		"name": "Oath of Ash Clouds",
+		"rarity": "uncommon",
+		"icon": "ash_cloud",
+		"short": "Unused Ashes slow the first spirits of a wave.",
+		"desc": "Char scatters the dead ash into a choking cloud.\n\nFor each Ashes face left unused on your dice when a wave begins, one of the first spirits to enter moves 50% slower for the rest of the wave. Bosses are unaffected.",
+	},
 }
 ## Oaths that only reach the Dawn Offerings once unlocked (Defs.UNLOCKS).
-const LOCKED_OATHS := ["dawn_offerings", "steady_hands"]
+const LOCKED_OATHS := ["dawn_offerings", "steady_hands", "ash_clouds"]
 ## Dice that only reach the Dawn Offerings once unlocked (Defs.UNLOCKS).
 const LOCKED_DICE := ["crazy"]
 const DAWN_REROLL_FLAME := 5.0   ## Oath of Dawn Offerings: reroll cost
@@ -242,6 +249,8 @@ const UNLOCKS := {
 		"hint": "Survive night 1."},
 	"steady_hands": {"type": "oath", "ref": "steady_hands", "stat": "night_2_won", "goal": 1,
 		"hint": "Survive night 2."},
+	"ash_clouds": {"type": "oath", "ref": "ash_clouds", "stat": "ashes_rolled", "goal": 50,
+		"hint": "Roll 50 Ashes."},
 	"heavy_support": {"type": "misc", "ref": "heavy_support", "stat": "night_3_won", "goal": 1,
 		"hint": "Survive night 3."},
 	"warden_helm": {"type": "outfit", "ref": "helm", "stat": "night_4_won", "goal": 1,
@@ -409,6 +418,7 @@ const URGENCY_RATE := 1.25     ## Oath of Urgency: Char and firing defenses
 const URGENCY_DAMAGE := 1.1    ## ...Char damage
 const URGENCY_SHARE := 0.5     ## ...share of spirits sped up
 const URGENCY_SPEED := 1.3
+const ASH_CLOUD_SLOW := 0.5
 const DEDICATION_PER_DIE := 0.10   ## Oath of Dedication
 const COMEBACK_AT := 0.3    ## below this share of max flame...
 const COMEBACK_RATE := 1.3  ## ...Char fires this much faster

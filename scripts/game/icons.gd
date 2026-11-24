@@ -35,6 +35,8 @@ static func draw(ci: CanvasItem, kind: String, c: Vector2, s: float, col: Color,
 			_devotion(ci, c, s, col)
 		"hourglass":
 			_hourglass(ci, c, s, col)
+		"ash_cloud":
+			_ash_cloud(ci, c, s, col)
 		"vent":
 			_steam(ci, c, s, col)
 		"kindle":
@@ -300,6 +302,18 @@ static func _devotion(ci: CanvasItem, c: Vector2, s: float, col: Color) -> void:
 
 
 ## An hourglass with speed lines streaming off one side.
+static func _ash_cloud(ci: CanvasItem, c: Vector2, s: float, col: Color) -> void:
+	# A billowing cloud of three puffs over a flat base, with ash flecks falling.
+	var w := s * 0.06
+	var base := c + Vector2(0, s * 0.08)
+	ci.draw_arc(base + Vector2(-s * 0.2, -s * 0.02), s * 0.14, PI * 0.5, PI * 1.6, 20, col, w, true)
+	ci.draw_arc(base + Vector2(-s * 0.02, -s * 0.12), s * 0.18, PI * 1.05, TAU * 0.97, 24, col, w, true)
+	ci.draw_arc(base + Vector2(s * 0.2, -s * 0.02), s * 0.13, PI * 1.45, TAU + PI * 0.5, 20, col, w, true)
+	ci.draw_line(base + Vector2(-s * 0.2, s * 0.12), base + Vector2(s * 0.2, s * 0.11), col, w, true)
+	for f in [Vector2(-0.16, 0.3), Vector2(0.0, 0.36), Vector2(0.15, 0.29), Vector2(-0.07, 0.43), Vector2(0.09, 0.45)]:
+		ci.draw_circle(c + f * s, s * 0.032, col)
+
+
 static func _hourglass(ci: CanvasItem, c: Vector2, s: float, col: Color) -> void:
 	var w := s * 0.2
 	var h := s * 0.3

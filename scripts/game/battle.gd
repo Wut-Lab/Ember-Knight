@@ -120,6 +120,8 @@ var _speed_btn: Button
 var _pause_card: PanelContainer
 var _dim: ColorRect
 
+var _ash_clouds := 0   ## Oath of Ash Clouds: spirits still to slow this wave
+
 
 func _ready() -> void:
 	if Run.autoplay and Run.test_speed > 1.0:
@@ -334,6 +336,8 @@ func _roll(first := false) -> void:
 				side = sides[Run.rng.randi() % sides.size()]
 		d.roll(side, 0.45 + 0.12 * d.index)
 		any = true
+		if d.faces[side] == "ashes":
+			Profile.add_stat("ashes_rolled")
 		if d.faces[side] == "ashes" and Run.has_rider("tinker"):
 			Run.spare_parts += 1
 			member_react("tinker")
@@ -367,6 +371,11 @@ func begin_wave() -> void:
 	_drop_lift()
 	_shift_ready = false
 	_shift_free = false
+	_ash_clouds = 0
+	if Run.has_oath("ash_clouds"):
+		for d in _dice:
+			if not d.placed and d.face == "ashes":
+				_ash_clouds += 1
 	_warm_ashes()
 	for d in _dice:
 		if not d.placed:
@@ -776,6 +785,9 @@ func _spawn(kind: String, lane := -1, hearty := false):
 		sp.speed *= Defs.URGENCY_SPEED
 	if board.stop == "hill":
 		sp.speed *= Defs.HILL_SPEED
+	if _ash_clouds > 0 and not sp.boss:
+		_ash_clouds -= 1
+		sp.speed *= Defs.ASH_CLOUD_SLOW
 	sp.banished.connect(_on_banished)
 	sp.reached_fire.connect(_on_reached_fire)
 	sp.scare_fn = _hella_scare
