@@ -707,6 +707,11 @@ const SPIRITS := {
 	## revive_speed of its pace. Each one banished pays MUD_ESSENCE.
 	"mud_wisp": {"hp": 20.0, "speed": 38.0, "damage": 8.0, "size": 1.0, "color": Color("#d9cdb4"),
 		"glow": Color("#8a5a2c"), "revive_chance": 0.25, "revive_time": 1.2, "revive_hp": 0.5, "revive_speed": 0.7},
+	## Sunken Chapel only: a pale bronze Wisp with a little bell hanging under it.
+	## Every ring_every seconds it tolls: other spirits within ring_range are
+	## hastened by haste for haste_time. Banish it first.
+	"bellringer": {"hp": 28.0, "speed": 40.0, "damage": 8.0, "size": 1.05, "color": Color("#f0e2b6"),
+		"glow": Color("#c99a3a"), "ring_every": 3.5, "ring_range": 120.0, "haste": 0.35, "haste_time": 2.5},
 	## Elite, wave 3 only: a yellow Wisp in red crackle. Stops short of the fire and
 	## zaps it every zap_every seconds until banished. zap_range is from the fire's
 	## centre, kept under Char's shortest reach so he can always hit it.
@@ -857,6 +862,8 @@ const LAKE_FOUR_LANE_CHANCE := 0.5
 ## tougher, but the night pays double Essence (and +1 per Mud Wisp banished).
 const SWAMP_HP := 1.15
 const SWAMP_ESSENCE := 2
+const CHAPEL_BELL_CHANCE := 0.15   ## share of plain Wisps that come as Bellringers
+const CHAPEL_BELL_MAX := 2          ## at most this many in one wave
 const SWAMP_MUD_CHANCE := 0.35   ## share of plain Wisps that come as Mud Wisps
 const MUD_ESSENCE := 1           ## Essence for each Mud Wisp banished
 const SWAMP_POOLS_MIN := 1
@@ -990,6 +997,12 @@ static func wave_spirits(night: int, wave: int, stop: String, rng: RandomNumberG
 		for i in out.size():
 			if out[i] == "wisp" and rng.randf() < SWAMP_MUD_CHANCE:
 				out[i] = "mud_wisp"
+	if stop == "chapel":   # the chapel's own: a Bellringer or two among the Wisps
+		var bells := 0
+		for i in out.size():
+			if bells < CHAPEL_BELL_MAX and out[i] == "wisp" and rng.randf() < CHAPEL_BELL_CHANCE:
+				out[i] = "bellringer"
+				bells += 1
 	if boss:
 		out.insert(count / 3, boss_id)
 		return out

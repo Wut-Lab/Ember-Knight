@@ -621,6 +621,17 @@ func _process(delta: float) -> void:
 			_spawn_timer = Defs.spawn_gap(Run.night, wave) * Run.rng.randf_range(0.8, 1.2)
 			if e[1] >= 0:
 				_spawn_timer *= Defs.SWARM_GAP
+	# Bellringers' tolls hasten the other spirits around them.
+	for b in spirits:
+		if b.tolled:
+			b.tolled = false
+			if b.dead:
+				continue
+			var bd: Dictionary = Defs.SPIRITS[b.kind]
+			for o in spirits:
+				if o != b and not o.dead and not o.boss and o.world.distance_to(b.world) <= bd["ring_range"]:
+					o.haste = bd["haste"]
+					o.haste_t = bd["haste_time"]
 	# Defenses with a "slow" stat slow spirits inside their reach (strongest wins).
 	for sp in spirits:
 		var slow := 0.0
