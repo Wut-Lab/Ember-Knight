@@ -488,6 +488,8 @@ func _fill_milestones(list: VBoxContainer) -> void:
 		var n := 0
 		for id in Defs.UNLOCKS:
 			if Defs.UNLOCKS[id]["type"] == t[0]:
+				if Defs.UNLOCKS[id].get("hidden", false) and not Profile.is_unlocked(id):
+					continue   # a secret until found
 				list.add_child(_unlock_row(id))
 				n += 1
 		if n == 0:

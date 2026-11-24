@@ -1234,6 +1234,7 @@ var _pillars: Array = []  ## [world, height, seed]
 var _candles: Array = []  ## [world, height, phase]
 var _shafts: Array = []   ## [world, rx, phase]
 var _rubble: Array = []   ## [world, size, seed]
+var _altar: Array = []    ## [world, seed] (empty if none fit)
 const GLASS := [Color("#c0392b"), Color("#2e5aa8"), Color("#d9a13a"), Color("#3d8a5a"), Color("#7a3d9a"), Color("#2e5aa8")]
 
 
@@ -1258,6 +1259,15 @@ func _chapel_clear(w: Vector2, m: float) -> bool:
 func _build_chapel_art() -> void:
 	var r := RandomNumberGenerator.new()
 	r.seed = layout_seed + 83
+	# The broken altar first, ideally toward the back of the nave.
+	for attempt in 300:
+		var far := attempt < 120
+		var w := Vector2(r.randf_range(-VIEW_FIT.x * 0.85, VIEW_FIT.x * 0.85),
+			r.randf_range(-VIEW_FIT.y + 70.0, -120.0) if far else r.randf_range(-VIEW_FIT.y + 70.0, VIEW_FIT.y - 40.0))
+		var m := 40.0 if attempt < 200 else 26.0
+		if _chapel_clear(w, m) and _chapel_clear(w + Vector2(56, 0), m * 0.4) and _chapel_clear(w - Vector2(56, 0), m * 0.4):
+			_altar = [w, r.randi()]
+			break
 	# Pews: a few blocks of 2-4 rows facing the same way.
 	var blocks := r.randi_range(3, 5)
 	for attempt in 120:
@@ -1273,6 +1283,8 @@ func _build_chapel_art() -> void:
 				broken = r.randi_range(1, 2)
 			var half := wid * (0.6 if broken == 1 else 1.0) / 2.0
 			var ok := _chapel_clear(c, 16.0) and _chapel_clear(c + Vector2(half, 0), 12.0) and _chapel_clear(c - Vector2(half, 0), 12.0)
+			if not _altar.is_empty() and _altar[0].distance_to(c) < wid / 2.0 + 70.0:
+				ok = false
 			for P in _pews:
 				if P[0].distance_to(c) < 36.0 or (absf(P[0].y - c.y) < 34.0 and absf(P[0].x - c.x) < (P[1] + wid) / 2.0 + 10.0):
 					ok = false
@@ -1298,6 +1310,8 @@ func _build_chapel_art() -> void:
 		for P in _pillars:
 			if P[0].distance_to(w) < 180.0:
 				ok = false
+		if not _altar.is_empty() and _altar[0].distance_to(w) < 110.0:
+			ok = false
 		for P in _pews:
 			if P[0].distance_to(w) < P[1] / 2.0 + 30.0:
 				ok = false
@@ -1309,11 +1323,16 @@ func _build_chapel_art() -> void:
 					_rubble.append([d, r.randf_range(7.0, 13.0), r.randi()])
 	# Candles: little clusters by pew ends and pillar feet.
 	var anchors: Array = []
+	if not _altar.is_empty():   # always a few at the altar's foot
+		anchors.append(_altar[0] + Vector2(-58.0, 16.0))
 	for P in _pews:
 		anchors.append(P[0] + Vector2((P[1] / 2.0 + 14.0) * (-1.0 if r.randf() < 0.5 else 1.0), 6.0))
 	for P in _pillars:
 		anchors.append(P[0] + Vector2(r.randf_range(-24.0, 24.0), 18.0))
-	anchors.shuffle()
+	if anchors.size() > 1:
+		var first = anchors.pop_front()
+		anchors.shuffle()
+		anchors.push_front(first)
 	var clusters := 0
 	for a in anchors:
 		if clusters >= r.randi_range(3, 5):
@@ -1382,6 +1401,8 @@ func _draw_chapel_props() -> void:
 		items.append([P[0].y, 2, P])
 	for P in _candles:
 		items.append([P[0].y, 3, P])
+	if not _altar.is_empty():
+		items.append([_altar[0].y, 4, _altar])
 	items.sort_custom(func(a, b): return a[0] < b[0])
 	for it in items:
 		match it[1]:
@@ -1394,6 +1415,7 @@ func _draw_chapel_props() -> void:
 				_ellipse_xy(c + Vector2(2, 2) * s, R[1] * 1.1 * s, R[1] * 0.6 * s, Color(0, 0, 0, 0.3))
 				_ellipse_xy(c, R[1] * s, R[1] * 0.75 * s, Color("#1e1d22").lerp(Color("#77727e"), lit))
 			3: _draw_candle(it[2])
+			4: _draw_altar(it[2])
 	draw_rect(Rect2(-2000, -2000, 4000, 4000), Color(0.36, 0.38, 0.5, 0.05))
 
 
@@ -1496,6 +1518,71 @@ func _draw_pillar(P: Array) -> void:
 	for k in 3:   # fluting
 		var x := lerpf(-hw * 0.6, hw * 0.1, k / 2.0)
 		draw_line(base + Vector2(x, -10.0 * s), base + Vector2(x, -h + 10.0 * s), Color(0, 0, 0, 0.18), 1.4 * s)
+
+
+## The broken altar: a heavy stone block split by a crack, its right end
+## slumped and lower, a torn cloth over the top and chunks on the floor.
+func _draw_altar(A: Array) -> void:
+	var s := view_scale
+	var r := RandomNumberGenerator.new()
+	r.seed = A[1]
+	var w: Vector2 = A[0]
+	var lit := maxf(light_at(w) * fire_glow, 0.42)
+	var stone := Color("#232128").lerp(Color("#8a8590"), lit)
+	var front := stone.darkened(0.3)
+	var side := stone.darkened(0.45)
+	var hw := 54.0
+	var dep := 24.0
+	var H := 36.0 * s
+	var c := proj(w)
+	_ellipse_xy(c + Vector2(8, 6) * s, 62.0 * s, 16.0 * s, Color(0, 0, 0, 0.35))
+	# step / plinth
+	var st := PackedVector2Array([proj(w + Vector2(-hw - 10, -dep - 8)), proj(w + Vector2(hw + 10, -dep - 8)), proj(w + Vector2(hw + 10, 10)), proj(w + Vector2(-hw - 10, 10))])
+	draw_colored_polygon(st, side)
+	# the split: the left two-thirds stands, the right end has sunk and tipped
+	var sx := 8.0   # crack x (world, from centre)
+	var cr := [Vector2(sx, 0), Vector2(sx + 6, 0.35), Vector2(sx - 3, 0.65), Vector2(sx + 5, 1.0)]   # x, height fraction
+	# left block: front face
+	var lf := PackedVector2Array([proj(w + Vector2(-hw, 0)), proj(w + Vector2(-hw, 0)) + Vector2(0, -H)])
+	for k in range(cr.size() - 1, -1, -1):
+		lf.append(proj(w + Vector2(cr[k].x, 0)) + Vector2(0, -H * cr[k].y))
+	draw_colored_polygon(lf, front)
+	# left block: top
+	var lt := PackedVector2Array([proj(w + Vector2(-hw, -dep)) + Vector2(0, -H), proj(w + Vector2(sx + 5, -dep)) + Vector2(0, -H),
+		proj(w + Vector2(sx + 5, 0)) + Vector2(0, -H), proj(w + Vector2(-hw, 0)) + Vector2(0, -H)])
+	draw_colored_polygon(lt, stone)
+	draw_line(lt[3], lt[2], stone.lightened(0.15), 2.0 * s)
+	# right chunk: lower and tilted
+	var drop := Vector2(4.0 * s, H * 0.45)
+	var rb := PackedVector2Array([proj(w + Vector2(sx + 10, 0)) + Vector2(0, -H * 0.55) + drop * 0.2, proj(w + Vector2(hw, 0)) + Vector2(0, -H) + drop,
+		proj(w + Vector2(hw, 0)) + Vector2(2 * s, 0), proj(w + Vector2(sx + 12, 0))])
+	draw_colored_polygon(rb, front.darkened(0.1))
+	var rt := PackedVector2Array([rb[0], proj(w + Vector2(sx + 14, -dep)) + Vector2(0, -H * 0.6) + drop * 0.2,
+		proj(w + Vector2(hw, -dep)) + Vector2(0, -H) + drop, rb[1]])
+	draw_colored_polygon(rt, stone.darkened(0.08))
+	# crack line
+	var cl := PackedVector2Array()
+	for k in cr.size():
+		cl.append(proj(w + Vector2(cr[k].x, 0)) + Vector2(0, -H * cr[k].y))
+	draw_polyline(cl, Color(0, 0, 0, 0.6), 2.2 * s)
+	# carved band across the front
+	draw_line(proj(w + Vector2(-hw + 6, 0)) + Vector2(0, -H * 0.5), proj(w + Vector2(sx - 6, 0)) + Vector2(0, -H * 0.5), Color(0, 0, 0, 0.22), 2.0 * s)
+	# a torn, faded cloth hanging over the left end
+	var cloth := Color("#3a1418").lerp(Color("#8a3a3a"), lit * 0.8)
+	var c0 := proj(w + Vector2(-hw + 6, 0)) + Vector2(0, -H)
+	var c1 := proj(w + Vector2(-8, 0)) + Vector2(0, -H)
+	var torn := PackedVector2Array([c0 + Vector2(0, -2 * s), c1 + Vector2(0, -2 * s), c1 + Vector2(-2 * s, H * 0.45)])
+	for k in 5:
+		var f := 1.0 - (k + 1) / 6.0
+		torn.append(c0.lerp(c1, f) + Vector2(0, H * (0.55 + 0.2 * r.randf())))
+	torn.append(c0 + Vector2(0, H * 0.5))
+	draw_colored_polygon(torn, cloth)
+	draw_colored_polygon(PackedVector2Array([c0 + Vector2(0, -2 * s), c1 + Vector2(0, -2 * s), proj(w + Vector2(-8, -dep)) + Vector2(0, -H), proj(w + Vector2(-hw + 6, -dep)) + Vector2(0, -H)]), cloth.lightened(0.05))
+	# fallen chunks on the floor
+	for k in 3:
+		var p := proj(w + Vector2(hw + 14 + k * 11, 10 - k * 9 + r.randf_range(-3, 3)))
+		var sz := (8.0 - k * 2.0) * s
+		draw_colored_polygon(PackedVector2Array([p + Vector2(-sz, 0), p + Vector2(-sz * 0.5, -sz * 0.9), p + Vector2(sz * 0.7, -sz * 0.6), p + Vector2(sz, 0)]), front)
 
 
 ## A stub of candle with a small living flame; they light their own patch.

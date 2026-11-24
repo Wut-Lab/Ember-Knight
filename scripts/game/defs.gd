@@ -248,8 +248,9 @@ const DAWN_REROLL_ESSENCE := 3
 
 ## Unlockables shown in the main menu's Unlocks list, grouped by "type"
 ## (oath, die, misc; listed in that order). Each counts a Profile stat up to
-## "goal"; "ref" is the Oath or die id it unlocks.
-const UNLOCK_TYPES := [["oath", "Oaths"], ["die", "Dice"], ["misc", "Misc"], ["outfit", "Outfits"]]
+## "goal"; "ref" is the Oath or die id it unlocks. "hidden" ones stay off the
+## list until earned (the route and everything that comes with it).
+const UNLOCK_TYPES := [["oath", "Oaths"], ["die", "Dice"], ["misc", "Misc"], ["outfit", "Outfits"], ["route", "Routes"]]
 const UNLOCKS := {
 	"dawn_offerings": {"type": "oath", "ref": "dawn_offerings", "stat": "dawn_skips", "goal": 10,
 		"hint": "Skip 10 Dawn Offerings."},
@@ -260,7 +261,9 @@ const UNLOCKS := {
 	"ash_clouds": {"type": "oath", "ref": "ash_clouds", "stat": "ashes_rolled", "goal": 50,
 		"hint": "Roll 50 Ashes."},
 	"swamp": {"type": "route", "ref": "swamp", "stat": "routes_chosen", "goal": 10,
-		"hint": "Choose 10 routes. Appears from night 5."},
+		"hint": "Choose 10 routes. Appears from night 5.", "hidden": true},
+	"chapel": {"type": "route", "ref": "chapel", "stat": "night_11_won", "goal": 1,
+		"hint": "Reach night 12. Appears from night 9.", "hidden": true},
 	"heavy_support": {"type": "misc", "ref": "heavy_support", "stat": "night_3_won", "goal": 1,
 		"hint": "Survive night 3."},
 	"warden_helm": {"type": "outfit", "ref": "helm", "stat": "night_4_won", "goal": 1,
@@ -839,8 +842,8 @@ const STOPS := {
 		"mist_bonus": 0.15},
 	"swamp": {"name": "Swamp Turnpike", "desc": "A causeway through the bog. 3-4 trails wade murky pools under dead trees. Tougher spirits and Mud Wisps, richer spoils: double Essence.",
 		"icon": "swamp", "unlock": "swamp", "min_night": 4},
-	"chapel": {"name": "Sunken Chapel", "desc": "A ruined chapel half sunk in the earth. 3-5 aisles between broken pews.",
-		"icon": "swamp", "unlock": "chapel", "min_night": 8},
+	"chapel": {"name": "Sunken Chapel", "desc": "A ruined chapel half sunk in the earth. 3-5 aisles between broken pews and a shattered altar.",
+		"icon": "altar", "unlock": "chapel", "min_night": 8},
 }
 ## Quiet Lakeside: a lake fills one side, its near shore this far from the fire.
 ## Spirits crossing the water drift slower. 2-3 land trails + 1 water crossing.
