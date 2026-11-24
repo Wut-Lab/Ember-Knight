@@ -76,6 +76,7 @@ func _make_map() -> Control:
 
 func _on_stop_chosen(id: String) -> void:
 	Run.chosen_stops.append(id)
+	Profile.add_stat("routes_chosen")
 	Run.layout_seed = Run.rng.randi()   # tonight's map, known before the loadout
 	_ambush = false
 	Run.shrine_curse = false

@@ -426,6 +426,8 @@ func _wave_cleared() -> void:
 		Profile.add_stat("night_%d_won" % (Run.night + 1))
 		char_unit.set_mood("happy")
 		var gained := Defs.essence_for_night(Run.flame, Run.night)
+		if Run.current_stop() == "swamp":
+			gained *= Defs.SWAMP_ESSENCE
 		Profile.add_essence(gained)
 		_show_banner("Dawn breaks!  +%d Essence" % gained)
 		AudioDirector.play_sfx("chime", -2.0)

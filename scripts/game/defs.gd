@@ -251,6 +251,8 @@ const UNLOCKS := {
 		"hint": "Survive night 2."},
 	"ash_clouds": {"type": "oath", "ref": "ash_clouds", "stat": "ashes_rolled", "goal": 50,
 		"hint": "Roll 50 Ashes."},
+	"swamp": {"type": "route", "ref": "swamp", "stat": "routes_chosen", "goal": 10,
+		"hint": "Choose 10 routes. Appears from night 5."},
 	"heavy_support": {"type": "misc", "ref": "heavy_support", "stat": "night_3_won", "goal": 1,
 		"hint": "Survive night 3."},
 	"warden_helm": {"type": "outfit", "ref": "helm", "stat": "night_4_won", "goal": 1,
@@ -503,26 +505,26 @@ const RARITY_ORDER := ["common", "uncommon", "rare", "unique"]
 const UNIQUE_EARLY_CHANCE := 0.02
 
 ## Up to DAWN_DICE die kinds, leaving out any owned MAX_DIE_COPIES times.
-static func dawn_dice(rng: RandomNumberGenerator, dice_owned: Array) -> Array:
+static func dawn_dice(rng: RandomNumberGenerator, dice_owned: Array, extra := 0) -> Array:
 	var pool := []
 	for id in DICE:
 		if dice_owned.count(id) < MAX_DIE_COPIES and (not id in LOCKED_DICE or Profile.is_unlocked(id)):
 			pool.append(id)
 	var out := []
-	while out.size() < DAWN_DICE and not pool.is_empty():
+	while out.size() < DAWN_DICE + extra and not pool.is_empty():
 		out.append(pool.pop_at(rng.randi() % pool.size()))
 	return out
 
 ## Up to DAWN_OATHS unsworn Oaths, each slot rolling a rarity for the dawn
 ## after night `night_idx` (0-based). If no Oath of the rolled rarity is left,
 ## the next rarity down is tried, then any.
-static func dawn_oaths(rng: RandomNumberGenerator, oaths_owned: Array, night_idx: int) -> Array:
+static func dawn_oaths(rng: RandomNumberGenerator, oaths_owned: Array, night_idx: int, extra := 0) -> Array:
 	var left := []
 	for id in OATHS:
 		if not id in oaths_owned and (not id in LOCKED_OATHS or Profile.is_unlocked(id)):
 			left.append(id)
 	var out := []
-	while out.size() < DAWN_OATHS and not left.is_empty():
+	while out.size() < DAWN_OATHS + extra and not left.is_empty():
 		var tier := oath_rarity_roll(rng, night_idx)
 		var pick := ""
 		for k in range(RARITY_ORDER.find(tier), -1, -1):
@@ -790,8 +792,8 @@ const STOPS := {
 	"cliff": {"name": "Cliff Edge", "desc": "A sheer drop behind camp. 2-3 trails, front and sides."},
 	"lake": {"name": "Quiet Lakeside", "desc": "Camp by a calm lake. Spirits drift across the water; mist rises.",
 		"mist_bonus": 0.15},
-	"swamp": {"name": "Swamp Turnpike", "desc": "A causeway through the bog. 3-4 trails wade murky pools under dead trees.",
-		"locked": true},
+	"swamp": {"name": "Swamp Turnpike", "desc": "A causeway through the bog. 3-4 trails wade murky pools under dead trees. Tougher spirits, richer spoils: double Essence and an extra card in each Dawn offering.",
+		"icon": "swamp", "unlock": "swamp", "min_night": 4},
 }
 ## Quiet Lakeside: a lake fills one side, its near shore this far from the fire.
 ## Spirits crossing the water drift slower. 2-3 land trails + 1 water crossing.
@@ -801,7 +803,11 @@ const LAKE_RY := 330.0
 const LAKE_WATER_SPEED := 0.6
 const LAKE_FOUR_LANE_CHANCE := 0.5
 ## Swamp Turnpike: murky pools (trails wade through, no tiles), dead trees,
-## faint drifting orbs. Kept out of the camp choices until it is wired up.
+## faint drifting orbs. Offered from night 5 once unlocked; spirits are
+## tougher, but the night pays double Essence and each Dawn row has a card more.
+const SWAMP_HP := 1.15
+const SWAMP_ESSENCE := 2
+const SWAMP_EXTRA_CARDS := 1
 const SWAMP_POOLS_MIN := 1
 const SWAMP_POOLS_MAX := 3
 const SWAMP_ORBS := 5
@@ -961,4 +967,6 @@ static func has_forks(stop: String) -> bool:
 
 static func spirit_hp_scale(night: int, stop: String) -> float:
 	var s := 1.0 + 0.15 * night_step(night)
+	if stop == "swamp":
+		s *= SWAMP_HP
 	return s

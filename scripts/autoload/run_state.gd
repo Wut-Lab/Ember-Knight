@@ -225,7 +225,9 @@ func dawn_heal() -> float:
 
 ## 2-3 camps drawn at random from the pool of stops (Defs.STOPS).
 func roll_stop_options() -> Array:
-	var ids: Array = Defs.STOPS.keys().filter(func(id): return not Defs.STOPS[id].get("locked", false))
+	var ids: Array = Defs.STOPS.keys().filter(func(id):
+		var S: Dictionary = Defs.STOPS[id]
+		return night >= int(S.get("min_night", 0)) and (not S.has("unlock") or Profile.is_unlocked(S["unlock"])))
 	for i in range(ids.size() - 1, 0, -1):   # shuffle with the run's RNG
 		var j := rng.randi_range(0, i)
 		var t = ids[i]; ids[i] = ids[j]; ids[j] = t

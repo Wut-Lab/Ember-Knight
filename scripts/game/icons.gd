@@ -37,6 +37,8 @@ static func draw(ci: CanvasItem, kind: String, c: Vector2, s: float, col: Color,
 			_hourglass(ci, c, s, col)
 		"ash_cloud":
 			_ash_cloud(ci, c, s, col)
+		"swamp":
+			_swamp(ci, c, s, col)
 		"vent":
 			_steam(ci, c, s, col)
 		"kindle":
@@ -302,6 +304,27 @@ static func _devotion(ci: CanvasItem, c: Vector2, s: float, col: Color) -> void:
 
 
 ## An hourglass with speed lines streaming off one side.
+static func _swamp(ci: CanvasItem, c: Vector2, s: float, col: Color) -> void:
+	# A bare, crooked dead tree over a pool with ripples.
+	var w := s * 0.06
+	var b := c + Vector2(-s * 0.05, s * 0.2)
+	var m := b + Vector2(s * 0.04, -s * 0.22)
+	var t := m + Vector2(-s * 0.03, -s * 0.16)
+	ci.draw_line(b, m, col, w * 1.4, true)
+	ci.draw_line(m, t, col, w, true)
+	ci.draw_line(m, m + Vector2(s * 0.2, -s * 0.12), col, w * 0.8, true)
+	ci.draw_line(m + Vector2(s * 0.12, -s * 0.07), m + Vector2(s * 0.16, -s * 0.2), col, w * 0.6, true)
+	ci.draw_line(t, t + Vector2(-s * 0.15, -s * 0.1), col, w * 0.7, true)
+	ci.draw_line(t, t + Vector2(s * 0.06, -s * 0.14), col, w * 0.6, true)
+	for k in 2:
+		var rx := s * (0.36 - k * 0.14)
+		var pts := PackedVector2Array()
+		for i in 33:
+			var a := PI * i / 32.0
+			pts.append(c + Vector2(cos(a) * rx, s * 0.24 + sin(a) * rx * 0.3))
+		ci.draw_polyline(pts, col, w * 0.7, true)
+
+
 static func _ash_cloud(ci: CanvasItem, c: Vector2, s: float, col: Color) -> void:
 	# A billowing cloud of three puffs over a flat base, with ash flecks falling.
 	var w := s * 0.06
