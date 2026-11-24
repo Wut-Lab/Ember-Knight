@@ -659,6 +659,12 @@ const SPIRITS := {
 	## Techy flanker: a hazy blue Wisp whose chill slows Char's attacks while it is near.
 	"mist_wisp": {"hp": 16.0, "speed": 56.0, "damage": 7.0, "size": 0.85, "color": Color("#8fb8ff"),
 		"chill_range": 120.0, "chill": 0.3},
+	## Swamp Turnpike only: a slow Wisp in a muddy brown aura, a faint skull in its
+	## light. When banished it may haul itself back up out of the mud (revive_chance),
+	## lie still for revive_time, then go on at revive_hp of its health and
+	## revive_speed of its pace. Each one banished pays MUD_ESSENCE.
+	"mud_wisp": {"hp": 20.0, "speed": 38.0, "damage": 8.0, "size": 1.0, "color": Color("#d9cdb4"),
+		"glow": Color("#8a5a2c"), "revive_chance": 0.25, "revive_time": 1.2, "revive_hp": 0.5, "revive_speed": 0.7},
 	## Elite, wave 3 only: a yellow Wisp in red crackle. Stops short of the fire and
 	## zaps it every zap_every seconds until banished. zap_range is from the fire's
 	## centre, kept under Char's shortest reach so he can always hit it.
@@ -808,6 +814,8 @@ const LAKE_FOUR_LANE_CHANCE := 0.5
 const SWAMP_HP := 1.15
 const SWAMP_ESSENCE := 2
 const SWAMP_EXTRA_CARDS := 1
+const SWAMP_MUD_CHANCE := 0.35   ## share of plain Wisps that come as Mud Wisps
+const MUD_ESSENCE := 1           ## Essence for each Mud Wisp banished
 const SWAMP_POOLS_MIN := 1
 const SWAMP_POOLS_MAX := 3
 const SWAMP_ORBS := 5
@@ -935,6 +943,10 @@ static func wave_spirits(night: int, wave: int, stop: String, rng: RandomNumberG
 	var out := []
 	for i in count:
 		out.append("mist_wisp" if rng.randf() < mist_chance else "wisp")
+	if stop == "swamp":   # the bog's own: Mud Wisps take some of the plain Wisps' places
+		for i in out.size():
+			if out[i] == "wisp" and rng.randf() < SWAMP_MUD_CHANCE:
+				out[i] = "mud_wisp"
 	if boss:
 		out.insert(count / 3, boss_id)
 		return out

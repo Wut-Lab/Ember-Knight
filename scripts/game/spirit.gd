@@ -5,6 +5,7 @@ extends Node2D
 ## The Mist Wisp is a smaller, hazy blue version wrapped in drifting puffs.
 
 signal banished(spirit)
+signal downed(sp)   ## Mud Wisp went down and will get back up
 signal reached_fire(spirit)
 signal zapped(spirit)
 signal summoned(spirit, count)   ## Helio calls up Midnight Sun Rays   ## a Charged Wisp hits the fire from range
@@ -27,6 +28,9 @@ var smoulder_dps := 0.0   ## Ember Brazier burn: damage a second while smoulder_
 var smoulder_t := 0.0
 var vine_t := 0.0          ## time left wrapped in the Forest Friend's vines
 var dead := false
+var revive_chance := 0.0   ## >0 (Mud Wisp): chance to get back up when banished (once)
+var down_t := 0.0          ## time left lying in the mud before it gets back up
+var revived := false
 var zap_range := 0.0       ## >0: stops this close to the fire and zaps it
 var zap_every := 2.0
 var _zap_t := 0.0
@@ -86,6 +90,7 @@ func setup(b, k: String, path: int, hp_scale: float) -> void:
 	summon_pause = d.get("summon_pause", 0.0)
 	burn_range = d.get("burn_range", 0.0)
 	burn_dps = d.get("burn_dps", 0.0)
+	revive_chance = d.get("revive_chance", 0.0)
 	_zap_t = zap_every * 0.5
 	_t = randf() * 10.0
 	world = board.path_point(path_idx, 0.0)
@@ -145,9 +150,20 @@ func ignite(dps: float, t: float) -> void:
 func hit(amount: float, flash := true) -> void:
 	if dead:
 		return
+	if down_t > 0.0:   # lying in the mud: nothing to hit
+		return
 	hp -= amount
 	if flash:
 		_flash = 0.12
+	if hp <= 0.0 and not revived and revive_chance > 0.0 and Run.rng.randf() < revive_chance:
+		var d: Dictionary = Defs.SPIRITS[kind]
+		revived = true
+		down_t = d["revive_time"]
+		hp = max_hp * d["revive_hp"]
+		speed *= d["revive_speed"]
+		smoulder_t = 0.0
+		downed.emit(self)
+		return
 	if hp <= 0.0:
 		dead = true
 		banished.emit(self)
@@ -165,6 +181,10 @@ func _process(delta: float) -> void:
 		queue_redraw()
 		return
 	_arc = maxf(0.0, _arc - delta)
+	if down_t > 0.0:   # sunk in the mud, hauling itself back up
+		down_t -= delta
+		queue_redraw()
+		return
 	if smoulder_t > 0.0:
 		smoulder_t -= delta
 		hit(smoulder_dps * delta, false)
@@ -260,6 +280,12 @@ func _draw() -> void:
 	var bob: float = sin(_t * 3.0) * 4.0 * board.view_scale
 	var lit: float = board.light_at(world)
 	var alpha := _fade_in * (1.0 - _death / 0.35)
+	var mud := kind == "mud_wisp"
+	if down_t > 0.0:   # Mud Wisp down: sunk low and dim, rising as it recovers
+		var k := clampf(down_t / Defs.SPIRITS[kind]["revive_time"], 0.0, 1.0)
+		bob = s * 1.5 * k
+		alpha *= 1.0 - 0.55 * k
+		_oval(Vector2(0, 2), s * (1.0 + 0.4 * k), s * 0.3, Color("#3a2a18", 0.6 * _fade_in))
 	var pulse := 1.0 + sin(_t * 4.0) * 0.06
 	# Faint shadow, only visible near the fire.
 	_oval(Vector2(0, 2), s * 0.7, s * 0.2, Color(0, 0, 0, 0.3 * lit * alpha))
@@ -274,9 +300,9 @@ func _draw() -> void:
 	# Faded glow: a soft radial falloff around the ball.
 	var mist := kind == "mist_wisp"
 	var charged := kind == "charged_wisp"
-	var gr: float = s * (3.4 if mist else 2.8) * pulse
-	var glow_col := Color("#ff9a3c") if charged else col
-	draw_texture_rect(_glow_tex(), Rect2(-gr, -gr, gr * 2.0, gr * 2.0), false, Color(glow_col, (0.4 if mist else 0.7 if charged else 0.55) * alpha))
+	var gr: float = s * (3.4 if mist else 3.3 if mud else 2.8) * pulse
+	var glow_col: Color = Color("#ff9a3c") if charged else (Defs.SPIRITS[kind]["glow"] if mud else col)
+	draw_texture_rect(_glow_tex(), Rect2(-gr, -gr, gr * 2.0, gr * 2.0), false, Color(glow_col, (0.4 if mist else 0.95 if mud else 0.7 if charged else 0.55) * alpha))
 	if mist:
 		# Haze: soft puffs drifting slowly around the ball.
 		for i in 5:
@@ -288,6 +314,8 @@ func _draw() -> void:
 	draw_circle(Vector2.ZERO, s, Color(col, (0.7 if mist else 0.95) * alpha))
 	draw_circle(Vector2(-s * 0.05, -s * 0.05), s * 0.78, Color(1, 1, 1, 0.25 * alpha))
 	draw_circle(Vector2(-s * 0.42, -s * 0.48), s * 0.2, Color(1, 1, 1, 0.7 * alpha))
+	if mud:
+		_draw_skull(s, alpha)
 	if kind == "charged_wisp":
 		_draw_crackle(s, alpha)
 	# Two grumpy black eyes, glancing toward the fire: ovals with the top
@@ -323,6 +351,26 @@ func _draw() -> void:
 ## purple swirls that wrap around it every few seconds, and a dim circle on the
 ## ground that bobs up and down with him.
 ## Smouldering: a few sparks rising off the spirit.
+## Mud Wisp: a faint skull outline in the light around its face (cranium,
+## cheekbones narrowing to a jaw, a nose notch and a row of teeth).
+func _draw_skull(s: float, alpha: float) -> void:
+	var c := Color("#5a3f22", 0.35 * alpha)
+	var w: float = 1.4 * board.view_scale
+	draw_arc(Vector2(0, -s * 0.12), s * 0.62, PI * 1.08, PI * 1.92 + PI, 28, c, w, true)
+	var jl := Vector2(-s * 0.36, s * 0.5)
+	var jr := Vector2(s * 0.36, s * 0.5)
+	draw_line(Vector2(-s * 0.6, s * 0.18), jl, c, w, true)
+	draw_line(Vector2(s * 0.6, s * 0.18), jr, c, w, true)
+	draw_line(jl, Vector2(-s * 0.24, s * 0.66), c, w, true)
+	draw_line(jr, Vector2(s * 0.24, s * 0.66), c, w, true)
+	draw_line(Vector2(-s * 0.24, s * 0.66), Vector2(s * 0.24, s * 0.66), c, w, true)
+	for i in 4:
+		var x := lerpf(-0.18, 0.18, i / 3.0) * s
+		draw_line(Vector2(x, s * 0.5), Vector2(x, s * 0.66), c, w * 0.8, true)
+	draw_line(Vector2(-s * 0.08, s * 0.38), Vector2(0, s * 0.27), c, w, true)
+	draw_line(Vector2(s * 0.08, s * 0.38), Vector2(0, s * 0.27), c, w, true)
+
+
 func _draw_smoulder() -> void:
 	var s: float = 15.0 * size_k * board.view_scale
 	var a := clampf(smoulder_t, 0.0, 1.0)

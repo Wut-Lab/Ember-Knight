@@ -791,6 +791,7 @@ func _spawn(kind: String, lane := -1, hearty := false):
 		_ash_clouds -= 1
 		sp.speed *= Defs.ASH_CLOUD_SLOW
 	sp.banished.connect(_on_banished)
+	sp.downed.connect(_on_downed)
 	sp.reached_fire.connect(_on_reached_fire)
 	sp.scare_fn = _hella_scare
 	sp.zapped.connect(_on_zapped)
@@ -819,8 +820,16 @@ func _on_summoned(boss, count: int) -> void:
 		r.place_at(maxf(0.0, boss.dist - 6.0 * i))
 
 
+## A Mud Wisp sinks into the mud; it will get back up, slower.
+func _on_downed(sp) -> void:
+	_add_fx("ring", sp.world, Color("#7a5530"), 50.0)
+
+
 func _on_banished(sp) -> void:
 	spirits.erase(sp)
+	if sp.kind == "mud_wisp":
+		Profile.add_essence(Defs.MUD_ESSENCE)
+		_add_fx("text", sp.world, Color("#9fd0ff"), 100.0, "+%d" % Defs.MUD_ESSENCE)
 	if sp.smoulder_t > 0.0 and Run.has_oath("smouldering_wake"):   # the burn jumps on
 		var best = null
 		for o in spirits:
@@ -925,7 +934,7 @@ func pick_target(from: Vector2, rng: float):
 	var best = null
 	var best_p := -1.0
 	for sp in spirits:
-		if sp.dead:
+		if sp.dead or sp.down_t > 0.0:
 			continue
 		if sp.world.distance_to(from) <= rng and sp.progress() > best_p:
 			best_p = sp.progress()
@@ -938,7 +947,7 @@ func pick_rear_target(from: Vector2, lo: float, hi: float):
 	var best = null
 	var best_p := 2.0
 	for sp in spirits:
-		if sp.dead:
+		if sp.dead or sp.down_t > 0.0:
 			continue
 		var d: float = sp.world.distance_to(from)
 		if d >= lo and d <= hi and sp.progress() < best_p:
@@ -950,7 +959,7 @@ func pick_rear_target(from: Vector2, lo: float, hi: float):
 func spirits_in_range(at: Vector2, rng: float) -> Array:
 	var out := []
 	for sp in spirits:
-		if not sp.dead and sp.world.distance_to(at) <= rng:
+		if not sp.dead and sp.down_t <= 0.0 and sp.world.distance_to(at) <= rng:
 			out.append(sp)
 	return out
 
