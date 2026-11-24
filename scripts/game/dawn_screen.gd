@@ -50,16 +50,8 @@ func _ready() -> void:
 		leg.add_theme_color_override("font_color", Style.ACCENT)
 		root.add_child(leg)
 	_root = root
-	var extra := Defs.SWAMP_EXTRA_CARDS if Run.current_stop() == "swamp" else 0
-	if extra > 0:
-		var sw := Label.new()
-		sw.text = "Spoils of the Swamp Turnpike:  an extra card in each offering."
-		sw.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		sw.add_theme_font_size_override("font_size", 20)
-		sw.add_theme_color_override("font_color", Color("#9fc9a0"))
-		root.add_child(sw)
-	_row("A NEW DIE  ·  TAKE ONE", "die", Defs.dawn_dice(Run.rng, Run.pool, extra))
-	_row("AN OATH  ·  SWEAR ONE", "oath", Defs.dawn_oaths(Run.rng, Run.oaths, Run.night, extra))
+	_row("A NEW DIE  ·  TAKE ONE", "die", Defs.dawn_dice(Run.rng, Run.pool))
+	_row("AN OATH  ·  SWEAR ONE", "oath", Defs.dawn_oaths(Run.rng, Run.oaths, Run.night))
 	if Run.has_oath("dawn_offerings") and not _rows.is_empty():
 		_add_reroll()
 	_status = Label.new()

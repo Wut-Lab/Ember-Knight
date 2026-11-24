@@ -505,26 +505,26 @@ const RARITY_ORDER := ["common", "uncommon", "rare", "unique"]
 const UNIQUE_EARLY_CHANCE := 0.02
 
 ## Up to DAWN_DICE die kinds, leaving out any owned MAX_DIE_COPIES times.
-static func dawn_dice(rng: RandomNumberGenerator, dice_owned: Array, extra := 0) -> Array:
+static func dawn_dice(rng: RandomNumberGenerator, dice_owned: Array) -> Array:
 	var pool := []
 	for id in DICE:
 		if dice_owned.count(id) < MAX_DIE_COPIES and (not id in LOCKED_DICE or Profile.is_unlocked(id)):
 			pool.append(id)
 	var out := []
-	while out.size() < DAWN_DICE + extra and not pool.is_empty():
+	while out.size() < DAWN_DICE and not pool.is_empty():
 		out.append(pool.pop_at(rng.randi() % pool.size()))
 	return out
 
 ## Up to DAWN_OATHS unsworn Oaths, each slot rolling a rarity for the dawn
 ## after night `night_idx` (0-based). If no Oath of the rolled rarity is left,
 ## the next rarity down is tried, then any.
-static func dawn_oaths(rng: RandomNumberGenerator, oaths_owned: Array, night_idx: int, extra := 0) -> Array:
+static func dawn_oaths(rng: RandomNumberGenerator, oaths_owned: Array, night_idx: int) -> Array:
 	var left := []
 	for id in OATHS:
 		if not id in oaths_owned and (not id in LOCKED_OATHS or Profile.is_unlocked(id)):
 			left.append(id)
 	var out := []
-	while out.size() < DAWN_OATHS + extra and not left.is_empty():
+	while out.size() < DAWN_OATHS and not left.is_empty():
 		var tier := oath_rarity_roll(rng, night_idx)
 		var pick := ""
 		for k in range(RARITY_ORDER.find(tier), -1, -1):
@@ -798,7 +798,7 @@ const STOPS := {
 	"cliff": {"name": "Cliff Edge", "desc": "A sheer drop behind camp. 2-3 trails, front and sides."},
 	"lake": {"name": "Quiet Lakeside", "desc": "Camp by a calm lake. Spirits drift across the water; mist rises.",
 		"mist_bonus": 0.15},
-	"swamp": {"name": "Swamp Turnpike", "desc": "A causeway through the bog. 3-4 trails wade murky pools under dead trees. Tougher spirits, richer spoils: double Essence and an extra card in each Dawn offering.",
+	"swamp": {"name": "Swamp Turnpike", "desc": "A causeway through the bog. 3-4 trails wade murky pools under dead trees. Tougher spirits and Mud Wisps, richer spoils: double Essence.",
 		"icon": "swamp", "unlock": "swamp", "min_night": 4},
 }
 ## Quiet Lakeside: a lake fills one side, its near shore this far from the fire.
@@ -810,10 +810,9 @@ const LAKE_WATER_SPEED := 0.6
 const LAKE_FOUR_LANE_CHANCE := 0.5
 ## Swamp Turnpike: murky pools (trails wade through, no tiles), dead trees,
 ## faint drifting orbs. Offered from night 5 once unlocked; spirits are
-## tougher, but the night pays double Essence and each Dawn row has a card more.
+## tougher, but the night pays double Essence (and +1 per Mud Wisp banished).
 const SWAMP_HP := 1.15
 const SWAMP_ESSENCE := 2
-const SWAMP_EXTRA_CARDS := 1
 const SWAMP_MUD_CHANCE := 0.35   ## share of plain Wisps that come as Mud Wisps
 const MUD_ESSENCE := 1           ## Essence for each Mud Wisp banished
 const SWAMP_POOLS_MIN := 1
