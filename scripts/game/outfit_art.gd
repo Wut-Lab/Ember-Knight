@@ -5,34 +5,55 @@ extends RefCounted
 ## y 128..198, legs y 194..250). Inserted just before </svg>, so it covers
 ## everything; ids are prefixed "o" to stay clear of the base art's.
 
-## Great helm: a flat-topped barrel helm, dark iron with gold edging and a red
-## cross; flame pours out of the two eye holes and the head flame's tip shows
-## above the crown like a crest.
+## Great helm (13th-century style): a riveted iron barrel with a flat crown
+## plate, a gold-edged brow band and nasal strip forming a cross (red enamel
+## inlay), narrow eye slits with fire licking out of them, and cross-shaped
+## breaths on one cheek. The head flame is hidden by the outfit's "swap".
 const HELM := """
 <defs>
-<linearGradient id="oHelm" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#4a4654"/><stop offset=".35" stop-color="#2a2830"/><stop offset="1" stop-color="#0c0b0f"/></linearGradient>
-<linearGradient id="oGold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffe9a8"/><stop offset=".5" stop-color="#d4a530"/><stop offset="1" stop-color="#7a5a1e"/></linearGradient>
-<linearGradient id="oRed" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#e0483c"/><stop offset=".6" stop-color="#a8161c"/><stop offset="1" stop-color="#5c0a0e"/></linearGradient>
-<radialGradient id="oSlit" cx=".5" cy=".5" r=".6"><stop offset="0" stop-color="#fff3c4"/><stop offset=".5" stop-color="#ffb238"/><stop offset="1" stop-color="#d8341c"/></radialGradient>
+<linearGradient id="oHelm" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#26242b"/><stop offset=".12" stop-color="#5a5664"/><stop offset=".2" stop-color="#8a8596"/><stop offset=".28" stop-color="#46434f"/><stop offset=".62" stop-color="#1e1d24"/><stop offset=".9" stop-color="#0c0b0f"/><stop offset="1" stop-color="#1a1920"/></linearGradient>
+<linearGradient id="oCrown" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6a6674"/><stop offset=".5" stop-color="#34313b"/><stop offset="1" stop-color="#121116"/></linearGradient>
+<linearGradient id="oStrip" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#6e6a7a"/><stop offset=".5" stop-color="#2e2c35"/><stop offset="1" stop-color="#131217"/></linearGradient>
+<linearGradient id="oGold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffe9a8"/><stop offset=".45" stop-color="#d4a530"/><stop offset="1" stop-color="#6a4c16"/></linearGradient>
+<linearGradient id="oShade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#000" stop-opacity="0"/><stop offset=".75" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".45"/></linearGradient>
+<radialGradient id="oGlow"><stop offset="0" stop-color="#ffb238" stop-opacity=".55"/><stop offset="1" stop-color="#ff6a1f" stop-opacity="0"/></radialGradient>
+<linearGradient id="oSlit" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff3c4"/><stop offset=".6" stop-color="#ffb238"/><stop offset="1" stop-color="#d8341c"/></linearGradient>
 </defs>
-<path d="M64 130 L64 60 Q64 40 100 37 Q136 40 136 60 L136 130 Q100 141 64 130Z" fill="url(#oHelm)"/>
-<path d="M64 130 L64 60 Q64 40 100 37 Q136 40 136 60 L136 130 Q100 141 64 130Z" fill="none" stroke="url(#oGold)" stroke-width="3"/>
-<path d="M65 58 Q100 50 135 58" stroke="url(#oGold)" stroke-width="3.5" fill="none"/>
-<path d="M66 70 L66 124" stroke="#9fb2ff" stroke-width="2" opacity=".35"/>
-<path d="M95 39 L105 39 L105 132 Q100 133 95 132Z" fill="url(#oRed)"/>
-<path d="M95 39 L95 132 M105 39 L105 132" stroke="url(#oGold)" stroke-width="1.6"/>
-<path d="M65 104 Q100 112 135 104 L135 112 Q100 120 65 112Z" fill="url(#oRed)"/>
-<path d="M65 104 Q100 112 135 104 M65 112 Q100 120 135 112" stroke="url(#oGold)" stroke-width="1.6" fill="none"/>
-<path d="M70 80 L93 82 L93 91 L70 89Z" fill="#050406"/>
-<path d="M107 82 L130 80 L130 89 L107 91Z" fill="#050406"/>
-<path d="M72 82 L91 83.5 L91 89 L72 87.5Z" fill="url(#oSlit)"/>
-<path d="M109 83.5 L128 82 L128 87.5 L109 89Z" fill="url(#oSlit)"/>
-<path d="M72 83 C68 74 70 66 76 60 C76 68 80 70 82 66 C84 72 88 76 90 83Z" fill="url(#flameO)" opacity=".95"/>
-<path d="M76 83 C74 77 76 72 79 69 C80 73 84 75 86 83Z" fill="url(#flameM)"/>
-<path d="M128 83 C132 74 130 66 124 60 C124 68 120 70 118 66 C116 72 112 76 110 83Z" fill="url(#flameO)" opacity=".95"/>
-<path d="M124 83 C126 77 124 72 121 69 C120 73 116 75 114 83Z" fill="url(#flameM)"/>
-<g fill="#050406"><circle cx="116" cy="96" r="1.6"/><circle cx="122" cy="96" r="1.6"/><circle cx="128" cy="96" r="1.6"/><circle cx="119" cy="100" r="1.6"/><circle cx="125" cy="100" r="1.6"/><circle cx="84" cy="96" r="1.6"/><circle cx="78" cy="96" r="1.6"/><circle cx="72" cy="96" r="1.6"/><circle cx="81" cy="100" r="1.6"/><circle cx="75" cy="100" r="1.6"/></g>
-<g fill="url(#oGold)"><circle cx="69" cy="122" r="2"/><circle cx="131" cy="122" r="2"/><circle cx="69" cy="66" r="2"/><circle cx="131" cy="66" r="2"/></g>
+<path d="M66 48 L63.5 127 Q100 139 136.5 127 L134 48 Q100 57 66 48Z" fill="url(#oHelm)"/>
+<path d="M66 48 L63.5 127 Q100 139 136.5 127 L134 48 Q100 57 66 48Z" fill="url(#oShade)"/>
+<ellipse cx="100" cy="47.5" rx="34" ry="7.5" fill="url(#oCrown)"/>
+<ellipse cx="100" cy="47.5" rx="34" ry="7.5" fill="none" stroke="url(#oGold)" stroke-width="1.6"/>
+<path d="M76 45 Q90 42 104 43" stroke="#a9a4b4" stroke-width="1.2" fill="none" opacity=".5"/>
+<g fill="#1a1920" stroke="#8a8596" stroke-width=".5"><circle cx="72" cy="50.5" r="1.3"/><circle cx="84" cy="53.5" r="1.3"/><circle cx="116" cy="53.5" r="1.3"/><circle cx="128" cy="50.5" r="1.3"/></g>
+<path d="M65 66 Q100 75 135 66" stroke="#121116" stroke-width="1.4" fill="none" opacity=".8"/>
+<path d="M65 67.5 Q100 76.5 135 67.5" stroke="#8a8596" stroke-width=".7" fill="none" opacity=".45"/>
+<path d="M64.6 74 Q100 83 135.4 74 L135.4 80 Q100 89 64.6 80Z" fill="url(#oStrip)"/>
+<path d="M64.6 74 Q100 83 135.4 74 M64.6 80 Q100 89 135.4 80" stroke="url(#oGold)" stroke-width="1.3" fill="none"/>
+<path d="M66 77 Q100 86 134 77" stroke="#8e1418" stroke-width="1.6" fill="none"/>
+<path d="M68 81.5 Q82 85.5 95.5 86.5 L95.5 90 Q82 89 68 85Z" fill="#050406"/>
+<path d="M104.5 86.5 Q118 85.5 132 81.5 L132 85 Q118 89 104.5 90Z" fill="#050406"/>
+<path d="M70 82.6 Q82 86 94 87.2 L94 88.8 Q82 87.8 70 84.2Z" fill="url(#oSlit)"/>
+<path d="M106 87.2 Q118 86 130 82.6 L130 84.2 Q118 87.8 106 88.8Z" fill="url(#oSlit)"/>
+<ellipse cx="82" cy="80" rx="16" ry="9" fill="url(#oGlow)"/>
+<ellipse cx="118" cy="80" rx="16" ry="9" fill="url(#oGlow)"/>
+<path d="M96 56.5 L104 56.5 L104.5 133 Q100 133.6 95.5 133Z" fill="url(#oStrip)"/>
+<path d="M96 56.5 L95.5 133 M104 56.5 L104.5 133" stroke="url(#oGold)" stroke-width="1.3"/>
+<path d="M100 58 L100 132" stroke="#8e1418" stroke-width="1.6"/>
+<g fill="url(#oGold)"><circle cx="100" cy="62" r="1.5"/><circle cx="100" cy="98" r="1.5"/><circle cx="100" cy="110" r="1.5"/><circle cx="100" cy="122" r="1.5"/></g>
+<g fill="#050406"><path d="M112 99 h2 v-2.5 h2 v2.5 h2 v2 h-2 v2.5 h-2 v-2.5 h-2Z"/><path d="M121 98 h2 v-2.5 h2 v2.5 h2 v2 h-2 v2.5 h-2 v-2.5 h-2Z"/><path d="M112 108 h2 v-2.5 h2 v2.5 h2 v2 h-2 v2.5 h-2 v-2.5 h-2Z"/><path d="M121 107 h2 v-2.5 h2 v2.5 h2 v2 h-2 v2.5 h-2 v-2.5 h-2Z"/><path d="M112 117 h2 v-2.5 h2 v2.5 h2 v2 h-2 v2.5 h-2 v-2.5 h-2Z"/><path d="M121 116 h2 v-2.5 h2 v2.5 h2 v2 h-2 v2.5 h-2 v-2.5 h-2Z"/></g>
+<path d="M63.5 122 Q100 134 136.5 122 L136.5 127 Q100 139 63.5 127Z" fill="url(#oStrip)"/>
+<path d="M63.5 122 Q100 134 136.5 122 M63.5 127 Q100 139 136.5 127" stroke="url(#oGold)" stroke-width="1.3" fill="none"/>
+<g fill="#1a1920" stroke="#8a8596" stroke-width=".5"><circle cx="70" cy="126.5" r="1.3"/><circle cx="82" cy="129.5" r="1.3"/><circle cx="118" cy="129.5" r="1.3"/><circle cx="130" cy="126.5" r="1.3"/><circle cx="68" cy="77.5" r="1.2"/><circle cx="132" cy="77.5" r="1.2"/></g>
+<path d="M68.5 60 L67 118" stroke="#c4c0cf" stroke-width="1.4" opacity=".35"/>
+<path d="M65 92 L64.2 120" stroke="#9fb2ff" stroke-width="1.6" opacity=".3"/>
+<path d="M72 84 C68 78 69 72 72 67 C72.5 72 75 73 76 70 C77 75 80 78 82 85Z" fill="url(#flameO)" opacity=".9"/>
+<path d="M80 86 C78 80 80 75 83 72 C83 76 86 77 87 75 C88 79 90 82 90 87Z" fill="url(#flameO)" opacity=".9"/>
+<path d="M75 84.5 C74 80 75.5 77 77 75.5 C77.5 78.5 79 80 80 85.5Z" fill="url(#flameM)"/>
+<path d="M83 86.5 C82 83 83 80.5 84.5 79 C85 81.5 86.5 83 87 87Z" fill="url(#flameM)"/>
+<path d="M128 84 C132 78 131 72 128 67 C127.5 72 125 73 124 70 C123 75 120 78 118 85Z" fill="url(#flameO)" opacity=".9"/>
+<path d="M120 86 C122 80 120 75 117 72 C117 76 114 77 113 75 C112 79 110 82 110 87Z" fill="url(#flameO)" opacity=".9"/>
+<path d="M125 84.5 C126 80 124.5 77 123 75.5 C122.5 78.5 121 80 120 85.5Z" fill="url(#flameM)"/>
+<path d="M117 86.5 C118 83 117 80.5 115.5 79 C115 81.5 113.5 83 113 87Z" fill="url(#flameM)"/>
 """
 
 ## Greek robes: a white chiton to the shins with a gold meander hem, a blue
