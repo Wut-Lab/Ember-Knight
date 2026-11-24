@@ -33,6 +33,7 @@ func _ready() -> void:
 	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	sub.add_theme_font_size_override("font_size", 22)
 	root.add_child(sub)
+	Style.add_something_new(root)
 	if Run.has_rider("cook"):
 		var cook := Label.new()
 		var who: String = Defs.CARAVAN["cook"]["name"]

@@ -39,6 +39,7 @@ func _ready() -> void:
 	stats.add_theme_color_override("font_color", Style.MUTE)
 	stats.add_theme_font_size_override("font_size", 20)
 	root.add_child(stats)
+	Style.add_something_new(root)
 	var gap := Control.new()
 	gap.custom_minimum_size = Vector2(0, 10)
 	root.add_child(gap)

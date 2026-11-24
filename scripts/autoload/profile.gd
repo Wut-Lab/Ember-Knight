@@ -11,6 +11,7 @@ const SAVE_PATH := "user://profile.save"
 
 var essence := 0
 var unlocks: Array = []      ## Defs.UNLOCKS ids earned
+var fresh: Array = []        ## non-hidden unlocks earned since the last "Something New!" (not saved)
 var stats := {}             ## stat name -> count, for unlock progress
 var members: Array = []     ## Defs.CARAVAN ids hired
 var riders: Array = []      ## last run's riders, offered again next run
@@ -92,6 +93,8 @@ func add_stat(name: String, n := 1) -> void:
 		var u: Dictionary = Defs.UNLOCKS[id]
 		if u.get("stat", "") == name and stat(name) >= int(u["goal"]) and not id in unlocks:
 			unlocks.append(id)
+			if not u.get("hidden", false):   # hidden ones just turn up on their own
+				fresh.append(id)
 			unlocked.emit(id)
 	_save()
 
