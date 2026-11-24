@@ -14,6 +14,8 @@ var unlocks: Array = []      ## Defs.UNLOCKS ids earned
 var stats := {}             ## stat name -> count, for unlock progress
 var members: Array = []     ## Defs.CARAVAN ids hired
 var riders: Array = []      ## last run's riders, offered again next run
+var outfits: Array = []     ## Defs.OUTFITS ids bought
+var outfit := "ember"       ## the one Char wears
 
 
 func _ready() -> void:
@@ -49,6 +51,27 @@ func hire(id: String) -> bool:
 	return true
 
 
+## Buys an outfit for Char if there is enough Essence; returns whether it did.
+func buy_outfit(id: String) -> bool:
+	if has_outfit(id) or not Defs.OUTFITS.has(id):
+		return false
+	if not spend_essence(int(Defs.OUTFITS[id]["cost"])):
+		return false
+	outfits.append(id)
+	_save()
+	return true
+
+
+func has_outfit(id: String) -> bool:
+	return id == "ember" or id in outfits
+
+
+func wear(id: String) -> void:
+	if has_outfit(id):
+		outfit = id
+		_save()
+
+
 func set_riders(ids: Array) -> void:
 	riders = ids.duplicate()
 	_save()
@@ -77,7 +100,7 @@ func _save() -> void:
 	var f := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if f:
 		f.store_string(JSON.stringify({"essence": essence, "unlocks": unlocks, "stats": stats,
-			"members": members, "riders": riders}))
+			"members": members, "riders": riders, "outfits": outfits, "outfit": outfit}))
 
 
 func _load() -> void:
@@ -91,6 +114,10 @@ func _load() -> void:
 		stats = d.get("stats", {})
 		members = Array(d.get("members", []))
 		riders = Array(d.get("riders", []))
+		outfits = Array(d.get("outfits", []))
+		outfit = str(d.get("outfit", "ember"))
+		if not Defs.OUTFITS.has(outfit):
+			outfit = "ember"
 		# The Scout became Carl, the Caravan Cat.
 		members = members.map(func(m): return "cat" if m == "scout" else m)
 		riders = riders.map(func(m): return "cat" if m == "scout" else m)

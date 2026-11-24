@@ -31,7 +31,7 @@ func setup(b, bd) -> void:
 func _ready() -> void:
 	for f in FACES:
 		var img := Image.new()
-		img.load_svg_from_string(FileAccess.get_file_as_string("res://assets/char/char_%s.svg" % f), ART_SCALE)
+		img.load_svg_from_string(Defs.outfit_svg(FileAccess.get_file_as_string("res://assets/char/char_%s.svg" % f), Profile.outfit), ART_SCALE)
 		_tex[f] = ImageTexture.create_from_image(img)
 	_sprite.texture = _tex["open"]
 	_sprite.centered = false

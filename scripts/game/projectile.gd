@@ -72,6 +72,10 @@ func _draw() -> void:
 	var v: float = board.view_scale
 	var core := Color("#fff3c4")
 	var outer := Color("#ff8a3a") if style == "bolt" else (Color("#e0603a") if style == "mortar" else Color("#ffb238"))
+	if style == "char":
+		var b: Array = Defs.OUTFITS[Profile.outfit]["bolt"]
+		core = Color(b[0])
+		outer = Color(b[1])
 	for i in _trail.size():
 		var p := _trail[i] - position
 		var f := 1.0 - float(i) / _trail.size()

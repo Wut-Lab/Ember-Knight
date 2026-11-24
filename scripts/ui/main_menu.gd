@@ -2,7 +2,7 @@ extends Control
 ## Main menu: Play, Caravan, Options, Credits in one centred column,
 ## with Continue on top when a saved run exists.
 ## Play starts a run; Options holds the volume sliders; Caravan has three
-## tabs: Members (hire with Essence), Wardrobe (later) and Milestones (what
+## tabs: Members (hire with Essence), Wardrobe (Char's outfits) and Milestones (what
 ## can be unlocked: silhouette until earned, a hint and progress beside it);
 ## Credits lists who made the game. Every card has
 ## a Back button, and Esc / gamepad B also goes back.
@@ -294,7 +294,7 @@ func _show_caravan_tab(t: String) -> void:
 		"Members":
 			_fill_members(list)
 		"Wardrobe":
-			list.add_child(_note("Armor sets and flame colours for Char will hang here. Under construction.", 20))
+			_fill_wardrobe(list)
 		_:
 			_fill_milestones(list)
 
@@ -362,6 +362,79 @@ func _member_row(id: String) -> Control:
 				AudioDirector.play_sfx("chime")
 				_show_caravan_tab("Members"))
 		h.add_child(b)
+	return row
+
+
+## Outfits for Char: buy with Essence, then pick one to wear.
+func _fill_wardrobe(list: VBoxContainer) -> void:
+	list.add_child(_note("Buy outfits for Char with Essence; wear any you own."))
+	var svg := FileAccess.get_file_as_string("res://assets/char/char_happy.svg")
+	for id in Defs.OUTFITS:
+		list.add_child(_outfit_row(id, svg))
+
+
+func _outfit_row(id: String, svg: String) -> Control:
+	var o: Dictionary = Defs.OUTFITS[id]
+	var got := Profile.has_outfit(id)
+	var on := Profile.outfit == id
+	var row := _row_panel()
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override("separation", 16)
+	row.add_child(h)
+	var img := Image.new()
+	img.load_svg_from_string(Defs.outfit_svg(svg, id), 0.5)
+	var pic := TextureRect.new()
+	pic.texture = ImageTexture.create_from_image(img)
+	pic.custom_minimum_size = Vector2(80, 126)
+	pic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	pic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	pic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	h.add_child(pic)
+	var text := VBoxContainer.new()
+	text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	text.alignment = BoxContainer.ALIGNMENT_CENTER
+	text.add_theme_constant_override("separation", 2)
+	h.add_child(text)
+	var name := Label.new()
+	name.text = o["name"]
+	name.add_theme_font_size_override("font_size", 22)
+	name.add_theme_color_override("font_color", Style.ACCENT if on else Style.FG)
+	text.add_child(name)
+	var desc := Label.new()
+	desc.text = o["desc"]
+	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	desc.add_theme_font_size_override("font_size", 18)
+	desc.add_theme_color_override("font_color", Style.MUTE)
+	text.add_child(desc)
+	if on:
+		var done := Label.new()
+		done.text = "Wearing"
+		done.custom_minimum_size = Vector2(130, 0)
+		done.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		done.add_theme_font_size_override("font_size", 20)
+		done.add_theme_color_override("font_color", Color("#8fd17f"))
+		h.add_child(done)
+		return row
+	var b := Button.new()
+	b.custom_minimum_size = Vector2(130, 48)
+	b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	h.add_child(b)
+	if got:
+		b.text = "Wear"
+		b.pressed.connect(func():
+			Profile.wear(id)
+			AudioDirector.play_sfx("chime")
+			_show_caravan_tab("Wardrobe"))
+	else:
+		var cost := int(o["cost"])
+		b.text = "Buy  %d" % cost
+		b.tooltip_text = "%d Essence" % cost
+		b.disabled = Profile.essence < cost
+		b.pressed.connect(func():
+			if Profile.buy_outfit(id):
+				Profile.wear(id)
+				AudioDirector.play_sfx("chime")
+				_show_caravan_tab("Wardrobe"))
 	return row
 
 

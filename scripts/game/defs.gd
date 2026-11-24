@@ -275,6 +275,42 @@ const CARAVAN := {
 		"desc": "Forges one random face on one of your dice into its \"+\" version for the run."},
 }
 
+## Char's outfits (Caravan > Wardrobe). "swap" recolours the Char SVGs
+## (old hex -> new hex, all at once); "bolt" is [core, outer] of his flame bolts.
+const FLAME_HEX := ["#fff3c4", "#fffbe8", "#ffd27a", "#ffb238", "#ffa64a", "#ff9a3c", "#ff7a2a", "#ff6a1f", "#d8341c"]
+const ARMOR_HEX := ["#857f8f", "#5e5967", "#4a4752", "#2f2d34", "#222027", "#151319"]
+const OUTFITS := {
+	"ember": {"name": "Ember Knight", "cost": 0, "desc": "Char as the fire first made him.",
+		"flame": [], "armor": [], "bolt": ["#fff3c4", "#ffb238"]},
+	"crimson": {"name": "Crimson Knight", "cost": 60, "desc": "A redder, angrier flame over burnished armor.",
+		"flame": ["#ffd8b8", "#ffeadc", "#ffa07a", "#ff6a3a", "#ff5a36", "#ff5030", "#e8341e", "#e02a1a", "#a8101a"],
+		"armor": ["#aaa3b4", "#827c8c", "#6c6676", "#4d4a55", "#3a3740", "#26242b"],
+		"bolt": ["#ffd8b8", "#ff5a36"]},
+	"azure": {"name": "Azure Knight", "cost": 90, "desc": "A cold blue flame in blackened armor.",
+		"flame": ["#e4f4ff", "#f4fbff", "#a8e0ff", "#6cc8ff", "#58b8ff", "#4aa8ff", "#2f80f0", "#2a76e8", "#1a4fc0"],
+		"armor": ["#5c5766", "#3e3a46", "#302e36", "#1b1a20", "#121116", "#08070a"],
+		"bolt": ["#e4f4ff", "#58b8ff"]},
+	"silver": {"name": "Silver Knight", "cost": 140, "desc": "A white-hot flame in polished silver.",
+		"flame": ["#ffffff", "#ffffff", "#ffffff", "#f2f4ff", "#e8ecff", "#dfe6ff", "#c4cce8", "#c0c8e8", "#98a0c0"],
+		"armor": ["#f6f8fb", "#dde2e9", "#b8bec8", "#9aa1ad", "#6a707c", "#4c515c"],
+		"bolt": ["#ffffff", "#dfe6ff"]},
+}
+
+
+## Char's SVG with an outfit's colours swapped in.
+static func outfit_svg(svg: String, id: String) -> String:
+	var o: Dictionary = OUTFITS.get(id, OUTFITS["ember"])
+	var pairs := []
+	for i in o["flame"].size():
+		pairs.append([FLAME_HEX[i], o["flame"][i]])
+	for i in o["armor"].size():
+		pairs.append([ARMOR_HEX[i], o["armor"][i]])
+	for i in pairs.size():
+		svg = svg.replace(pairs[i][0], "@%d@" % i)
+	for i in pairs.size():
+		svg = svg.replace("@%d@" % i, pairs[i][1])
+	return svg
+
 const GATHERED_FLAME_DIE := "torch"   ## the die Gathered Flame counts
 const HEALTHY_NIGHTS_MAX := 4.0  ## Oath of Healthy Nights: cap on the bonus heal
 const ASH_BUCKET_HEAL := 1.0     ## Oath of Ash Buckets: flame per unused Ashes
