@@ -442,7 +442,7 @@ func _outfit_pic(id: String, svg: String, open := true) -> TextureRect:
 	img.load_svg_from_string(Defs.outfit_svg(svg, id), 0.5)
 	var pic := TextureRect.new()
 	pic.texture = ImageTexture.create_from_image(img)
-	pic.custom_minimum_size = Vector2(80, 126)
+	pic.custom_minimum_size = Vector2(110, 126)
 	pic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	pic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	pic.mouse_filter = Control.MOUSE_FILTER_IGNORE

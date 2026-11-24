@@ -403,8 +403,6 @@ func _wave_cleared() -> void:
 	banked = 0.0
 	AudioDirector.set_tension(false)
 	AudioDirector.end_boss_music()
-	if boss_wave:
-		Profile.add_stat("bosses_beaten")
 	wave += 1
 	if ambush:
 		phase = Phase.DONE

@@ -83,7 +83,8 @@ func _process(delta: float) -> void:
 	var size_k: float = 0.42 * board.view_scale * (1.0 + 0.06 * kindle + 0.15 * sin(_kick * PI))
 	var bob: float = sin(_t * 2.4) * 2.5 * board.view_scale
 	_sprite.scale = Vector2.ONE * size_k / ART_SCALE * Vector2(1.0 + 0.02 * sin(_t * 2.4), 1.0)
-	_sprite.position = Vector2(-80.0 * size_k, -246.0 * size_k + bob)
+	var half_w: float = _sprite.texture.get_width() / ART_SCALE * 0.5   # 80, or 120 with wings
+	_sprite.position = Vector2(-half_w * size_k, -246.0 * size_k + bob)
 	var hue := Color(1, 1, 1)
 	if chill > 0.0:
 		hue = hue.lerp(Color(0.7, 0.85, 1.25), 0.6)

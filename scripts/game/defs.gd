@@ -244,10 +244,12 @@ const UNLOCKS := {
 		"hint": "Survive night 2."},
 	"heavy_support": {"type": "misc", "ref": "heavy_support", "stat": "night_3_won", "goal": 1,
 		"hint": "Survive night 3."},
-	"warden_helm": {"type": "outfit", "ref": "helm", "stat": "bosses_beaten", "goal": 1,
-		"hint": "Defeat a boss."},
-	"sage_robes": {"type": "outfit", "ref": "robes", "stat": "nights_won", "goal": 10,
-		"hint": "Survive 10 nights in total."},
+	"warden_helm": {"type": "outfit", "ref": "helm", "stat": "night_4_won", "goal": 1,
+		"hint": "Survive night 4."},
+	"sage_robes": {"type": "outfit", "ref": "robes", "stat": "night_8_won", "goal": 1,
+		"hint": "Survive night 8."},
+	"seraph_wings": {"type": "outfit", "ref": "angel", "stat": "night_12_won", "goal": 1,
+		"hint": "Survive night 12 and finish a run."},
 }
 
 ## Caravan members: hired once with Essence (kept in Profile.members), then up
@@ -309,6 +311,11 @@ const OUTFITS := {
 		"desc": "White robes with a gold key hem, a blue mantle and a laurel wreath.",
 		"flame": [], "armor": ["#f0c987", "#c8924a", "#b07e3c", "#8a5a26", "#5e3a16", "#3a220c"],
 		"swap": {}, "bolt": ["#fffbe8", "#ffd27a"]},
+	"angel": {"name": "Seraph Knight", "cost": 220, "unlock": "seraph_wings", "wide": true,
+		"desc": "Gleaming armor and white wings whose feathers burn at the tips.",
+		"flame": [], "armor": ["#ffffff", "#e8ecf2", "#cdd3dc", "#aab1bd", "#7c8390", "#5a606c"],
+		"swap": {"#eaa868": "#fff0b0", "#b5652b": "#e0b040", "#5e2c10": "#8a6420", "#c8262b": "#e0b040"},
+		"bolt": ["#fffbe8", "#ffc14a"]},
 }
 
 
@@ -326,6 +333,12 @@ static func outfit_svg(svg: String, id: String) -> String:
 		svg = svg.replace(pairs[i][0], "@%d@" % i)
 	for i in pairs.size():
 		svg = svg.replace("@%d@" % i, pairs[i][1])
+	var back: String = OutfitArt.UNDERLAYS.get(id, "")
+	if back != "":
+		var at := svg.find("</defs>") + 7
+		svg = svg.substr(0, at) + back + svg.substr(at)
+	if o.get("wide", false):   # 40 more each side, for wings; still centred on x = 100
+		svg = svg.replace('width="160" height="252" viewBox="20 0 160 252"', 'width="240" height="252" viewBox="-20 0 240 252"')
 	var extra: String = OutfitArt.OVERLAYS.get(id, "")
 	if extra != "":
 		var at := svg.rfind("</svg>")
