@@ -184,9 +184,11 @@ func _build_once(r: RandomNumberGenerator) -> bool:
 	var n := 4 if r.randf() < FOUR_LANE_CHANCE else 3
 	if hill:   # Hillside Clearing: 3 trails spiral round the camp, all the same way
 		n = 3
+	if stop == "chapel":   # Sunken Chapel: 3-5 aisles
+		n = r.randi_range(3, 5)
 	var wrap := deg_to_rad(r.randf_range(Defs.HILL_WRAP_MIN, Defs.HILL_WRAP_MAX))
 	var spin := -1.0 if r.randf() < 0.5 else 1.0
-	var min_gap := deg_to_rad(52.0 if n == 4 else 72.0)
+	var min_gap := deg_to_rad(44.0 if n == 5 else 52.0 if n == 4 else 72.0)
 	var lanes := []   # [base angle, shape, phase, dir]
 	for attempt in 30:
 		lanes.clear()
@@ -229,7 +231,7 @@ func _build_once(r: RandomNumberGenerator) -> bool:
 	lane_count = n
 	if stop == "swamp":
 		_build_pools(r)
-	return _finish(r, 3 * n)
+	return _finish(r, mini(3 * n, 13))
 
 
 ## Cliff Edge: 2-3 trails fan in from the front and sides, none from behind
@@ -1223,6 +1225,294 @@ func _branch(r: RandomNumberGenerator, from: Vector2, ang: float, length: float,
 		_branch(r, p, a + r.randf_range(0.3, 0.6), length * 0.45, width * 0.4, col, depth + 1)
 
 
+# ------------------------------------------------------------ chapel
+## Sunken Chapel: a ruined nave half sunk in the earth. Flagstones, rows of
+## broken pews, snapped pillars, candle clusters and shafts of stained-glass
+## light falling through a roof that is no longer there.
+var _pews: Array = []     ## [centre, width, tilt, broken, seed]
+var _pillars: Array = []  ## [world, height, seed]
+var _candles: Array = []  ## [world, height, phase]
+var _shafts: Array = []   ## [world, rx, phase]
+var _rubble: Array = []   ## [world, size, seed]
+const GLASS := [Color("#c0392b"), Color("#2e5aa8"), Color("#d9a13a"), Color("#3d8a5a"), Color("#7a3d9a"), Color("#2e5aa8")]
+
+
+func _chapel_clear(w: Vector2, m: float) -> bool:
+	if w.length() < 190.0 or Defs.COACH_ZONE.grow(m).has_point(w):
+		return false
+	if absf(w.x) > VIEW_FIT.x + 60.0 or absf(w.y) > VIEW_FIT.y + 20.0:
+		return false
+	for t in tiles:
+		if t.distance_to(w) < TILE_RADIUS + m:
+			return false
+	var trails: Array = paths.duplicate()
+	for L in links:
+		trails.append(L["pts"])
+	for p in trails:
+		for q in p:
+			if q.distance_to(w) < 28.0 + m:
+				return false
+	return true
+
+
+func _build_chapel_art() -> void:
+	var r := RandomNumberGenerator.new()
+	r.seed = layout_seed + 83
+	# Pews: a few blocks of 2-4 rows facing the same way.
+	var blocks := r.randi_range(3, 5)
+	for attempt in 120:
+		if blocks <= 0:
+			break
+		var start := Vector2(r.randf_range(-VIEW_FIT.x, VIEW_FIT.x), r.randf_range(-VIEW_FIT.y + 40.0, VIEW_FIT.y - 30.0))
+		var wid := r.randf_range(64.0, 92.0)
+		var placed := 0
+		for j in r.randi_range(2, 4):
+			var c := start + Vector2(r.randf_range(-6.0, 6.0), 42.0 * j)
+			var broken := 0
+			if r.randf() < 0.35:
+				broken = r.randi_range(1, 2)
+			var half := wid * (0.6 if broken == 1 else 1.0) / 2.0
+			var ok := _chapel_clear(c, 16.0) and _chapel_clear(c + Vector2(half, 0), 12.0) and _chapel_clear(c - Vector2(half, 0), 12.0)
+			for P in _pews:
+				if P[0].distance_to(c) < 36.0 or (absf(P[0].y - c.y) < 34.0 and absf(P[0].x - c.x) < (P[1] + wid) / 2.0 + 10.0):
+					ok = false
+			if ok:
+				_pews.append([c, wid * (0.6 if broken == 1 else 1.0), r.randf_range(-0.35, 0.35) if broken == 1 else r.randf_range(-0.04, 0.04), broken, r.randi()])
+				placed += 1
+		if placed > 0:
+			blocks -= 1
+	# Pillars: snapped columns round the edge of the nave.
+	var want := r.randi_range(2, 4)
+	for attempt in 200:
+		if _pillars.size() >= want:
+			break
+		var w := Vector2(r.randf_range(-VIEW_FIT.x - 20.0, VIEW_FIT.x + 20.0), r.randf_range(-VIEW_FIT.y + 120.0, VIEW_FIT.y - 10.0))
+		if not _chapel_clear(w, 26.0):
+			continue
+		var h := r.randf_range(70.0, 150.0)
+		var top := w - Vector2(0, h * 1.1 / K)
+		var ok := Geometry2D.get_closest_point_to_segment(Vector2.ZERO, w, top).length() > 230.0
+		for t in tiles:
+			if Geometry2D.get_closest_point_to_segment(t, w, top).distance_to(t) < TILE_RADIUS + 40.0:
+				ok = false
+		for P in _pillars:
+			if P[0].distance_to(w) < 180.0:
+				ok = false
+		for P in _pews:
+			if P[0].distance_to(w) < P[1] / 2.0 + 30.0:
+				ok = false
+		if ok:
+			_pillars.append([w, h, r.randi()])
+			for k in r.randi_range(1, 3):   # fallen drums beside it
+				var d := w + Vector2.from_angle(r.randf() * TAU) * r.randf_range(34.0, 60.0)
+				if _chapel_clear(d, 10.0):
+					_rubble.append([d, r.randf_range(7.0, 13.0), r.randi()])
+	# Candles: little clusters by pew ends and pillar feet.
+	var anchors: Array = []
+	for P in _pews:
+		anchors.append(P[0] + Vector2((P[1] / 2.0 + 14.0) * (-1.0 if r.randf() < 0.5 else 1.0), 6.0))
+	for P in _pillars:
+		anchors.append(P[0] + Vector2(r.randf_range(-24.0, 24.0), 18.0))
+	anchors.shuffle()
+	var clusters := 0
+	for a in anchors:
+		if clusters >= r.randi_range(3, 5):
+			break
+		if not _chapel_clear(a, 8.0):
+			continue
+		clusters += 1
+		for k in r.randi_range(2, 4):
+			_candles.append([a + Vector2(r.randf_range(-11.0, 11.0), r.randf_range(-5.0, 5.0)), r.randf_range(7.0, 16.0), r.randf() * TAU])
+	# Light shafts: 2-3 pools of coloured light on the floor.
+	for k in r.randi_range(2, 3):
+		for attempt in 30:
+			var w := Vector2(r.randf_range(-VIEW_FIT.x * 0.9, VIEW_FIT.x * 0.9), r.randf_range(-VIEW_FIT.y * 0.8, VIEW_FIT.y * 0.85))
+			if w.length() < 170.0 or Defs.COACH_ZONE.grow(40.0).has_point(w):
+				continue
+			var ok := true
+			for S in _shafts:
+				if S[0].distance_to(w) < 220.0:
+					ok = false
+			if ok:
+				_shafts.append([w, r.randf_range(48.0, 66.0), r.randf() * TAU])
+				break
+	for k in r.randi_range(4, 7):   # loose rubble
+		var w := Vector2(r.randf_range(-VIEW_FIT.x, VIEW_FIT.x), r.randf_range(-VIEW_FIT.y, VIEW_FIT.y))
+		if _chapel_clear(w, 8.0):
+			_rubble.append([w, r.randf_range(4.0, 8.0), r.randi()])
+
+
+## Flagstones in staggered rows; the grout shows only where the fire reaches.
+func _draw_chapel_floor() -> void:
+	if _shafts.is_empty() and _pews.is_empty():
+		_build_chapel_art()
+	var s := view_scale
+	var g := 64.0
+	for row in range(-8, 9):
+		var y := row * g * 0.8
+		for col in range(-10, 10):
+			var x := col * g + (g * 0.5 if row % 2 != 0 else 0.0)
+			var a := Vector2(x, y)
+			var lit := light_at(a + Vector2(g / 2, g * 0.4)) * fire_glow
+			if lit < 0.04:
+				continue
+			var gc := Color(0.04, 0.035, 0.05, 0.5 * lit)
+			draw_line(proj(a), proj(a + Vector2(g, 0)), gc, 1.6 * s)
+			draw_line(proj(a), proj(a + Vector2(0, g * 0.8)), gc, 1.6 * s)
+			var h := hash(Vector2i(row, col))
+			if h % 7 == 0:   # a cracked flag
+				var c := a + Vector2(g * 0.3, g * 0.3)
+				draw_polyline(PackedVector2Array([proj(c), proj(c + Vector2(12, 6)), proj(c + Vector2(18, 20)), proj(c + Vector2(30, 24))]), gc, 1.2 * s)
+			elif h % 5 == 0:   # a darker, sunken flag
+				var q := PackedVector2Array([proj(a + Vector2(3, 3)), proj(a + Vector2(g - 3, 3)), proj(a + Vector2(g - 3, g * 0.8 - 3)), proj(a + Vector2(3, g * 0.8 - 3))])
+				draw_colored_polygon(q, Color(0, 0, 0, 0.12 * lit))
+
+
+## Floor light pools, rubble, pews, pillars and candles, back to front.
+func _draw_chapel_props() -> void:
+	var s := view_scale
+	for S in _shafts:
+		_draw_glass_pool(S)
+	var items: Array = []
+	for P in _pews:
+		items.append([P[0].y, 0, P])
+	for P in _pillars:
+		items.append([P[0].y, 1, P])
+	for P in _rubble:
+		items.append([P[0].y, 2, P])
+	for P in _candles:
+		items.append([P[0].y, 3, P])
+	items.sort_custom(func(a, b): return a[0] < b[0])
+	for it in items:
+		match it[1]:
+			0: _draw_pew(it[2])
+			1: _draw_pillar(it[2])
+			2:
+				var R: Array = it[2]
+				var lit := maxf(light_at(R[0]) * fire_glow, 0.2)
+				var c := proj(R[0])
+				_ellipse_xy(c + Vector2(2, 2) * s, R[1] * 1.1 * s, R[1] * 0.6 * s, Color(0, 0, 0, 0.3))
+				_ellipse_xy(c, R[1] * s, R[1] * 0.75 * s, Color("#1e1d22").lerp(Color("#77727e"), lit))
+			3: _draw_candle(it[2])
+	draw_rect(Rect2(-2000, -2000, 4000, 4000), Color(0.36, 0.38, 0.5, 0.05))
+
+
+func _draw_glass_pool(S: Array) -> void:
+	var s := view_scale
+	var c := proj(S[0])
+	var rx: float = S[1] * s
+	var shim := 0.8 + 0.2 * sin(_t * 0.6 + S[2])
+	_ellipse_xy(c, rx * 1.15, rx * 1.15 * K, Color(1.0, 0.95, 0.8, 0.05 * shim))
+	var n := GLASS.size()
+	for k in n:   # a rose window, cast on the floor
+		var a0: float = TAU * k / n + S[2]
+		var pts := PackedVector2Array([c])
+		for j in 7:
+			var a: float = a0 + TAU / n * j / 6.0
+			pts.append(c + Vector2(cos(a) * rx, sin(a) * rx * K))
+		var gc: Color = GLASS[k]
+		gc.a = 0.16 * shim
+		draw_colored_polygon(pts, gc)
+		draw_line(c, c + Vector2(cos(a0) * rx, sin(a0) * rx * K), Color(0, 0, 0, 0.18), 1.5 * s)
+	_ring(c, rx * 0.35, rx * 0.35 * K, Color(0, 0, 0, 0.16), 1.5 * s)
+	_ellipse_xy(c, rx * 0.32, rx * 0.32 * K, Color(1.0, 0.9, 0.6, 0.1 * shim))
+
+
+## Faint slanting beams over everything, with dust turning in them.
+func _draw_chapel_beams() -> void:
+	var s := view_scale
+	for S in _shafts:
+		var c := proj(S[0])
+		var rx: float = S[1] * s
+		var shim := 0.8 + 0.2 * sin(_t * 0.6 + S[2])
+		var up := Vector2(-260.0, -900.0) * s
+		var base := Color(1.0, 0.94, 0.82, 0.07 * shim)
+		var top := Color(1.0, 0.94, 0.82, 0.0)
+		draw_polygon(PackedVector2Array([c - Vector2(rx, 0), c + Vector2(rx, 0), c + up + Vector2(rx * 0.7, 0), c + up - Vector2(rx * 0.7, 0)]),
+			PackedColorArray([base, base, top, top]))
+		for k in 6:   # dust motes
+			var f := fmod(_t * 0.03 + k * 0.17 + S[2], 1.0)
+			var p := c + up * f * 0.6 + Vector2(sin(_t * 0.4 + k * 2.3) * rx * 0.6, 0)
+			draw_circle(p, 1.3 * s, Color(1.0, 0.95, 0.85, 0.3 * sin(f * PI) * shim))
+
+
+## A pew: a bench with a high back. Broken ones are short and skewed, or have
+## lost half their back.
+func _draw_pew(P: Array) -> void:
+	var s := view_scale
+	var w: float = P[1]
+	var u := Vector2.from_angle(P[2])
+	var v := Vector2(-u.y, u.x)
+	var lit := maxf(light_at(P[0]) * fire_glow, 0.22)
+	var wood := Color("#1a120d").lerp(Color("#6b4a30"), lit)
+	var dark := wood.darkened(0.35)
+	var seat_h := 10.0 * s
+	var back_h := 22.0 * s
+	var l: Vector2 = P[0] - u * w / 2.0
+	var rr: Vector2 = P[0] + u * w / 2.0
+	var d := v * 14.0   # seat depth (toward the viewer)
+	var up := Vector2(0, -seat_h)
+	_ellipse_xy(proj(P[0] + d * 0.5) + Vector2(4, 3) * s, w * 0.55 * s, 9.0 * s, Color(0, 0, 0, 0.3))
+	# back panel (far edge)
+	var bl := proj(l) + up
+	var br := proj(rr) + up
+	var cut := 0.5 if P[3] == 2 else 1.0
+	var bm := bl.lerp(br, cut)
+	draw_colored_polygon(PackedVector2Array([bl, bm, bm + Vector2(0, -back_h), bl + Vector2(0, -back_h)]), dark)
+	draw_line(bl + Vector2(0, -back_h), bm + Vector2(0, -back_h), wood.lightened(0.1), 3.0 * s)
+	if P[3] == 2:   # a jagged snapped end
+		draw_line(bm, bm + Vector2(-4, -back_h * 0.7) * Vector2(s, 1), dark, 3.0 * s)
+	# seat
+	var seat := PackedVector2Array([proj(l) + up, proj(rr) + up, proj(rr + d) + up, proj(l + d) + up])
+	draw_colored_polygon(seat, wood)
+	# front board and legs
+	draw_colored_polygon(PackedVector2Array([proj(l + d) + up, proj(rr + d) + up, proj(rr + d), proj(l + d)]), dark)
+	for e in [l + d, rr + d]:
+		draw_line(proj(e), proj(e) + up, dark.darkened(0.3), 3.0 * s)
+
+
+## A snapped stone column on a square plinth, with a jagged top.
+func _draw_pillar(P: Array) -> void:
+	var s := view_scale
+	var base := proj(P[0])
+	var h: float = P[1] * s
+	var r := RandomNumberGenerator.new()
+	r.seed = P[2]
+	var lit := maxf(light_at(P[0]) * fire_glow, 0.25)
+	var stone := Color("#1e1d22").lerp(Color("#7a7582"), lit)
+	var shade := stone.darkened(0.35)
+	var hw := 14.0 * s
+	_ellipse_xy(base + Vector2(14, 4) * s, 34.0 * s, 10.0 * s, Color(0, 0, 0, 0.35))
+	draw_rect(Rect2(base + Vector2(-hw * 1.5, -8.0 * s), Vector2(hw * 3.0, 10.0 * s)), shade)
+	draw_rect(Rect2(base + Vector2(-hw * 1.5, -10.0 * s), Vector2(hw * 3.0, 3.0 * s)), stone)
+	var top := PackedVector2Array()
+	var n := 5
+	for k in n + 1:   # jagged break
+		top.append(base + Vector2(lerpf(hw, -hw, float(k) / n), -h + r.randf_range(-12.0, 6.0) * s))
+	var body := PackedVector2Array([base + Vector2(-hw, -8.0 * s), base + Vector2(hw, -8.0 * s)])
+	body.append_array(top)
+	draw_colored_polygon(body, stone)
+	draw_colored_polygon(PackedVector2Array([base + Vector2(hw * 0.3, -8.0 * s), base + Vector2(hw, -8.0 * s), top[0], top[1].lerp(top[0], 0.4)]), shade)
+	for k in 3:   # fluting
+		var x := lerpf(-hw * 0.6, hw * 0.1, k / 2.0)
+		draw_line(base + Vector2(x, -10.0 * s), base + Vector2(x, -h + 10.0 * s), Color(0, 0, 0, 0.18), 1.4 * s)
+
+
+## A stub of candle with a small living flame; they light their own patch.
+func _draw_candle(C: Array) -> void:
+	var s := view_scale
+	var c := proj(C[0])
+	var h: float = C[1] * s
+	var fl := 0.75 + 0.25 * sin(_t * 9.0 + C[2]) * sin(_t * 5.3 + C[2] * 2.0)
+	draw_circle(c + Vector2(0, -h), 22.0 * s * fl, Color(1.0, 0.7, 0.35, 0.05))
+	_ellipse_xy(c, 9.0 * s, 4.0 * s, Color(1.0, 0.75, 0.4, 0.12 * fl))
+	draw_line(c, c + Vector2(0, -h), Color("#cfc4a8").darkened(0.25), 3.4 * s)
+	draw_circle(c + Vector2(0, -h), 1.7 * s, Color("#cfc4a8"))
+	var tip := c + Vector2(sin(_t * 3.0 + C[2]) * 0.8 * s, -h - 7.0 * s * fl)
+	draw_colored_polygon(PackedVector2Array([c + Vector2(-2.2 * s, -h - 1.0 * s), tip, c + Vector2(2.2 * s, -h - 1.0 * s), c + Vector2(0, -h + 1.0 * s)]), Color(1.0, 0.78, 0.35, 0.95))
+	draw_circle(c + Vector2(0, -h - 2.5 * s), 1.3 * s, Color(1.0, 0.97, 0.85))
+
+
 # ------------------------------------------------------------ lake art
 var _pads: Array = []      ## lily pads: [world, size, has flower]
 var _reeds: Array = []     ## reed clumps: [world, height]
@@ -1407,6 +1697,8 @@ func _draw() -> void:
 		var col := Color("#0a080b").lerp(Color("#5e3d26"), clampf(lit, 0.0, 1.0))
 		if stop == "swamp":   # boggy, grey-green murk
 			col = Color("#0a0c0b").lerp(Color("#4a4434"), clampf(lit, 0.0, 1.0))
+		elif stop == "chapel":   # cold old stone
+			col = Color("#09090c").lerp(Color("#4d4742"), clampf(lit, 0.0, 1.0))
 		_ellipse(Vector2.ZERO, rad, col)
 	if stop == "cliff":
 		_draw_cliff()
@@ -1416,6 +1708,8 @@ func _draw() -> void:
 		_draw_lake()
 	elif stop == "swamp":
 		_draw_swamp_ground()
+	elif stop == "chapel":
+		_draw_chapel_floor()
 	_draw_group_patches()
 	# Trails, lighter packed dirt, fading into the dark.
 	var trails: Array = paths.slice(0, lane_count)
@@ -1431,6 +1725,9 @@ func _draw() -> void:
 			var lit := light_at(mid) * fire_glow
 			var col := Color("#17110f").lerp(Color("#7a5236"), clampf(lit, 0.0, 1.0))
 			col.a = 0.55 + 0.45 * lit
+			if stop == "chapel":   # dusty aisles worn into the flagstones
+				col = Color("#121116").lerp(Color("#6e6658"), clampf(lit, 0.0, 1.0))
+				col.a = 0.5 + 0.4 * lit
 			if stop == "swamp":   # murkier, greyer trails
 				col = Color("#121412").lerp(Color("#5e5444"), clampf(lit, 0.0, 1.0))
 				col.a = 0.55 + 0.45 * lit
@@ -1469,6 +1766,8 @@ func _draw() -> void:
 		_draw_mire(m)
 	if stop == "swamp":
 		_draw_swamp_trees()
+	elif stop == "chapel":
+		_draw_chapel_props()
 	# Tiles: flat stone slabs. Valid ones glow while a die is being placed.
 	var pulse := 0.5 + 0.5 * sin(_t * 4.0)
 	for i in tiles.size():
@@ -1503,6 +1802,8 @@ func _draw() -> void:
 							_ring(cj, rx * 1.3, rx * K * 1.3, Color(1, 0.92, 0.6, 0.45), 2.5 * view_scale)
 	if stop == "swamp":
 		_draw_swamp_orbs()
+	elif stop == "chapel":
+		_draw_chapel_beams()
 	_draw_forks(pulse)
 	# Fire target ring for the Kindle (★) die.
 	if glow_face in ["wall", "mire"]:   # the stretch of each trail a wall (or mire) can go on
@@ -1620,6 +1921,7 @@ const SLAB_LOOK := {
 	"cliff": ["#262a30", "#56606a", "#3a4048", "#8a939c", "#6b6a4c", "#aaa77a"],  # cold slate, pale lichen
 	"hill": ["#2b2a22", "#5b5844", "#3d3c2f", "#837d5f", "#3d5222", "#73923a"],   # weathered, mossy
 	"lake": ["#272624", "#5c5650", "#3b3936", "#8c8379", "#34472a", "#5f7a3e"],   # damp river stone
+	"chapel": ["#26252b", "#5e5a64", "#38363e", "#8a8590", "#2c2f38", "#4c5468"],  # worn grey marble, dusty
 	"swamp": ["#22241f", "#4e5148", "#33362f", "#74776a", "#2c3a22", "#55693a"],  # grey bog stone, thick moss
 	"dock": ["#2a1d14", "#5e4430", "#3e2b1d", "#8a6644", "", ""],                # wooden decking
 }

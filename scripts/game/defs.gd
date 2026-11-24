@@ -839,6 +839,8 @@ const STOPS := {
 		"mist_bonus": 0.15},
 	"swamp": {"name": "Swamp Turnpike", "desc": "A causeway through the bog. 3-4 trails wade murky pools under dead trees. Tougher spirits and Mud Wisps, richer spoils: double Essence.",
 		"icon": "swamp", "unlock": "swamp", "min_night": 4},
+	"chapel": {"name": "Sunken Chapel", "desc": "A ruined chapel half sunk in the earth. 3-5 aisles between broken pews.",
+		"icon": "swamp", "unlock": "chapel", "min_night": 8},
 }
 ## Quiet Lakeside: a lake fills one side, its near shore this far from the fire.
 ## Spirits crossing the water drift slower. 2-3 land trails + 1 water crossing.
