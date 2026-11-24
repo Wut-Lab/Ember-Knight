@@ -847,7 +847,7 @@ const STOPS := {
 		"mist_bonus": 0.15},
 	"swamp": {"name": "Swamp Turnpike", "desc": "A causeway through the bog. 3-4 trails wade murky pools under dead trees. Tougher spirits and Mud Wisps, richer spoils: double Essence.",
 		"icon": "swamp", "unlock": "swamp", "min_night": 4},
-	"chapel": {"name": "Sunken Chapel", "desc": "A ruined chapel half sunk in the earth. 3-5 aisles between broken pews and a shattered altar.",
+	"chapel": {"name": "Sunken Chapel", "desc": "A ruined chapel half sunk in the earth. 3-5 aisles between broken pews and a shattered altar. Tougher spirits and Bellringers; double Essence and a stronger dawn heal.",
 		"icon": "altar", "unlock": "chapel", "min_night": 8},
 }
 ## Quiet Lakeside: a lake fills one side, its near shore this far from the fire.
@@ -860,6 +860,10 @@ const LAKE_FOUR_LANE_CHANCE := 0.5
 ## Swamp Turnpike: murky pools (trails wade through, no tiles), dead trees,
 ## faint drifting orbs. Offered from night 5 once unlocked; spirits are
 ## tougher, but the night pays double Essence (and +1 per Mud Wisp banished).
+const CHAPEL_HP := 1.2          ## Sunken Chapel: spirits a bit tougher than the swamp's
+const CHAPEL_ESSENCE := 2        ## dawn Essence multiplier at the chapel
+const BELL_ESSENCE := 2          ## Essence for each Bellringer banished
+const CHAPEL_DAWN_HEAL := 8.0    ## extra dawn heal after a chapel night
 const SWAMP_HP := 1.15
 const SWAMP_ESSENCE := 2
 const CHAPEL_BELL_CHANCE := 0.15   ## share of plain Wisps that come as Bellringers
@@ -1037,4 +1041,6 @@ static func spirit_hp_scale(night: int, stop: String) -> float:
 	var s := 1.0 + 0.15 * night_step(night)
 	if stop == "swamp":
 		s *= SWAMP_HP
+	elif stop == "chapel":
+		s *= CHAPEL_HP
 	return s

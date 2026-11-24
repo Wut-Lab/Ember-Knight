@@ -429,6 +429,9 @@ func _wave_cleared() -> void:
 		var gained := Defs.essence_for_night(Run.flame, Run.night)
 		if Run.current_stop() == "swamp":
 			gained *= Defs.SWAMP_ESSENCE
+		elif Run.current_stop() == "chapel":
+			gained *= Defs.CHAPEL_ESSENCE
+			Profile.add_stat("chapel_nights_won")   # for Paolo the Priest, later
 		Profile.add_essence(gained)
 		_show_banner("Dawn breaks!  +%d Essence" % gained)
 		AudioDirector.play_sfx("chime", -2.0)
@@ -860,6 +863,9 @@ func _on_banished(sp) -> void:
 	if sp.kind == "mud_wisp":
 		Profile.add_essence(Defs.MUD_ESSENCE)
 		_add_fx("text", sp.world, Color("#9fd0ff"), 100.0, "+%d" % Defs.MUD_ESSENCE)
+	elif sp.kind == "bellringer":
+		Profile.add_essence(Defs.BELL_ESSENCE)
+		_add_fx("text", sp.world, Color("#9fd0ff"), 100.0, "+%d" % Defs.BELL_ESSENCE)
 	if sp.smoulder_t > 0.0 and Run.has_oath("smouldering_wake"):   # the burn jumps on
 		var best = null
 		for o in spirits:
