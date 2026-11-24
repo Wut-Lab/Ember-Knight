@@ -53,7 +53,7 @@ func hire(id: String) -> bool:
 
 ## Buys an outfit for Char if there is enough Essence; returns whether it did.
 func buy_outfit(id: String) -> bool:
-	if has_outfit(id) or not Defs.OUTFITS.has(id):
+	if has_outfit(id) or not Defs.OUTFITS.has(id) or not Defs.outfit_open(id, unlocks):
 		return false
 	if not spend_essence(int(Defs.OUTFITS[id]["cost"])):
 		return false

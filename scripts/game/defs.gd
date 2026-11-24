@@ -234,7 +234,7 @@ const DAWN_REROLL_ESSENCE := 3
 ## Unlockables shown in the main menu's Unlocks list, grouped by "type"
 ## (oath, die, misc; listed in that order). Each counts a Profile stat up to
 ## "goal"; "ref" is the Oath or die id it unlocks.
-const UNLOCK_TYPES := [["oath", "Oaths"], ["die", "Dice"], ["misc", "Misc"]]
+const UNLOCK_TYPES := [["oath", "Oaths"], ["die", "Dice"], ["misc", "Misc"], ["outfit", "Outfits"]]
 const UNLOCKS := {
 	"dawn_offerings": {"type": "oath", "ref": "dawn_offerings", "stat": "dawn_skips", "goal": 10,
 		"hint": "Skip 10 Dawn Offerings."},
@@ -244,6 +244,10 @@ const UNLOCKS := {
 		"hint": "Survive night 2."},
 	"heavy_support": {"type": "misc", "ref": "heavy_support", "stat": "night_3_won", "goal": 1,
 		"hint": "Survive night 3."},
+	"warden_helm": {"type": "outfit", "ref": "helm", "stat": "bosses_beaten", "goal": 1,
+		"hint": "Defeat a boss."},
+	"sage_robes": {"type": "outfit", "ref": "robes", "stat": "nights_won", "goal": 10,
+		"hint": "Survive 10 nights in total."},
 }
 
 ## Caravan members: hired once with Essence (kept in Profile.members), then up
@@ -279,6 +283,7 @@ const CARAVAN := {
 ## (old hex -> new hex, all at once); "bolt" is [core, outer] of his flame bolts.
 const FLAME_HEX := ["#fff3c4", "#fffbe8", "#ffd27a", "#ffb238", "#ffa64a", "#ff9a3c", "#ff7a2a", "#ff6a1f", "#d8341c"]
 const ARMOR_HEX := ["#857f8f", "#5e5967", "#4a4752", "#2f2d34", "#222027", "#151319"]
+const OutfitArt := preload("res://scripts/game/outfit_art.gd")
 const OUTFITS := {
 	"ember": {"name": "Ember Knight", "cost": 0, "desc": "Char as the fire first made him.",
 		"flame": [], "armor": [], "bolt": ["#fff3c4", "#ffb238"]},
@@ -294,6 +299,15 @@ const OUTFITS := {
 		"flame": ["#ffffff", "#ffffff", "#ffffff", "#f2f4ff", "#e8ecff", "#dfe6ff", "#c4cce8", "#c0c8e8", "#98a0c0"],
 		"armor": ["#f6f8fb", "#dde2e9", "#b8bec8", "#9aa1ad", "#6a707c", "#4c515c"],
 		"bolt": ["#ffffff", "#dfe6ff"]},
+	"helm": {"name": "Pyre Warden", "cost": 160, "unlock": "warden_helm",
+		"desc": "A great helm in dark iron, trimmed gold and red. Fire pours from the eye slits.",
+		"flame": [], "armor": ["#5c5766", "#3e3a46", "#302e36", "#1b1a20", "#121116", "#08070a"],
+		"swap": {"#eaa868": "#ffe08a", "#b5652b": "#d4a530", "#5e2c10": "#7a5a1e", "#f4efe6": "#2a2428"},
+		"bolt": ["#fff3c4", "#ff7a2a"]},
+	"robes": {"name": "Hearth Sage", "cost": 160, "unlock": "sage_robes",
+		"desc": "White robes with a gold key hem, a blue mantle and a laurel wreath.",
+		"flame": [], "armor": ["#f0c987", "#c8924a", "#b07e3c", "#8a5a26", "#5e3a16", "#3a220c"],
+		"swap": {}, "bolt": ["#fffbe8", "#ffd27a"]},
 }
 
 
@@ -301,6 +315,8 @@ const OUTFITS := {
 static func outfit_svg(svg: String, id: String) -> String:
 	var o: Dictionary = OUTFITS.get(id, OUTFITS["ember"])
 	var pairs := []
+	for k in o.get("swap", {}):
+		pairs.append([k, o["swap"][k]])
 	for i in o["flame"].size():
 		pairs.append([FLAME_HEX[i], o["flame"][i]])
 	for i in o["armor"].size():
@@ -309,7 +325,16 @@ static func outfit_svg(svg: String, id: String) -> String:
 		svg = svg.replace(pairs[i][0], "@%d@" % i)
 	for i in pairs.size():
 		svg = svg.replace("@%d@" % i, pairs[i][1])
+	var extra: String = OutfitArt.OVERLAYS.get(id, "")
+	if extra != "":
+		var at := svg.rfind("</svg>")
+		svg = svg.substr(0, at) + extra + svg.substr(at)
 	return svg
+
+
+## Whether an outfit can be bought yet (some wait on a Milestone).
+static func outfit_open(id: String, unlocked: Array) -> bool:
+	return not OUTFITS[id].has("unlock") or OUTFITS[id]["unlock"] in unlocked
 
 const GATHERED_FLAME_DIE := "torch"   ## the die Gathered Flame counts
 const HEALTHY_NIGHTS_MAX := 4.0  ## Oath of Healthy Nights: cap on the bonus heal

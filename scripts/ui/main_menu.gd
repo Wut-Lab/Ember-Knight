@@ -381,15 +381,8 @@ func _outfit_row(id: String, svg: String) -> Control:
 	var h := HBoxContainer.new()
 	h.add_theme_constant_override("separation", 16)
 	row.add_child(h)
-	var img := Image.new()
-	img.load_svg_from_string(Defs.outfit_svg(svg, id), 0.5)
-	var pic := TextureRect.new()
-	pic.texture = ImageTexture.create_from_image(img)
-	pic.custom_minimum_size = Vector2(80, 126)
-	pic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	pic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	pic.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	h.add_child(pic)
+	var open := Defs.outfit_open(id, Profile.unlocks)
+	h.add_child(_outfit_pic(id, svg, open))
 	var text := VBoxContainer.new()
 	text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	text.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -425,6 +418,11 @@ func _outfit_row(id: String, svg: String) -> Control:
 			Profile.wear(id)
 			AudioDirector.play_sfx("chime")
 			_show_caravan_tab("Wardrobe"))
+	elif not open:
+		b.text = "Locked"
+		b.disabled = true
+		desc.text = Defs.UNLOCKS[o["unlock"]]["hint"]
+		name.text = "???"
 	else:
 		var cost := int(o["cost"])
 		b.text = "Buy  %d" % cost
@@ -436,6 +434,21 @@ func _outfit_row(id: String, svg: String) -> Control:
 				AudioDirector.play_sfx("chime")
 				_show_caravan_tab("Wardrobe"))
 	return row
+
+
+## Char in an outfit, ~80 px wide; a dark silhouette while still locked.
+func _outfit_pic(id: String, svg: String, open := true) -> TextureRect:
+	var img := Image.new()
+	img.load_svg_from_string(Defs.outfit_svg(svg, id), 0.5)
+	var pic := TextureRect.new()
+	pic.texture = ImageTexture.create_from_image(img)
+	pic.custom_minimum_size = Vector2(80, 126)
+	pic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	pic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	pic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if not open:
+		pic.modulate = Color("#0b0810")
+	return pic
 
 
 func _row_panel() -> PanelContainer:
@@ -488,7 +501,7 @@ func _fill_milestones(list: VBoxContainer) -> void:
 func _unlock_row(id: String) -> Control:
 	var u: Dictionary = Defs.UNLOCKS[id]
 	var got := Profile.is_unlocked(id)
-	var info: Dictionary = Defs.OATHS.get(u["ref"], {}) if u["type"] == "oath" else (Defs.DICE.get(u["ref"], {}) if u["type"] == "die" else Defs.QUICK_REWARDS.get(u["ref"], {}))
+	var info: Dictionary = Defs.OATHS.get(u["ref"], {}) if u["type"] == "oath" else (Defs.DICE.get(u["ref"], {}) if u["type"] == "die" else (Defs.OUTFITS.get(u["ref"], {}) if u["type"] == "outfit" else Defs.QUICK_REWARDS.get(u["ref"], {})))
 	var row := PanelContainer.new()
 	row.focus_mode = Control.FOCUS_ALL
 	row.mouse_entered.connect(row.grab_focus)
@@ -512,7 +525,10 @@ func _unlock_row(id: String) -> Control:
 	ic.draw_fn = func(ci: CanvasItem):
 		ci.draw_circle(Vector2(px, px) / 2, px * 0.48, Color(1, 1, 1, 0.06) if not got else Color(0, 0, 0, 0.3))
 		Icons.draw(ci, info.get("icon", "rune"), Vector2(px, px) / 2, px * 0.85, col)
-	h.add_child(ic)
+	if u["type"] == "outfit":
+		h.add_child(_outfit_pic(u["ref"], FileAccess.get_file_as_string("res://assets/char/char_happy.svg"), got))
+	else:
+		h.add_child(ic)
 	var text := VBoxContainer.new()
 	text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	text.alignment = BoxContainer.ALIGNMENT_CENTER
