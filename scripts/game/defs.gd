@@ -5,7 +5,7 @@ extends RefCounted
 # ------------------------------------------------------------ dice
 ## Every face that exists. "kindle" (star) goes on the fire to power up Char.
 ## Every other face must be a key in DEFENSES.
-const DIE_FACES := ["kindle", "torch", "vent", "mortar", "guide", "bellows", "brazier", "wall", "pine", "ward", "ashes"]
+const DIE_FACES := ["kindle", "torch", "vent", "mortar", "guide", "bellows", "brazier", "wall", "mire", "lure", "pine", "ward", "ashes"]
 ## Fire faces go on the fire instead of a tile.
 const FIRE_FACES := ["kindle", "pine", "ward"]
 ## A die is a D6: a list of 6 faces. Opposite sides are i and 5 - i.
@@ -46,7 +46,15 @@ const DICE := {
 	"forge": {"name": "Forge Die", "faces": ["bellows", "torch", "vent", "ashes", "torch", "bellows"]},
 	## Fire Support Die: no attackers at all, only patch buffs (opposite faces match).
 	"fire_support": {"name": "Fire Support Die", "faces": ["guide", "bellows", "brazier", "brazier", "bellows", "guide"]},
+	## Swamp dice (SWAMP_DICE): only offered at dawn after a Swamp Turnpike night.
+	## Bog Die: Mire patches on the trails hold spirits for the Torches.
+	"bog": {"name": "Bog Die", "faces": ["mire", "torch+", "vent", "ashes", "torch+", "mire"]},
+	## Will-o'-Wisp Die: Wisp Lanterns bunch spirits up for Mortars and Braziers.
+	"will_o_wisp": {"name": "Will-o'-Wisp Die", "faces": ["lure", "mortar", "brazier", "ashes", "mortar", "lure"]},
+	## Bone Die: no Ashes at all, three "+" faces. Plain, raw power.
+	"bone": {"name": "Bone Die", "faces": ["torch+", "mortar+", "guide", "wall", "vent+", "kindle"]},
 }
+const SWAMP_DICE := ["bog", "will_o_wisp", "bone"]
 
 ## A "+" face ("torch+") acts as its base face but adds two levels at once;
 ## a "++" face adds three (a level-3 defense in one die).
@@ -376,6 +384,14 @@ const WALL_CHEW := 0.5           ## wall hp lost per second = spirit damage x th
 const WALL_MIN_R := 130.0        ## walls go on trails between these distances from the fire
 const WALL_MAX_R := 460.0
 const WALL_GAP := 60.0           ## min distance between walls
+## Mire (a trail face like the Wall): a mud patch of radius "r"; spirits that
+## wade through it are slowed by "slow" for "t" seconds. Lasts the night.
+const MIRE := [
+	{"r": 42.0, "slow": 0.4, "t": 2.5},
+	{"r": 50.0, "slow": 0.48, "t": 3.0},
+	{"r": 58.0, "slow": 0.55, "t": 3.5},
+]
+const LURE_GAP := 40.0   ## Wisp Lantern: a spirit this far behind makes the one ahead slow
 const WARM_COALS_BONUS := 2.0    ## Oath of Warm Coals: + Ember Drop heal
 const STURDY_WALL := 1.25        ## Oath of Sturdy Stones: Ember Wall hp x
 const IMMORTAL_CHANCE := 0.33    ## Oath of the Immortals: chance a Char kill heals
@@ -508,11 +524,23 @@ const UNIQUE_EARLY_CHANCE := 0.02
 static func dawn_dice(rng: RandomNumberGenerator, dice_owned: Array) -> Array:
 	var pool := []
 	for id in DICE:
-		if dice_owned.count(id) < MAX_DIE_COPIES and (not id in LOCKED_DICE or Profile.is_unlocked(id)):
+		if dice_owned.count(id) < MAX_DIE_COPIES and not id in SWAMP_DICE and (not id in LOCKED_DICE or Profile.is_unlocked(id)):
 			pool.append(id)
 	var out := []
 	while out.size() < DAWN_DICE and not pool.is_empty():
 		out.append(pool.pop_at(rng.randi() % pool.size()))
+	return out
+
+## Dawn after a Swamp Turnpike night: one swamp die (SWAMP_DICE) and one from
+## the normal pool.
+static func swamp_dawn_dice(rng: RandomNumberGenerator, dice_owned: Array) -> Array:
+	var bog := SWAMP_DICE.filter(func(id): return dice_owned.count(id) < MAX_DIE_COPIES)
+	var out := []
+	if not bog.is_empty():
+		out.append(bog[rng.randi() % bog.size()])
+	var rest := dawn_dice(rng, dice_owned)
+	if not rest.is_empty():
+		out.append(rest[0])
 	return out
 
 ## Up to DAWN_OATHS unsworn Oaths, each slot rolling a rarity for the dawn
@@ -575,6 +603,10 @@ const FACE_INFO := {
 		"desc": "A leather bellows on a frame. Every other defense on its patch attacks faster. Doesn't stack."},
 	"brazier": {"name": "Ember Brazier", "color": Color("#ff7a3a"),
 		"desc": "An iron bowl of hot coals. Hits from every other defense on its patch leave spirits smouldering. Doesn't stack."},
+	"mire": {"name": "Mire", "color": Color("#8a6a3e"),
+		"desc": "Spread across a trail like a Wall: spirits wading through it move 40% slower for a few seconds. Lasts the night."},
+	"lure": {"name": "Wisp Lantern", "color": Color("#bfe8d8"),
+		"desc": "A swamp orb caught in a lantern. Spirits in its light that lead their trail slow down, so the ones behind bunch up on them."},
 	"wall": {"name": "Ember Wall", "color": Color("#d9743a"),
 		"desc": "Build across a trail: spirits stop and burn through it, scorched by its embers."},
 	"pine": {"name": "Pine Log", "color": Color("#c98a4a"),
@@ -632,6 +664,13 @@ const DEFENSES := {
 		{"range": 0.0, "burn_dps": 1.5, "burn_t": 3.0},
 		{"range": 0.0, "burn_dps": 2.25, "burn_t": 3.0},
 		{"range": 0.0, "burn_dps": 3.0, "burn_t": 3.0},
+	],
+	## Wisp Lantern: spirits in range with another spirit in range behind them on
+	## their trail (over LURE_GAP back) are slowed by "lure", so packs close up.
+	"lure": [
+		{"range": 210.0, "lure": 0.3},
+		{"range": 225.0, "lure": 0.4},
+		{"range": 240.0, "lure": 0.5},
 	],
 	"bellows": [
 		{"range": 0.0, "haste": 1.15},

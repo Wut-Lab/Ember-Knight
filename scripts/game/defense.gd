@@ -241,6 +241,18 @@ func _draw_kind(v: float, lit: float) -> void:
 			draw_circle(base, w, iron.darkened(0.15))
 			draw_circle(tip, w * 1.15, iron.darkened(0.45))
 			draw_circle(tip, w * 0.75, Color("#ff7a1e").lerp(Color("#5a2410"), 0.7 - 0.7 * _puff))
+		"lure":
+			# A crooked pole with a hook; a caught swamp orb bobs in a wire cage.
+			draw_line(Vector2(0, 2 * v), Vector2(-2 * v, -50 * v), wood, 5 * v)
+			draw_line(Vector2(-2 * v, -50 * v), Vector2(12 * v, -56 * v), wood, 3 * v)
+			var op := Vector2(12 * v, -40 * v + sin(_t * 1.6) * 2.5 * v)
+			draw_line(Vector2(12 * v, -56 * v), op + Vector2(0, -9 * v), Color("#4a4038"), 1.5 * v)
+			var g := 0.75 + 0.25 * sin(_t * 1.1)
+			draw_circle(op, (20.0 + 4.0 * level) * v, Color(0.7, 0.95, 0.85, 0.08 * g))
+			draw_circle(op, 9 * v, Color(0.75, 0.95, 0.88, 0.25 * g))
+			draw_circle(op, 5 * v, Color(0.88, 1.0, 0.95, 0.85 * g))
+			draw_arc(op, 8 * v, 0.0, TAU, 16, Color("#4a4038"), 1.3 * v)
+			draw_line(op + Vector2(0, -8 * v), op + Vector2(0, 8 * v), Color("#4a4038"), 1.2 * v)
 		"guide":
 			# Tall pole with a hanging lantern and a soft halo.
 			draw_rect(Rect2(-2.5 * v, -54 * v, 5 * v, 56 * v), wood)

@@ -39,6 +39,22 @@ static func draw(ci: CanvasItem, kind: String, c: Vector2, s: float, col: Color,
 			_ash_cloud(ci, c, s, col)
 		"swamp":
 			_swamp(ci, c, s, col)
+		"mire":   # a mud splat with bubbles
+			var pts := PackedVector2Array()
+			for k in 25:
+				var a := TAU * k / 24.0
+				var rr := s * 0.34 * (1.0 + 0.14 * sin(a * 3.0 + 0.6) + 0.08 * sin(a * 5.0))
+				pts.append(c + Vector2(cos(a) * rr, s * 0.08 + sin(a) * rr * 0.6))
+			ci.draw_polyline(pts, col, s * 0.07, true)
+			ci.draw_arc(c + Vector2(-s * 0.1, 0.0), s * 0.07, 0.0, TAU, 12, col, s * 0.05, true)
+			ci.draw_arc(c + Vector2(s * 0.12, s * 0.1), s * 0.05, 0.0, TAU, 12, col, s * 0.05, true)
+			ci.draw_arc(c + Vector2(s * 0.03, -s * 0.24), s * 0.04, 0.0, TAU, 10, col, s * 0.04, true)
+		"lure":   # an orb in a wire cage hanging from a hook
+			ci.draw_line(c + Vector2(-s * 0.18, -s * 0.38), c + Vector2(0, -s * 0.38), col, s * 0.06, true)
+			ci.draw_line(c + Vector2(0, -s * 0.38), c + Vector2(0, -s * 0.22), col, s * 0.05, true)
+			ci.draw_arc(c + Vector2(0, s * 0.02), s * 0.24, 0.0, TAU, 24, col, s * 0.06, true)
+			ci.draw_line(c + Vector2(0, -s * 0.22), c + Vector2(0, s * 0.26), col, s * 0.04, true)
+			ci.draw_circle(c + Vector2(0, s * 0.02), s * 0.11, col)
 		"vent":
 			_steam(ci, c, s, col)
 		"kindle":

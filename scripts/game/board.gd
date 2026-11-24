@@ -27,6 +27,7 @@ var paths: Array[PackedVector2Array] = []
 var path_lengths: Array[float] = []
 var tiles: Array[Vector2] = []
 var walls: Array = []                ## EmberWall nodes on the trails (set by the battle)
+var mires: Array = []                ## Mire patches on the trails: {world, level} (set by the battle)
 var tile_defense: Array = []          ## Defense node or null, per tile
 var glow_face := ""                   ## face being placed: valid tiles glow
 var hover_tile := -1
@@ -1165,6 +1166,25 @@ func _draw_swamp_orbs() -> void:
 		draw_circle(c, 2.4 * sz, Color(0.85, 1.0, 0.95, 0.22 * glow))
 
 
+## A Mire patch: a dark, wet mud splat across the trail with slow bubbles.
+func _draw_mire(m: Dictionary) -> void:
+	var s := view_scale
+	var r: float = Defs.MIRE[m["level"] - 1]["r"]
+	var c := proj(m["world"])
+	var lit := maxf(light_at(m["world"]) * fire_glow, 0.2)
+	var pts := PackedVector2Array()
+	for k in 24:
+		var a := TAU * k / 24.0
+		var rr := r * (1.0 + 0.12 * sin(a * 3.0 + m["world"].x) + 0.08 * sin(a * 5.0))
+		pts.append(c + Vector2(cos(a) * rr, sin(a) * rr * K) * s)
+	draw_colored_polygon(pts, Color("#1e150c").lerp(Color("#5a4026"), lit))
+	_ellipse_xy(c + Vector2(-r * 0.15, -r * 0.08 * K) * s, r * 0.6 * s, r * 0.6 * K * s, Color("#3a2a18").lerp(Color("#7a5a36"), lit * 0.7))
+	for k in 3:
+		var ph := fmod(_t * 0.5 + k * 0.37 + m["world"].y * 0.01, 1.0)
+		var bp := c + Vector2(cos(k * 2.1) * r * 0.45, sin(k * 2.1) * r * 0.45 * K) * s
+		_ring(bp, (2.0 + ph * 7.0) * s, (2.0 + ph * 7.0) * K * s, Color(0.75, 0.62, 0.42, 0.35 * (1.0 - ph)), 1.2 * s)
+
+
 ## A gnarled dead tree: a twisted, tapering trunk splitting into crooked bare
 ## branches, with roots splayed into the mud.
 func _draw_dead_tree(T: Array) -> void:
@@ -1445,6 +1465,8 @@ func _draw() -> void:
 			for b in 3:
 				var ang := -PI / 2 + (b - 1) * 0.45
 				draw_line(p, p + Vector2(cos(ang), sin(ang)) * 9.0 * s, g, 2.0 * s, true)
+	for m in mires:
+		_draw_mire(m)
 	if stop == "swamp":
 		_draw_swamp_trees()
 	# Tiles: flat stone slabs. Valid ones glow while a die is being placed.
@@ -1483,7 +1505,7 @@ func _draw() -> void:
 		_draw_swamp_orbs()
 	_draw_forks(pulse)
 	# Fire target ring for the Kindle (★) die.
-	if glow_face == "wall":   # the stretch of each trail a wall can go on
+	if glow_face in ["wall", "mire"]:   # the stretch of each trail a wall (or mire) can go on
 		var wc := Color("#d9743a", 0.25 + 0.35 * pulse)
 		for pts in paths:
 			var last := Vector2.INF

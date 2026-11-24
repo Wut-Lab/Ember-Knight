@@ -50,7 +50,16 @@ func _ready() -> void:
 		leg.add_theme_color_override("font_color", Style.ACCENT)
 		root.add_child(leg)
 	_root = root
-	_row("A NEW DIE  ·  TAKE ONE", "die", Defs.dawn_dice(Run.rng, Run.pool))
+	if Run.current_stop() == "swamp":
+		var sw := Label.new()
+		sw.text = "Something stirs in the bog:  one die from the swamp is on offer."
+		sw.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		sw.add_theme_font_size_override("font_size", 20)
+		sw.add_theme_color_override("font_color", Color("#9fc9a0"))
+		root.add_child(sw)
+		_row("A NEW DIE  ·  TAKE ONE", "die", Defs.swamp_dawn_dice(Run.rng, Run.pool))
+	else:
+		_row("A NEW DIE  ·  TAKE ONE", "die", Defs.dawn_dice(Run.rng, Run.pool))
 	_row("AN OATH  ·  SWEAR ONE", "oath", Defs.dawn_oaths(Run.rng, Run.oaths, Run.night))
 	if Run.has_oath("dawn_offerings") and not _rows.is_empty():
 		_add_reroll()

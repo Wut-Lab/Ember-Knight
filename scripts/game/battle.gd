@@ -120,6 +120,7 @@ var _speed_btn: Button
 var _pause_card: PanelContainer
 var _dim: ColorRect
 
+var _mire_hit := -1   ## Mire being levelled (index into board.mires), or -1
 var _ash_clouds := 0   ## Oath of Ash Clouds: spirits still to slow this wave
 
 
@@ -627,6 +628,22 @@ func _process(delta: float) -> void:
 			var st: Dictionary = d.stats()
 			if st.get("slow", 0.0) > 0.0 and d.world.distance_to(sp.world) <= st["range"]:
 				slow = maxf(slow, st["slow"])
+		for m in board.mires:   # wading a Mire patch
+			var ms: Dictionary = Defs.MIRE[m["level"] - 1]
+			if m["world"].distance_to(sp.world) <= ms["r"]:
+				sp.mire_t = ms["t"]
+				sp.mire_slow = maxf(sp.mire_slow if sp.mire_t > 0.0 else 0.0, ms["slow"])
+		if sp.mire_t > 0.0:
+			sp.mire_t -= delta
+			slow = maxf(slow, sp.mire_slow)
+		for d in defenses:   # Wisp Lanterns: the leader of a pack in the light slows
+			if d.kind != "lure" or sp.dead or d.world.distance_to(sp.world) > d.stats()["range"]:
+				continue
+			for o in spirits:
+				if o != sp and not o.dead and o.path_idx == sp.path_idx and sp.dist - o.dist > Defs.LURE_GAP \
+						and d.world.distance_to(o.world) <= d.stats()["range"]:
+					slow = maxf(slow, d.stats()["lure"])
+					break
 		if sp.vine_t > 0.0:   # wrapped by the Forest Friend's dryad
 			sp.vine_t -= delta
 			slow = maxf(slow, Defs.DRYAD_SLOW)
@@ -1199,9 +1216,40 @@ func _build_wall(levels: int) -> void:
 	_add_fx("ring", _wall_at, Color("#d9743a"), 50.0)
 
 
+## Mire: a spot on a trail (like a Wall), or an existing patch to level up.
+## Returns -4, or -1 if nowhere fits.
+func _mire_target(local: Vector2) -> int:
+	var p: Vector2 = board.unproj(local)
+	_mire_hit = -1
+	for i in board.mires.size():
+		if board.mires[i]["world"].distance_to(p) < 45.0:
+			if board.mires[i]["level"] >= 3:
+				return -1
+			_mire_hit = i
+			return -4
+	if _wall_target(local) != -3 or _wall_hit != null:
+		return -1
+	for m in board.mires:
+		if m["world"].distance_to(_wall_at) < Defs.WALL_GAP * 1.5:
+			return -1
+	return -4
+
+
+func _build_mire(levels: int) -> void:
+	if _mire_hit >= 0:
+		var m: Dictionary = board.mires[_mire_hit]
+		m["level"] = mini(3, m["level"] + levels)
+		_add_fx("ring", m["world"], Color("#8a6a3e"), 55.0)
+		return
+	board.mires.append({"world": _wall_at, "level": mini(3, levels)})
+	_add_fx("ring", _wall_at, Color("#8a6a3e"), 55.0)
+
+
 func _target_at(local: Vector2, face: String) -> int:
 	if face == "wall":
 		return _wall_target(local)
+	if face == "mire":
+		return _mire_target(local)
 	if face in Defs.FIRE_FACES:
 		return -2 if (board.is_fire_at(local) or char_unit.world.distance_to(board.unproj(local)) < 70.0) else -1
 	var t: int = board.tile_at(local)
@@ -1227,6 +1275,8 @@ func _try_place(d, local: Vector2) -> bool:
 		_add_fx("ring", Vector2.ZERO, Color("#fff0b0"), 130.0)
 	elif target == -3:
 		_build_wall(d.levels)
+	elif target == -4:
+		_build_mire(d.levels)
 	else:
 		_build_defense(d.face, target, d.levels)
 	d.placed = true
@@ -1354,13 +1404,13 @@ func _autoplay_step(delta: float) -> void:
 		if d.face in Defs.FIRE_FACES:
 			_try_place(d, board.proj(Vector2.ZERO))
 			return
-		if d.face == "wall":   # across the trail with the fewest walls, ~230 out
+		if d.face in ["wall", "mire"]:   # across a trail, ~230 out (a Mire a little farther)
 			var spots := []
 			for i in board.paths.size():
-				spots.append(board.path_point(i, board.path_lengths[i] - 230.0))
+				spots.append(board.path_point(i, board.path_lengths[i] - (230.0 if d.face == "wall" else 300.0)))
 			spots.shuffle()
 			for s in spots:
-				if _wall_target(board.proj(s)) == -3:
+				if _target_at(board.proj(s), d.face) in [-3, -4]:
 					_try_place(d, board.proj(s))
 					return
 			d.placed = true   # nowhere left: let it go
