@@ -320,7 +320,8 @@ const OUTFITS := {
 
 
 ## Char's SVG with an outfit's colours swapped in.
-static func outfit_svg(svg: String, id: String) -> String:
+## rigged: leave out parts char_unit.gd draws and moves itself (the wings).
+static func outfit_svg(svg: String, id: String, rigged := false) -> String:
 	var o: Dictionary = OUTFITS.get(id, OUTFITS["ember"])
 	var pairs := []
 	for k in o.get("swap", {}):
@@ -333,7 +334,7 @@ static func outfit_svg(svg: String, id: String) -> String:
 		svg = svg.replace(pairs[i][0], "@%d@" % i)
 	for i in pairs.size():
 		svg = svg.replace("@%d@" % i, pairs[i][1])
-	var back: String = OutfitArt.UNDERLAYS.get(id, "")
+	var back: String = (OutfitArt.RIGGED if rigged and OutfitArt.RIGGED.has(id) else OutfitArt.UNDERLAYS).get(id, "")
 	if back != "":
 		var at := svg.find("</defs>") + 7
 		svg = svg.substr(0, at) + back + svg.substr(at)

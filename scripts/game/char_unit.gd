@@ -4,6 +4,7 @@ extends Node2D
 ## Uses the 2.5D art from the concept sheet (assets/char/*.svg).
 
 const Defs := preload("res://scripts/game/defs.gd")
+const OutfitArt := preload("res://scripts/game/outfit_art.gd")
 const FACES := ["open", "determined", "hurt", "happy"]
 const ART_SCALE := 2.0   ## SVGs rasterized at 2x
 
@@ -13,7 +14,12 @@ var battle
 var board
 
 var _tex := {}
+var _rig := Node2D.new()          ## holds the body sprite (and wings), in art pixels
 var _sprite := Sprite2D.new()
+var _wings: Array = []            ## [shoulder, wrist] Node2D pairs, left then mirrored right
+var _fold := 1.0                  ## 0 spread (fighting) .. 1 folded (between waves)
+const FOLD_SHOULDER := 0.08       ## radians the forearm swings up and in when folded
+const FOLD_WRIST := -1.25         ## radians the hand swings down along the body
 var _t := 0.0
 var _cool := 0.6
 var chill := 0.0          ## 0..1, attack slow from nearby Mist Wisps
@@ -31,11 +37,47 @@ func setup(b, bd) -> void:
 func _ready() -> void:
 	for f in FACES:
 		var img := Image.new()
-		img.load_svg_from_string(Defs.outfit_svg(FileAccess.get_file_as_string("res://assets/char/char_%s.svg" % f), Profile.outfit), ART_SCALE)
+		img.load_svg_from_string(Defs.outfit_svg(FileAccess.get_file_as_string("res://assets/char/char_%s.svg" % f), Profile.outfit, true), ART_SCALE)
 		_tex[f] = ImageTexture.create_from_image(img)
+	add_child(_rig)
+	if Profile.outfit == "angel":
+		_build_wings()
 	_sprite.texture = _tex["open"]
 	_sprite.centered = false
-	add_child(_sprite)
+	_rig.add_child(_sprite)
+
+
+## The Seraph Knight's wings: per side a forearm piece turning at the shoulder
+## and a hand piece turning at the wrist (behind the forearm), so they fold.
+func _build_wings() -> void:
+	var tex := {}
+	for part in ["inner", "outer"]:
+		var img := Image.new()
+		img.load_svg_from_string(OutfitArt.wing_piece(OutfitArt.WING_INNER if part == "inner" else OutfitArt.WING_OUTER), ART_SCALE)
+		tex[part] = ImageTexture.create_from_image(img)
+	var px := func(v: Vector2) -> Vector2: return (v + Vector2(40, 0)) * ART_SCALE   # wide canvas starts at x = -40
+	for side in [1.0, -1.0]:
+		var holder := Node2D.new()
+		holder.position = Vector2(px.call(Vector2(100, 0)).x, 0)
+		holder.scale.x = side
+		_rig.add_child(holder)
+		var shoulder := Node2D.new()
+		shoulder.position = px.call(OutfitArt.WING_SHOULDER) - holder.position
+		holder.add_child(shoulder)
+		var wrist := Node2D.new()
+		wrist.position = px.call(OutfitArt.WING_WRIST) - px.call(OutfitArt.WING_SHOULDER)
+		shoulder.add_child(wrist)
+		var outer := Sprite2D.new()
+		outer.texture = tex["outer"]
+		outer.centered = false
+		outer.position = -px.call(OutfitArt.WING_WRIST)
+		wrist.add_child(outer)
+		var inner := Sprite2D.new()
+		inner.texture = tex["inner"]
+		inner.centered = false
+		inner.position = -px.call(OutfitArt.WING_SHOULDER)
+		shoulder.add_child(inner)
+		_wings.append([shoulder, wrist])
 
 
 func stats() -> Dictionary:
@@ -82,15 +124,23 @@ func _process(delta: float) -> void:
 	# Art is 160x252 (viewBox), feet at y≈246, centre x=100 (viewBox x 20..180 -> 80).
 	var size_k: float = 0.42 * board.view_scale * (1.0 + 0.06 * kindle + 0.15 * sin(_kick * PI))
 	var bob: float = sin(_t * 2.4) * 2.5 * board.view_scale
-	_sprite.scale = Vector2.ONE * size_k / ART_SCALE * Vector2(1.0 + 0.02 * sin(_t * 2.4), 1.0)
-	var half_w: float = _sprite.texture.get_width() / ART_SCALE * 0.5   # 80, or 120 with wings
-	_sprite.position = Vector2(-half_w * size_k, -246.0 * size_k + bob)
+	_rig.scale = Vector2.ONE * size_k / ART_SCALE * Vector2(1.0 + 0.02 * sin(_t * 2.4), 1.0)
+	var half_w: float = _sprite.texture.get_width() / ART_SCALE * 0.5   # 80, or 140 with wings
+	_rig.position = Vector2(-half_w * size_k, -246.0 * size_k + bob)
+	if not _wings.is_empty():
+		_fold = move_toward(_fold, 0.0 if battle.fighting else 1.0, delta * 1.6)
+		var f := smoothstep(0.0, 1.0, _fold)
+		var flap := sin(_t * 2.4) * 0.04 * (1.0 - f)
+		for w in _wings:
+			w[0].rotation = FOLD_SHOULDER * f + flap
+			w[1].rotation = FOLD_WRIST * f - flap
+			w[1].scale.x = lerpf(1.0, 0.8, f)
 	var hue := Color(1, 1, 1)
 	if chill > 0.0:
 		hue = hue.lerp(Color(0.7, 0.85, 1.25), 0.6)
 	if _hurt > 0.0:
 		hue = hue.lerp(Color(1.4, 0.6, 0.6), _hurt)
-	_sprite.modulate = hue
+	_rig.modulate = hue
 	queue_redraw()
 	if not battle.fighting:
 		return
