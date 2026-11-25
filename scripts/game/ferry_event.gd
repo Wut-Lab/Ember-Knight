@@ -115,7 +115,7 @@ func _draw_ambient(ci: CanvasItem, sz: Vector2, time: float) -> void:
 	for k in 14:   # long slow ripples
 		var y := top + 12.0 + k * (sz.y - top) / 14.0
 		var x := fposmod(k * 157.0 + time * (14.0 + k), sz.x + 300.0) - 150.0
-		ci.draw_line(Vector2(x, y), Vector2(x + 120.0 + (k % 4) * 40.0, y), Color(TEAL, 0.05 + 0.02 * (k % 3)), 2.0, true)
+		_wave(ci, Vector2(x, y), 120.0 + (k % 4) * 40.0, 4.0, time * 1.2 + k, Color(TEAL, 0.06 + 0.02 * (k % 3)), 2.0)
 	for k in 8:    # mist over the water
 		var x := fposmod(k * 240.0 - time * (8.0 + k), sz.x + 400.0) - 200.0
 		for j in 3:
@@ -143,7 +143,7 @@ func _draw_art(ci: CanvasItem, sz: Vector2, time: float) -> void:
 	for k in 6:
 		var x := fposmod(k * 90.0 + time * 12.0, sz.x + 60.0) - 30.0
 		var y := water_y + 6.0 + (k % 3) * 8.0
-		ci.draw_line(Vector2(x, y), Vector2(x + 30.0, y), Color(TEAL, 0.25), 1.5, true)
+		_wave(ci, Vector2(x, y), 34.0, 2.0, time * 2.0 + k, Color(TEAL, 0.3), 1.5)
 	# Rope line strung across.
 	var rope := PackedVector2Array()
 	for k in 25:
@@ -242,6 +242,17 @@ func _draw_art(ci: CanvasItem, sz: Vector2, time: float) -> void:
 			var h := sin(since * 5.0 + k) * 10.0 * (1.0 - since / 2.5)
 			ci.draw_circle(p + Vector2(0, -absf(h)), 2.0, Color(TEAL, 0.6 * (1.0 - since / 2.5)))
 		_ring_at(ci, Vector2(sz.x * 0.22, water_y + 4.0), 10.0 + since * 30.0, Color(TEAL, 0.4 * (1.0 - since / 2.5)))
+
+
+## A short wavy ripple line: a sine running along it that shifts with time.
+static func _wave(ci: CanvasItem, p: Vector2, length: float, amp: float, ph: float, col: Color, w: float) -> void:
+	var pts := PackedVector2Array()
+	var n := maxi(6, int(length / 5.0))
+	for k in n + 1:
+		var f := float(k) / n
+		var taper := sin(f * PI)   # thin at the ends
+		pts.append(p + Vector2(f * length, sin(f * TAU * length / 40.0 + ph) * amp * taper))
+	ci.draw_polyline(pts, col, w, true)
 
 
 static func _ring_at(ci: CanvasItem, c: Vector2, r: float, col: Color) -> void:
