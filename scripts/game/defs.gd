@@ -1015,6 +1015,9 @@ const MINE_SAFE := [0.7, 0.6, 0.5, 0.4, 0.3]
 const MINE_GAIN := 8.0
 const MINE_GAIN_STEP := 2.0
 const MINE_CAVE_IN := 10.0
+## Reaching the bottom (all 5 digs safe, ~2.5%) also swears this Unique Oath,
+## found nowhere else. Until it exists in OATHS, the bottom just pays the pile.
+const MINE_OATH := "heart_of_the_mine"
 
 
 ## The Fog Cloud ambush: one wave of Mist Wisps, as many as the night's first wave.

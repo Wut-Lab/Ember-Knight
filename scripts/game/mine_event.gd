@@ -9,6 +9,7 @@ var _caved := 0.0       ## 0..1: rocks fall, dust rises, the veins go dark
 var _caved_to := 0.0
 var _swing := -10.0     ## time of the last pick swing (dust shakes loose)
 var _banked := 0.0      ## 0..1: the cart rolls off with its load
+var _heart := 0.0       ## 0..1: the mine's heart glows in the mouth (reached the bottom)
 
 
 func _ready() -> void:
@@ -42,8 +43,16 @@ func _dig() -> void:
 		return
 	_pile += _gain()
 	_digs += 1
-	if _digs >= Defs.MINE_SAFE.size():   # the vein runs out
-		_bank("The last of the vein comes free and the rock beyond is cold.")
+	if _digs >= Defs.MINE_SAFE.size():   # the bottom of the mine
+		var text := "The last of the vein comes free and the rock beyond is cold."
+		var all_oaths: Dictionary = Defs.OATHS   # (a var, so a not-yet-written Oath id still parses)
+		var oath_id: String = Defs.MINE_OATH
+		if all_oaths.has(oath_id) and not Run.has_oath(oath_id):
+			Run.oaths.append(oath_id)
+			_heart = 0.01
+			AudioDirector.play_sfx("chime", -2.0)
+			text = "At the very bottom, behind the last of the ore, something still beats: a heart of living ember. You swear the %s." % all_oaths[oath_id]["name"]
+		_bank(text)
 		return
 	_reoffer("You pry loose a glowing chunk. The pile in the cart burns warm: %d Embers so far. Dust trickles from the beams." % roundi(_pile), [
 		["Dig Deeper", _dig_desc(), _dig],
@@ -71,6 +80,8 @@ func _process(delta: float) -> void:
 	_caved = lerpf(_caved, _caved_to, minf(1.0, delta * 2.5))
 	if _banked > 0.0:
 		_banked = minf(1.0, _banked + delta * 0.5)
+	if _heart > 0.0:
+		_heart = minf(1.0, _heart + delta * 0.7)
 	super(delta)
 
 
@@ -165,6 +176,12 @@ func _draw_art(ci: CanvasItem, sz: Vector2, time: float) -> void:
 			var pulse := (0.55 + 0.45 * sin(time * 2.0 + v + side)) * g
 			ci.draw_polyline(PackedVector2Array([a, a + Vector2(side * -4, -4), a + Vector2(side * -2, -8)]), Color(ORE, 0.85 * pulse), 2.0, true)
 			ci.draw_circle(a, 3.0, Color(ORE, 0.18 * pulse))
+	if _heart > 0.02:   # the heart of the mine, beating in the dark
+		var beat := 0.75 + 0.25 * absf(sin(time * 2.6))
+		var hp := mb + Vector2(0, -mh * 0.4)
+		for k in 7:
+			ci.draw_circle(hp, (4.0 + k * 5.0) * beat, Color(Color("#ff5a2a"), 0.07 * _heart))
+		ci.draw_circle(hp, 4.5 * beat, Color(Color("#ffd27a"), 0.95 * _heart))
 	# Timber frame: square posts showing a front and an inner side face, and a
 	# lintel showing its top.
 	var wood := Color("#4a3220")
