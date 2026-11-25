@@ -45,6 +45,8 @@ func spend_essence(n: int) -> bool:
 func hire(id: String) -> bool:
 	if id in members or not Defs.CARAVAN.has(id):
 		return false
+	if Defs.CARAVAN[id].has("unlock") and not is_unlocked(Defs.CARAVAN[id]["unlock"]):
+		return false
 	if not spend_essence(int(Defs.CARAVAN[id]["cost"])):
 		return false
 	members.append(id)

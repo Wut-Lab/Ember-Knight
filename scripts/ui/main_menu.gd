@@ -313,6 +313,8 @@ func _note(text: String, font_size := 18) -> Label:
 func _fill_members(list: VBoxContainer) -> void:
 	list.add_child(_note("Hire members with Essence; they stay hired. Before each run, pick up to %d to ride along on the stagecoach." % Defs.CARAVAN_SEATS))
 	for id in Defs.CARAVAN:
+		if Defs.CARAVAN[id].has("unlock") and not Profile.is_unlocked(Defs.CARAVAN[id]["unlock"]):
+			continue   # a hidden member turns up once unlocked
 		list.add_child(_member_row(id))
 
 
@@ -503,7 +505,7 @@ func _fill_milestones(list: VBoxContainer) -> void:
 func _unlock_row(id: String) -> Control:
 	var u: Dictionary = Defs.UNLOCKS[id]
 	var got := Profile.is_unlocked(id)
-	var info: Dictionary = Defs.OATHS.get(u["ref"], {}) if u["type"] == "oath" else (Defs.DICE.get(u["ref"], {}) if u["type"] == "die" else (Defs.OUTFITS.get(u["ref"], {}) if u["type"] == "outfit" else (Defs.STOPS.get(u["ref"], {}) if u["type"] == "route" else Defs.QUICK_REWARDS.get(u["ref"], {}))))
+	var info: Dictionary = Defs.OATHS.get(u["ref"], {}) if u["type"] == "oath" else (Defs.DICE.get(u["ref"], {}) if u["type"] == "die" else (Defs.OUTFITS.get(u["ref"], {}) if u["type"] == "outfit" else (Defs.STOPS.get(u["ref"], {}) if u["type"] == "route" else Defs.CARAVAN.get(u["ref"], {}) if u["type"] == "member" else Defs.QUICK_REWARDS.get(u["ref"], {}))))
 	var row := PanelContainer.new()
 	row.focus_mode = Control.FOCUS_ALL
 	row.mouse_entered.connect(row.grab_focus)

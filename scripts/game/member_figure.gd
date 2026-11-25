@@ -102,6 +102,7 @@ func _draw() -> void:
 		"hound": _draw_hound()
 		"lamplighter": _draw_lamplighter()
 		"smith": _draw_smith()
+		"priest": _draw_priest()
 
 
 ## Carson: on a stool, stirring a stew pot over a little tripod fire.
@@ -293,3 +294,30 @@ func _draw_smith() -> void:
 		for i in 6:
 			var d := Vector2.from_angle(-PI * (0.1 + 0.8 * i / 5.0)) * (5.0 + (cyc - 1.35) * 90.0)
 			draw_circle(an + Vector2(0, -14) + d, 0.9, Color("#ffd27a"))
+
+
+## Paolo: a hooded priest in a grey-brown robe, swinging a smoking censer on
+## a chain. Once his Last Rites are spent the censer burns low.
+func _draw_priest() -> void:
+	var robe := Color("#5a4c44")
+	var spent: bool = Run.rites_used
+	_poly([Vector2(-10, 0), Vector2(11, 0), Vector2(7, -28), Vector2(-5, -28)], robe.darkened(0.25))   # robe to the ground
+	_poly([Vector2(1, 0), Vector2(11, 0), Vector2(7, -28), Vector2(2, -28)], robe)
+	_line(Vector2(-5, -15), Vector2(8, -15), Color("#c9b48a"), 1.4)   # rope belt
+	_line(Vector2(5, -15), Vector2(6, -6), Color("#c9b48a"), 1.0)
+	var swing := sin(_t * 1.8) * 0.5
+	var hand := Vector2(10, -20)
+	var cz := hand + Vector2.from_angle(PI / 2 - swing) * 13.0
+	var head := _person(Vector2(0, -16), robe, hand, Vector2(-5, -18), 0.9)
+	# hood over the head
+	_poly([head + Vector2(-8, 6), head + Vector2(-8, -3), head + Vector2(-3, -9), head + Vector2(4, -9),
+		head + Vector2(7, -4), head + Vector2(3, -4), head + Vector2(1, 6)], robe.darkened(0.1))
+	# censer: chain, a little brass pot and its smoke
+	_line(hand, cz + Vector2(0, -3), Color("#8a7a5a"), 0.7)
+	_e(cz, 3.6, 3.0, Color("#b8902e"))
+	_poly([cz + Vector2(-2.5, -2.2), cz + Vector2(2.5, -2.2), cz + Vector2(0, -5)], Color("#d9ae4a"))
+	draw_circle(cz + Vector2(0, 1), 1.4, Color("#ff9a3a", 0.25 if spent else 0.8 + 0.5 * _pulse))
+	for k in 3:
+		var f := fmod(_t * 0.35 + k / 3.0, 1.0)
+		var sp := cz + Vector2(sin(_t + k * 2.0) * 3.0 + f * 4.0, -5.0 - f * 22.0)
+		draw_circle(sp, 1.5 + f * 3.0, Color(0.85, 0.82, 0.78, (0.12 if spent else 0.3) * (1.0 - f)))

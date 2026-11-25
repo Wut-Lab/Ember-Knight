@@ -90,6 +90,22 @@ static func draw(ci: CanvasItem, kind: String, c: Vector2, s: float, col: Color,
 			_hound(ci, c, s, col)
 		"smith":
 			_smith(ci, c, s, col)
+		"censer":   # a censer on its chain with a curl of smoke
+			ci.draw_line(c + Vector2(-s * 0.02, -s * 0.42), c + Vector2(-s * 0.02, -s * 0.06), col, s * 0.04, true)
+			ci.draw_arc(c + Vector2(-s * 0.02, -s * 0.44), s * 0.05, 0.0, TAU, 10, col, s * 0.04, true)
+			var pot := PackedVector2Array()
+			for k in 13:
+				var a := PI * k / 12.0
+				pot.append(c + Vector2(cos(a) * s * 0.2, s * 0.1 + sin(a) * s * 0.18))
+			pot.append(c + Vector2(-s * 0.2, s * 0.1))
+			ci.draw_colored_polygon(pot, col)
+			ci.draw_colored_polygon(PackedVector2Array([c + Vector2(-s * 0.17, s * 0.06), c + Vector2(s * 0.17, s * 0.06), c + Vector2(0, -s * 0.08)]), col)
+			ci.draw_line(c + Vector2(-s * 0.1, s * 0.3), c + Vector2(s * 0.1, s * 0.3), col, s * 0.05, true)
+			var sm := PackedVector2Array()
+			for k in 12:
+				var f := k / 11.0
+				sm.append(c + Vector2(s * (0.22 + 0.08 * sin(f * TAU * 1.2)) + f * s * 0.08, s * (0.0 - f * 0.4)))
+			ci.draw_polyline(sm, col, s * 0.04, true)
 		"shift":
 			_shift(ci, c, s, col)
 		"hearth":

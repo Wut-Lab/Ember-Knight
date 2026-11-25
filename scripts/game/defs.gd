@@ -259,7 +259,7 @@ const DAWN_REROLL_ESSENCE := 3
 ## (oath, die, misc; listed in that order). Each counts a Profile stat up to
 ## "goal"; "ref" is the Oath or die id it unlocks. "hidden" ones stay off the
 ## list until earned (the route and everything that comes with it).
-const UNLOCK_TYPES := [["oath", "Oaths"], ["die", "Dice"], ["misc", "Misc"], ["outfit", "Outfits"], ["route", "Routes"]]
+const UNLOCK_TYPES := [["oath", "Oaths"], ["die", "Dice"], ["misc", "Misc"], ["outfit", "Outfits"], ["route", "Routes"], ["member", "Caravan"]]
 const UNLOCKS := {
 	"dawn_offerings": {"type": "oath", "ref": "dawn_offerings", "stat": "dawn_skips", "goal": 10,
 		"hint": "Skip 10 Dawn Offerings."},
@@ -273,6 +273,8 @@ const UNLOCKS := {
 		"hint": "Choose 10 routes. Appears from night 5.", "hidden": true},
 	"chapel": {"type": "route", "ref": "chapel", "stat": "night_11_won", "goal": 1,
 		"hint": "Reach night 12. Appears from night 9.", "hidden": true},
+	"paolo": {"type": "member", "ref": "priest", "stat": "chapel_nights_won", "goal": 1,
+		"hint": "Survive a night in the Sunken Chapel.", "hidden": true},
 	"heavy_support": {"type": "misc", "ref": "heavy_support", "stat": "night_3_won", "goal": 1,
 		"hint": "Survive night 3."},
 	"warden_helm": {"type": "outfit", "ref": "helm", "stat": "night_4_won", "goal": 1,
@@ -296,6 +298,7 @@ const LAMP_RANGE := 0.75    ## reach, as a share of the farthest trail start
 const LAMP_TURN := PI / 8.0 ## the ring turns this much each volley
 const SMITH_FACES := ["torch", "vent", "mortar", "wall"]   ## Simon, the Smith: faces he can forge a "+" onto
 const HOUND_SCARES := 1   ## Hella, the Caravan Hound: Wisps she scares off each wave
+const PRIEST_RITES := 0.3   ## Paolo, the Priest: Last Rites relight Char to this share of max flame
 const COOK_HEAL := 5.0   ## Carson, the Cook: his own heal at each dawn
 const CARAVAN := {
 	"cook": {"name": "Carson, the Cook", "role": "Sustain", "icon": "cook", "cost": 30,
@@ -310,6 +313,9 @@ const CARAVAN := {
 		"desc": "A Lit Lamp beside Char fires a ring of 8 white shots every few seconds."},
 	"smith": {"name": "Simon, the Smith", "role": "Power", "icon": "smith", "cost": 120,
 		"desc": "Forges one random face on one of your dice into its \"+\" version for the run."},
+	## Hidden until his unlock (survive a night in the Sunken Chapel), then for hire.
+	"priest": {"name": "Paolo, the Priest", "role": "Rescue", "icon": "censer", "cost": 120, "unlock": "paolo",
+		"desc": "Last Rites: once per run, when Char's flame would go out, Paolo relights it to 30%."},
 }
 
 ## Char's outfits (Caravan > Wardrobe). "swap" recolours the Char SVGs

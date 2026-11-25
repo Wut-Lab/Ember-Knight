@@ -544,6 +544,20 @@ func _take_lull(o: Dictionary) -> void:
 
 
 func _flame_out() -> void:
+	if Run.has_rider("priest") and not Run.rites_used:   # Paolo's Last Rites: once per run
+		Run.rites_used = true
+		Run.flame = Run.max_flame * Defs.PRIEST_RITES
+		member_react("priest")
+		char_unit.set_mood("happy")
+		_flame_bar.flash()
+		_add_fx("ring", Vector2.ZERO, Color("#fff2c8"), 260.0)
+		_add_fx("ring", Vector2.ZERO, Color("#ffd58f"), 160.0)
+		AudioDirector.play_sfx("bell_toll", -4.0, 0.0)
+		_show_banner("Last Rites!  Paolo relights Char's flame.")
+		_update_hud()
+		if Run.autoplay:
+			print("  last rites: flame relit to %d" % roundi(Run.flame))
+		return
 	phase = Phase.DONE
 	fighting = false
 	AudioDirector.set_tension(false)
@@ -1873,7 +1887,7 @@ func _draw_parts(ci: Control) -> void:
 func _draw_badge(ci: CanvasItem, id: String) -> void:
 	var c := Vector2(20, 18)
 	var p: float = _badge_pulse.get(id, 0.0)
-	var on := not (id == "hound" and _hella_left <= 0)
+	var on := not (id == "hound" and _hella_left <= 0) and not (id == "priest" and Run.rites_used)
 	ci.draw_circle(c + Vector2(0, 2), 19.0, Color(0, 0, 0, 0.35))
 	ci.draw_circle(c, 18.0, Color("#3a2418"))
 	ci.draw_circle(c + Vector2(-2, -3), 13.0, Color("#5a3820", 0.8))
