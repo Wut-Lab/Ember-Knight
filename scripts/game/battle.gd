@@ -258,8 +258,8 @@ func _start_prep() -> void:
 	_rerolls = mini(Defs.MAX_REROLLS, Defs.REROLLS_PER_WAVE + Run.bonus_rerolls)
 	var built := 0
 	if Run.has_rider("tinker"):   # banked parts become free rerolls this wave
-		built = mini(Run.spare_parts / Defs.TINKER_PARTS, maxi(0, Defs.MAX_REROLLS - _rerolls))
-		Run.spare_parts -= built * Defs.TINKER_PARTS
+		built = Run.spare_parts / Defs.TINKER_PARTS
+		Run.spare_parts %= Defs.TINKER_PARTS
 		_rerolls += built
 	_rerolls += _lull_rerolls   # Spare Luck goes past the cap
 	_fire_heals = 0
@@ -1325,7 +1325,7 @@ func _target_at(local: Vector2, face: String) -> int:
 ## Heals from dice on the fire fall off within a wave, so stacking healers
 ## can't outpace a whole wave of damage.
 func _fire_heal(amount: float) -> void:
-	Run.flame = minf(Run.max_flame, Run.flame + amount * pow(Defs.FIRE_HEAL_FALLOFF, _fire_heals))
+	Run.flame = minf(Run.max_flame, Run.flame + amount * maxf(Defs.FIRE_HEAL_FLOOR, 1.0 - Defs.FIRE_HEAL_FALLOFF * _fire_heals))
 	_fire_heals += 1
 
 

@@ -609,9 +609,10 @@ static func oath_rarity_roll(rng: RandomNumberGenerator, night_idx: int) -> Stri
 	return "common"
 
 const REROLLS_PER_WAVE := 1
-const MAX_REROLLS := 3        ## rerolls a wave starts with, at most (Tinker parts past it stay banked; Spare Luck adds on top)
-const FIRE_HEAL_FALLOFF := 0.75  ## each Kindle/Pine heal on the fire after the first in a wave heals this share of the one before
-const DAWN_HEAL_MAX := 40.0      ## dawn heal (before the boss bonus and the Cook) never exceeds this
+const MAX_REROLLS := 4        ## rerolls a wave starts with, at most (Tinker's free rerolls and Spare Luck add on top)
+const FIRE_HEAL_FALLOFF := 0.1   ## each Kindle/Pine heal on the fire after the first in a wave heals 10% less...
+const FIRE_HEAL_FLOOR := 0.6     ## ...down to this share
+const DAWN_HEAL_MAX := 30.0      ## dawn heal (before the boss bonus and the Cook) never exceeds this
 const MAX_LEVEL := 3
 
 ## Name, colour and tooltip for each die face.
