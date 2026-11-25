@@ -27,7 +27,7 @@ func _gain() -> float:
 
 
 func _dig_desc() -> String:
-	return "%d%% safe: +%d flame onto the pile.\nA cave-in loses the pile and −%d flame." % [roundi(_safe() * 100), roundi(_gain()), roundi(Defs.MINE_CAVE_IN)]
+	return "%d%% safe: +%d Embers onto the pile.\nA cave-in loses the pile and −%d flame." % [roundi(_safe() * 100), roundi(_gain()), roundi(Defs.MINE_CAVE_IN)]
 
 
 func _dig() -> void:
@@ -45,16 +45,16 @@ func _dig() -> void:
 	if _digs >= Defs.MINE_SAFE.size():   # the vein runs out
 		_bank("The last of the vein comes free and the rock beyond is cold.")
 		return
-	_reoffer("You pry loose a glowing chunk. The pile in the cart burns warm: %d flame so far. Dust trickles from the beams." % roundi(_pile), [
+	_reoffer("You pry loose a glowing chunk. The pile in the cart burns warm: %d Embers so far. Dust trickles from the beams." % roundi(_pile), [
 		["Dig Deeper", _dig_desc(), _dig],
-		["Take It and Go", "Load up and leave: +%d flame." % roundi(_pile), _bank.bind("You haul the cart out into the night air.")],
+		["Take It and Go", "Load up and leave: your %d Embers feed the fire (+%d flame)." % [roundi(_pile), roundi(_pile)], _bank.bind("You haul the cart out into the night air.")],
 	])
 
 
 func _bank(text: String) -> void:
 	Run.flame = minf(Run.max_flame, Run.flame + _pile)
 	_banked = 0.01
-	_result("%s (+%d flame)" % [text, roundi(_pile)])
+	_result("%s (%d Embers: +%d flame)" % [text, roundi(_pile), roundi(_pile)])
 
 
 func _walk_on() -> void:
