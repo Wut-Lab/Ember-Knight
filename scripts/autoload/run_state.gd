@@ -20,6 +20,7 @@ var shrine_seen := false       ## the Ember Shrine shows up once per run
 var gates := 1                ## gates Char can cobble tonight (Defs.GATES_FREE, +1 per traded slot)
 var layout_seed := 0           ## tonight's battle map, rolled when the stop is chosen
 var coach_seen := false        ## the Abandoned Stagecoach shows up once per run
+var woods_lost := false        ## lost in the woods (Lights in the Trees): no Oath pick at the next dawn
 var ferry_soaked := false      ## tonight's dice are soaked (Ferryman: forded the river)
 var ferry_blessed := false     ## tonight Char starts at Kindle level 1 (Ferryman's blessing)
 var coach_haunt := false       ## tonight every wave has extra Wisps (Abandoned Stagecoach)
@@ -89,6 +90,7 @@ func new_run() -> void:
 	shrine_curse = false
 	coach_seen = false
 	coach_haunt = false
+	woods_lost = false
 	stop_options.clear()
 	for n in Defs.NIGHTS:
 		stop_options.append(roll_stop_options())

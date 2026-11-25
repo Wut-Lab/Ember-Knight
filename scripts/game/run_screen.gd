@@ -15,6 +15,7 @@ const FogEvent := preload("res://scripts/game/fog_event.gd")
 const ShrineEvent := preload("res://scripts/game/shrine_event.gd")
 const CoachEvent := preload("res://scripts/game/coach_event.gd")
 const FerryEvent := preload("res://scripts/game/ferry_event.gd")
+const WoodsEvent := preload("res://scripts/game/woods_event.gd")
 const RiderScreen := preload("res://scripts/game/rider_screen.gd")
 
 const TITLE_SCENE := "res://scenes/title_screen.tscn"
@@ -104,6 +105,7 @@ func _on_stop_chosen(id: String) -> void:
 	if Run.night > 0 and Run.rng.randf() < Defs.EVENT_CHANCE:
 		events.append(FogEvent)
 		events.append(FerryEvent)
+		events.append(WoodsEvent)
 		if not Run.shrine_seen:
 			events.append(ShrineEvent)
 		if not Run.coach_seen:

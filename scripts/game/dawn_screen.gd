@@ -75,7 +75,16 @@ func _ready() -> void:
 		_row("A NEW DIE  ·  TAKE ONE", "die", Defs.swamp_dawn_dice(Run.rng, Run.pool, Defs.CHAPEL_DICE))
 	else:
 		_row("A NEW DIE  ·  TAKE ONE", "die", Defs.dawn_dice(Run.rng, Run.pool))
-	_row("AN OATH  ·  SWEAR ONE", "oath", Defs.dawn_oaths(Run.rng, Run.oaths, Run.night))
+	if Run.woods_lost:   # Lights in the Trees: wandered all night, no Oath this dawn
+		Run.woods_lost = false
+		var lost := Label.new()
+		lost.text = "AN OATH  ·  Lost in the woods: no Oath this dawn."
+		lost.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		lost.add_theme_font_size_override("font_size", 20)
+		lost.add_theme_color_override("font_color", Color(Style.MUTE, 0.7))
+		root.add_child(lost)
+	else:
+		_row("AN OATH  ·  SWEAR ONE", "oath", Defs.dawn_oaths(Run.rng, Run.oaths, Run.night))
 	if Run.has_oath("dawn_offerings") and not _rows.is_empty():
 		_add_reroll()
 	_status = Label.new()

@@ -590,6 +590,30 @@ static func dawn_oaths(rng: RandomNumberGenerator, oaths_owned: Array, night_idx
 		out.append(pick)
 	return out
 
+## Up to `count` unsworn Oaths of Uncommon rarity or better, weighted by rarity
+## (Lights in the Trees' cache).
+static func woods_oaths(rng: RandomNumberGenerator, oaths_owned: Array, count: int) -> Array:
+	var left := []
+	for id in OATHS:
+		if not id in oaths_owned and OATHS[id].get("rarity", "common") != "common" and (not id in LOCKED_OATHS or Profile.is_unlocked(id)):
+			left.append(id)
+	var out := []
+	while out.size() < count and not left.is_empty():
+		var total := 0.0
+		for id in left:
+			total += RARITY[OATHS[id].get("rarity", "uncommon")]["weight"]
+		var roll := rng.randf() * total
+		var pick: String = left[0]
+		for id in left:
+			roll -= RARITY[OATHS[id].get("rarity", "uncommon")]["weight"]
+			if roll <= 0.0:
+				pick = id
+				break
+		left.erase(pick)
+		out.append(pick)
+	return out
+
+
 static func oath_rarity_roll(rng: RandomNumberGenerator, night_idx: int) -> String:
 	if night_idx < 2:
 		if rng.randf() < UNIQUE_EARLY_CHANCE:
@@ -972,6 +996,16 @@ const COACH_HAUNT_SPIRITS := 2
 const FERRY_FLAME := 12.0
 const FERRY_SOAKED_W2 := 1
 const FERRY_BLESS_CHANCE := 0.25
+
+## Lights in the Trees (repeatable). Follow them deep: WOODS_DEEP_CHANCE to find
+## a cache (swear 1 of WOODS_OATHS Oaths, Uncommon or better, on top of the
+## usual dawn pick), else lost: no Oath pick at the next dawn. Follow a little
+## way: WOODS_NEAR_CHANCE for +WOODS_NEAR_FLAME, else -WOODS_NEAR_LOSS.
+const WOODS_DEEP_CHANCE := 0.5
+const WOODS_OATHS := 2
+const WOODS_NEAR_CHANCE := 0.75
+const WOODS_NEAR_FLAME := 10.0
+const WOODS_NEAR_LOSS := 8.0
 
 
 ## The Fog Cloud ambush: one wave of Mist Wisps, as many as the night's first wave.
