@@ -120,16 +120,29 @@ func _draw_art(ci: CanvasItem, sz: Vector2, time: float) -> void:
 	# The hill at the back, a rounded mound with a moonlit crown and a shadowed
 	# front slope, with the mine mouth cut into the front.
 	var hill_base: float = gy.call(0.12)
+	# An irregular outline: a higher shoulder on the left, a dip, a rocky knob
+	# on the right and a long tail of slope trailing off.
+	var hill_r := func(a: float) -> Vector2:
+		var u := (a - PI) / PI   # 0 left .. 1 right
+		var rx := 150.0 * (1.0 + 0.1 * sin(u * 5.0 + 0.6)) + (24.0 if u > 0.75 else 0.0) * (u - 0.75) * 4.0
+		var ry := 80.0 * (1.0 + 0.25 * sin(u * 6.0 + 0.8) + 0.1 * sin(u * 17.0)) * (1.2 - 0.35 * u)
+		return Vector2(cos(a) * rx, sin(a) * ry)
 	var mound := PackedVector2Array()
-	for k in 21:
-		var a := PI + PI * k / 20.0
-		mound.append(Vector2(cx + cos(a) * 150.0, hill_base + sin(a) * 58.0 + sin(k * 1.7) * 2.0))
+	for k in 33:
+		var a := PI + PI * k / 32.0
+		mound.append(Vector2(cx, hill_base) + hill_r.call(a) + Vector2(0, sin(k * 2.3) * 2.5))
 	ci.draw_colored_polygon(mound, Color("#2a2420"))
 	var top := PackedVector2Array()
-	for k in 21:
-		var a := PI * 1.12 + PI * 0.76 * k / 20.0
-		top.append(Vector2(cx + cos(a) * 130.0, hill_base - 8.0 + sin(a) * 50.0))
+	for k in range(3, 30):
+		top.append(mound[k] + Vector2(0, 3))
 	ci.draw_polyline(top, Color("#4a4038"), 2.0, true)   # moonlit crown
+	for k in 4:   # rock ledges stepping across the slope
+		var a := PI + PI * (0.18 + k * 0.2)
+		var p: Vector2 = Vector2(cx, hill_base) + hill_r.call(a) * 0.62
+		if absf(p.x - cx) < 40.0:
+			continue
+		ci.draw_line(p + Vector2(-16, 0), p + Vector2(14, 3), Color("#3a312a"), 2.0, true)
+		ci.draw_line(p + Vector2(-16, 2), p + Vector2(14, 5), Color("#17120f"), 2.0, true)
 	for k in 3:
 		_ellipse(ci, Vector2(cx, hill_base - 4.0), Vector2(150.0 - k * 20.0, 14.0), Color(0, 0, 0, 0.12))   # shadowed foot
 	for k in 7:   # boulders on the mound, lit on top
