@@ -297,26 +297,49 @@ func _draw_smith() -> void:
 
 
 ## Paolo: a hooded priest in a grey-brown robe, swinging a smoking censer on
-## a chain. Once his Last Rites are spent the censer burns low.
+## a chain. Rounded, fire-lit volumes like the others: a bell-shaped robe with
+## a lit front, a cowl around his face, a shoulder cape. Once his Last Rites
+## are spent the censer burns low.
 func _draw_priest() -> void:
-	var robe := Color("#5a4c44")
+	var robe := Color("#5e5048")
+	var skin := Color("#e0a77c")
 	var spent: bool = Run.rites_used
-	_poly([Vector2(-10, 0), Vector2(11, 0), Vector2(7, -28), Vector2(-5, -28)], robe.darkened(0.25))   # robe to the ground
-	_poly([Vector2(1, 0), Vector2(11, 0), Vector2(7, -28), Vector2(2, -28)], robe)
-	_line(Vector2(-5, -15), Vector2(8, -15), Color("#c9b48a"), 1.4)   # rope belt
-	_line(Vector2(5, -15), Vector2(6, -6), Color("#c9b48a"), 1.0)
+	_e(Vector2(-2, 0.5), 3.5, 1.6, Color("#1d1814"))   # toes peeking out
+	_e(Vector2(6, 1), 3.5, 1.6, Color("#1d1814"))
+	# bell-shaped robe: a curved hem, shadowed back, lit front, a sheen down the front
+	var hem := _ell(Vector2(0.5, -1), 11.0, 3.4, 0.0, PI, 14)
+	var body := PackedVector2Array([Vector2(-6, -28), Vector2(7, -28)])
+	body.append_array(hem)
+	_poly(Array(body), robe.darkened(0.45))
+	var front := PackedVector2Array([Vector2(-2, -28), Vector2(7, -28)])
+	front.append_array(_ell(Vector2(2.5, -1), 9.0, 3.0, 0.0, PI * 0.62, 10))
+	_poly(Array(front), robe)
+	_poly([Vector2(5.5, -27), Vector2(7, -27), Vector2(10, -3), Vector2(7.5, -2)], robe.lightened(0.22))
+	draw_polyline(_ell(Vector2(0.5, -1), 11.0, 3.4, 0.0, PI, 14), robe.darkened(0.6), 1.0, true)   # hem edge
+	_line(Vector2(-6, -15), Vector2(8.5, -15), Color("#c9b48a"), 1.5)   # rope belt
+	_line(Vector2(6, -15), Vector2(7.5, -5), Color("#c9b48a"), 1.0)
+	draw_circle(Vector2(7.6, -4.5), 1.0, Color("#c9b48a"))
 	var swing := sin(_t * 1.8) * 0.5
-	var hand := Vector2(10, -20)
+	var hand := Vector2(11, -19)
 	var cz := hand + Vector2.from_angle(PI / 2 - swing) * 13.0
 	var head := _person(Vector2(0, -16), robe, hand, Vector2(-5, -18), 0.9)
-	# hood over the head
-	_poly([head + Vector2(-8, 6), head + Vector2(-8, -3), head + Vector2(-3, -9), head + Vector2(4, -9),
-		head + Vector2(7, -4), head + Vector2(3, -4), head + Vector2(1, 6)], robe.darkened(0.1))
-	# censer: chain, a little brass pot and its smoke
-	_line(hand, cz + Vector2(0, -3), Color("#8a7a5a"), 0.7)
-	_e(cz, 3.6, 3.0, Color("#b8902e"))
-	_poly([cz + Vector2(-2.5, -2.2), cz + Vector2(2.5, -2.2), cz + Vector2(0, -5)], Color("#d9ae4a"))
-	draw_circle(cz + Vector2(0, 1), 1.4, Color("#ff9a3a", 0.25 if spent else 0.8 + 0.5 * _pulse))
+	_blob(Vector2(1, -27), 9.5, 5.5, robe)   # shoulder cape
+	# cowl: a rounded hood, the face set back in its opening
+	_blob(head + Vector2(-1, -0.5), 8.5, 9.0, robe.darkened(0.08))
+	_e(head + Vector2(3.2, 1.2), 4.4, 5.6, Color("#1e1916"))           # shadow inside the hood
+	_e(head + Vector2(4.0, 1.6), 3.4, 4.6, skin.darkened(0.25))
+	_e(head + Vector2(4.6, 1.2), 2.4, 3.6, skin)
+	draw_circle(head + Vector2(5.2, 0.4), 0.9, Color("#2a1a14"))       # eye
+	_e(head + Vector2(7.0, 2.2), 1.3, 1.1, skin.darkened(0.15))        # nose
+	draw_arc(head + Vector2(3.2, 1.2), 5.0, -PI * 0.55, PI * 0.5, 12, robe.lightened(0.3), 1.2, true)   # lit hood rim
+	# censer: chain, a little brass pot with a lid, its coals and smoke
+	_line(hand, cz + Vector2(0, -4), Color("#8a7a5a"), 0.7)
+	var brass := Color("#b8902e")
+	_e(cz + Vector2(0, 0.5), 3.8, 3.2, brass.darkened(0.4))
+	_e(cz + Vector2(0.6, 0.2), 3.0, 2.6, brass)
+	_e(cz + Vector2(1.4, -0.6), 1.0, 0.8, brass.lightened(0.5))
+	_poly([cz + Vector2(-2.8, -2.0), cz + Vector2(2.8, -2.0), cz + Vector2(0.4, -5.2)], Color("#d9ae4a"))
+	draw_circle(cz + Vector2(0, 0.5), 5.0, Color("#ff9a3a", 0.0 if spent else 0.12 + 0.25 * _pulse))
 	for k in 3:
 		var f := fmod(_t * 0.35 + k / 3.0, 1.0)
 		var sp := cz + Vector2(sin(_t + k * 2.0) * 3.0 + f * 4.0, -5.0 - f * 22.0)
