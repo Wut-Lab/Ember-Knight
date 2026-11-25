@@ -45,21 +45,38 @@ func _draw_ambient(ci: CanvasItem, sz: Vector2, time: float) -> void:
 ## A road vanishing into fog, with something pale hanging in the murk.
 func _draw_art(ci: CanvasItem, sz: Vector2, time: float) -> void:
 	var vp := Vector2(sz.x * 0.5, sz.y * 0.42)
-	var steps := 10
-	for k in steps:   # the road surface in strips, fading as it recedes
+	# a dirt wagon trail: two wheel ruts with a grassy hump between, bending
+	# off into the fog
+	var steps := 14
+	var dirt := Color("#3b3226")
+	var rut := Color("#1f1a16")
+	var grass := Color("#6f7d5e")
+	var cx := func(f: float) -> float: return vp.x + 70.0 * f * f   # the bend
+	var half := func(f: float) -> float: return lerpf(150.0, 6.0, f)
+	for k in steps:
 		var a := float(k) / steps
 		var b := float(k + 1) / steps
 		var ya := lerpf(sz.y, vp.y, a)
 		var yb := lerpf(sz.y, vp.y, b)
-		var wa := lerpf(200.0, 8.0, a)
-		var wb := lerpf(200.0, 8.0, b)
 		var fade := 1.0 - a
-		ci.draw_colored_polygon(PackedVector2Array([Vector2(vp.x - wa, ya), Vector2(vp.x + wa, ya),
-			Vector2(vp.x + wb, yb), Vector2(vp.x - wb, yb)]), Color("#2c2a3a", 0.9 * fade))
-		for side in [-1.0, 1.0]:
-			ci.draw_line(Vector2(vp.x + side * wa, ya), Vector2(vp.x + side * wb, yb), Color(MIST, 0.4 * fade), 2.5, true)
-		if k % 2 == 0:
-			ci.draw_line(Vector2(vp.x, ya), Vector2(vp.x, lerpf(ya, yb, 0.6)), Color("#e8d9a8", 0.5 * fade), lerpf(4.0, 1.0, a), true)
+		var xa: float = cx.call(a)
+		var xb: float = cx.call(b)
+		var wa: float = half.call(a)
+		var wb: float = half.call(b)
+		ci.draw_colored_polygon(PackedVector2Array([Vector2(xa - wa, ya), Vector2(xa + wa, ya),
+			Vector2(xb + wb, yb), Vector2(xb - wb, yb)]), Color(dirt, 0.95 * fade))
+		for side in [-0.5, 0.5]:   # the ruts
+			ci.draw_line(Vector2(xa + side * wa, ya), Vector2(xb + side * wb, yb), Color(rut, 0.9 * fade), lerpf(9.0, 1.0, a), true)
+	# tufts of grass along the edges and down the middle
+	for k in 22:
+		var f := fposmod(k * 0.173, 0.85)
+		var lane: float = [-1.08, 0.0, 1.08][k % 3]
+		var y := lerpf(sz.y, vp.y, f)
+		var p := Vector2(cx.call(f) + lane * half.call(f), y)
+		var h := lerpf(9.0, 2.0, f)
+		var col := Color(grass, 0.75 * (1.0 - f))
+		for d in [-1.0, 0.0, 1.0]:
+			ci.draw_line(p, p + Vector2(d * h * 0.5, -h), col, maxf(1.0, 2.0 * (1.0 - f)), true)
 	# the wisp, half lost in the fog
 	var wp := vp + Vector2(sin(time * 0.7) * 50.0, -34.0 + sin(time * 1.3) * 5.0)
 	for r in [26.0, 18.0, 12.0]:
