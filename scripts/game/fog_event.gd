@@ -67,16 +67,22 @@ func _draw_art(ci: CanvasItem, sz: Vector2, time: float) -> void:
 			Vector2(xb + wb, yb), Vector2(xb - wb, yb)]), Color(dirt, 0.95 * fade))
 		for side in [-0.5, 0.5]:   # the ruts
 			ci.draw_line(Vector2(xa + side * wa, ya), Vector2(xb + side * wb, yb), Color(rut, 0.9 * fade), lerpf(9.0, 1.0, a), true)
-	# tufts of grass along the edges and down the middle
-	for k in 22:
-		var f := fposmod(k * 0.173, 0.85)
-		var lane: float = [-1.08, 0.0, 1.08][k % 3]
-		var y := lerpf(sz.y, vp.y, f)
-		var p := Vector2(cx.call(f) + lane * half.call(f), y)
-		var h := lerpf(9.0, 2.0, f)
-		var col := Color(grass, 0.75 * (1.0 - f))
-		for d in [-1.0, 0.0, 1.0]:
-			ci.draw_line(p, p + Vector2(d * h * 0.5, -h), col, maxf(1.0, 2.0 * (1.0 - f)), true)
+	# clumps of grass along the edges and down the middle, each its own size
+	for k in 34:
+		var f := _rand(k, 1) * 0.86
+		var lane: float = [-1.1, 0.0, 1.1][k % 3] + (_rand(k, 2) - 0.5) * 0.35
+		var p := Vector2(cx.call(f) + lane * half.call(f), lerpf(sz.y, vp.y, f))
+		var near := 1.0 - f
+		var h := lerpf(3.0, 17.0, near) * (0.6 + 0.8 * _rand(k, 3))
+		var blades := 4 + int(_rand(k, 4) * 5.0)
+		var spread := h * (0.6 + 0.6 * _rand(k, 5))
+		for j in blades:
+			var u := (float(j) / (blades - 1)) - 0.5 if blades > 1 else 0.0
+			var lean := u * spread + (_rand(k * 7 + j, 6) - 0.5) * h * 0.4
+			var bh := h * (0.55 + 0.45 * _rand(k * 7 + j, 7))
+			var root := p + Vector2(u * h * 0.35, 0)
+			var shade := grass.lerp(Color("#8e9a6c"), _rand(k * 7 + j, 8))
+			ci.draw_line(root, root + Vector2(lean, -bh), Color(shade, 0.8 * near), maxf(1.0, 2.6 * near), true)
 	# the wisp, half lost in the fog
 	var wp := vp + Vector2(sin(time * 0.7) * 50.0, -34.0 + sin(time * 1.3) * 5.0)
 	for r in [26.0, 18.0, 12.0]:
@@ -97,3 +103,9 @@ func _soft(ci: CanvasItem, c: Vector2, r: Vector2, alpha: float) -> void:
 	for k in 3:
 		var f := 1.0 - k * 0.25
 		_ellipse(ci, c, r * f, Color(MIST, alpha))
+
+
+## A steady pseudo-random 0..1 per (index, salt), so the clumps never jump.
+static func _rand(i: int, salt: int) -> float:
+	var x := sin(float(i) * 12.9898 + float(salt) * 78.233) * 43758.5453
+	return x - floorf(x)
