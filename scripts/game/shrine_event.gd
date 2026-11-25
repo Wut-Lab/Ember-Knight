@@ -27,7 +27,7 @@ func _offer() -> void:
 
 
 func _take() -> void:
-	Run.flame = minf(Run.max_flame, Run.flame + Defs.SHRINE_TAKE_HEAL)
+	Run.heal(Defs.SHRINE_TAKE_HEAL)
 	Run.shrine_curse = true
 	_glow_to = 0.08
 	_result("Char swallows the embers (+%d flame). Behind you, the shrine goes dark... and something stirs." % roundi(Defs.SHRINE_TAKE_HEAL))

@@ -205,7 +205,7 @@ func _choose(r: Dictionary, card: Button, id: String) -> void:
 	_left -= 1
 	if id == "":
 		Profile.add_stat("dawn_skips")
-		Run.flame = minf(Run.max_flame, Run.flame + Defs.SKIP_FLAME)
+		Run.heal(Defs.SKIP_FLAME)
 	elif r["kind"] == "die":
 		Run.pool.append(id)
 	else:

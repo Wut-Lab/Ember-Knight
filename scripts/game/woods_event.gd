@@ -31,7 +31,7 @@ func _deep() -> void:
 	_found_to = 1.0
 	AudioDirector.play_sfx("chime", -4.0)
 	if offer.is_empty():
-		Run.flame = minf(Run.max_flame, Run.flame + Defs.WOODS_NEAR_FLAME)
+		Run.heal(Defs.WOODS_NEAR_FLAME)
 		_result("Deep in the trees, a mossy chest: you know every oath it holds already. You take the embers inside. (+%d flame)" % roundi(Defs.WOODS_NEAR_FLAME))
 		return
 	var opts := []
@@ -49,7 +49,7 @@ func _swear(id: String) -> void:
 func _near() -> void:
 	_drift = 0.5
 	if Run.rng.randf() < Defs.WOODS_NEAR_CHANCE:
-		Run.flame = minf(Run.max_flame, Run.flame + Defs.WOODS_NEAR_FLAME)
+		Run.heal(Defs.WOODS_NEAR_FLAME)
 		_found_to = 0.6
 		_result("Just off the road, under a root: a traveller's tinderbox, still warm. (+%d flame)" % roundi(Defs.WOODS_NEAR_FLAME))
 	else:

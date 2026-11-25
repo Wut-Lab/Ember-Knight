@@ -90,6 +90,27 @@ static func draw(ci: CanvasItem, kind: String, c: Vector2, s: float, col: Color,
 			_hound(ci, c, s, col)
 		"smith":
 			_smith(ci, c, s, col)
+		"mine_heart":   # a glowing ember heart set in a bed of rock, sparks rising
+			var outer := PackedVector2Array()
+			var inner := PackedVector2Array()
+			for k in 41:   # heart curve
+				var ht := TAU * k / 40.0
+				var hp := Vector2(16.0 * pow(sin(ht), 3), -(13.0 * cos(ht) - 5.0 * cos(2 * ht) - 2.0 * cos(3 * ht) - cos(4 * ht)))
+				outer.append(c + (hp + Vector2(0, -3.0)) * s * 0.017)
+				inner.append(c + (hp * 0.6 + Vector2(0, -3.6)) * s * 0.017)
+			ci.draw_colored_polygon(outer, col)
+			ci.draw_polyline(inner, Color(0.08, 0.05, 0.04, 0.8), s * 0.035, true)   # an inner ring: the ember's glowing core
+			ci.draw_circle(c + Vector2(-s * 0.08, -s * 0.13), s * 0.04, Color(1, 1, 1, 0.75))
+			# the rock bed it rests in
+			ci.draw_colored_polygon(PackedVector2Array([c + Vector2(-s * 0.46, s * 0.4), c + Vector2(-s * 0.4, s * 0.22), c + Vector2(-s * 0.26, s * 0.16),
+				c + Vector2(-s * 0.12, s * 0.27), c + Vector2(0, s * 0.33), c + Vector2(s * 0.12, s * 0.27), c + Vector2(s * 0.27, s * 0.15),
+				c + Vector2(s * 0.4, s * 0.22), c + Vector2(s * 0.46, s * 0.4)]), col)
+			ci.draw_line(c + Vector2(-s * 0.34, s * 0.32), c + Vector2(-s * 0.22, s * 0.27), Color(0.08, 0.05, 0.04, 0.7), s * 0.03, true)
+			ci.draw_line(c + Vector2(s * 0.2, s * 0.3), c + Vector2(s * 0.33, s * 0.26), Color(0.08, 0.05, 0.04, 0.7), s * 0.03, true)
+			# sparks rising
+			ci.draw_circle(c + Vector2(-s * 0.2, -s * 0.42), s * 0.035, col)
+			ci.draw_circle(c + Vector2(s * 0.12, -s * 0.47), s * 0.03, col)
+			ci.draw_circle(c + Vector2(s * 0.3, -s * 0.36), s * 0.025, col)
 		"censer":   # a censer on its chain with a curl of smoke
 			ci.draw_line(c + Vector2(-s * 0.02, -s * 0.42), c + Vector2(-s * 0.02, -s * 0.06), col, s * 0.04, true)
 			ci.draw_arc(c + Vector2(-s * 0.02, -s * 0.44), s * 0.05, 0.0, TAU, 10, col, s * 0.04, true)

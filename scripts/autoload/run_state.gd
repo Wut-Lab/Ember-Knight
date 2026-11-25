@@ -30,6 +30,7 @@ var bosses: Array = []         ## boss id per leg (Defs.roll_bosses), rolled at 
 var perks: Dictionary = {}       ## lull permanent rewards: id (or "hone_<kind>") -> times picked
 var night_flames: Array = []   ## flame left at the end of each night cleared
 var riders: Array = []         ## Defs.CARAVAN ids riding along this run
+var mine_bonus := 0.0          ## Heart of the Mine: max flame gained from overflow this run
 var rites_used := false        ## Paolo, the Priest: Last Rites spent this run
 var recap: Dictionary = {}     ## tonight's numbers for the dawn recap (set by Battle)
 var cook_healed := 0.0        ## flame the Cook actually healed this dawn (for the dawn screen)
@@ -56,6 +57,7 @@ func new_run() -> void:
 	rng.randomize()
 	night = 0
 	rites_used = false
+	mine_bonus = 0.0
 	max_flame = Defs.MAX_FLAME
 	flame = max_flame
 	pool.clear()
@@ -154,6 +156,22 @@ func cook_heal() -> float:
 	return Defs.COOK_HEAL if has_rider("cook") else 0.0
 
 
+## Every heal goes through here. Normally capped at max flame; with the Oath
+## of the Heart of the Mine, half of what spills over raises max flame (up to
+## MINE_MAX_BONUS over the run). Returns the flame actually gained.
+func heal(amount: float) -> float:
+	if amount <= 0.0:
+		return 0.0
+	var before := flame
+	var over := flame + amount - max_flame
+	if over > 0.0 and has_oath(Defs.MINE_OATH) and mine_bonus < Defs.MINE_MAX_BONUS:
+		var grow := minf(over * Defs.MINE_OVERFLOW, Defs.MINE_MAX_BONUS - mine_bonus)
+		mine_bonus += grow
+		max_flame += grow
+	flame = minf(max_flame, flame + amount)
+	return flame - before
+
+
 func has_oath(id: String) -> bool:
 	return id in oaths
 
@@ -188,7 +206,7 @@ func take_perk(o: Dictionary) -> void:
 			bonus_rerolls += 1
 		"deep_embers":
 			max_flame += Defs.DEEP_EMBERS_FLAME
-			flame = minf(max_flame, flame + Defs.DEEP_EMBERS_FLAME)
+			heal(Defs.DEEP_EMBERS_FLAME)
 
 
 ## Flame healed by one Kindle die (Hearth-Bound adds to it).
@@ -264,7 +282,7 @@ const SAVE_PATH := "user://run.save"
 const SAVE_KEYS := ["night", "flame", "max_flame", "stop_options", "chosen_stops",
 	"spirits_banished", "nights_survived"]
 ## Newer keys: older saves load without them.
-const EXTRA_KEYS := ["bonus_rerolls", "shrine_seen", "coach_seen", "gates", "spare_parts", "forged", "rites_used"]
+const EXTRA_KEYS := ["bonus_rerolls", "shrine_seen", "coach_seen", "gates", "spare_parts", "forged", "rites_used", "mine_bonus"]
 
 var resume := false   ## set by the menu's Continue; read by the run screen
 var _checkpoint := {}

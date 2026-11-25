@@ -157,12 +157,12 @@ func _on_night_over(survived: bool) -> void:
 	if Run.night + 1 >= Defs.NIGHTS:
 		_end(true)
 		return
-	Run.flame = minf(Run.max_flame, Run.flame + Run.dawn_heal())
+	Run.heal(Run.dawn_heal())
 	if Defs.ends_leg(Run.night):   # leg done: +1 slot from next night, a die to fill it, and a big heal
 		Run.pool.append(Defs.LEG_REWARD_DIE)
-		Run.flame = minf(Run.max_flame, Run.flame + Defs.BOSS_DAWN_HEAL)
+		Run.heal(Defs.BOSS_DAWN_HEAL)
 	var before := Run.flame
-	Run.flame = minf(Run.max_flame, Run.flame + Run.cook_heal())
+	Run.heal(Run.cook_heal())
 	Run.cook_healed = Run.flame - before
 	var d := DawnScreen.new()
 	d.continued.connect(_on_dawn_done)
@@ -175,7 +175,7 @@ func _on_ambush_over(survived: bool) -> void:
 	if not survived:
 		_end(false)
 		return
-	Run.flame = minf(Run.max_flame, Run.flame + Defs.CAMP_HEAL)
+	Run.heal(Defs.CAMP_HEAL)
 	_start_battle()
 
 

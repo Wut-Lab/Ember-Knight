@@ -25,7 +25,7 @@ func _make_camp() -> void:
 	if Run.rng.randf() < Defs.AMBUSH_CHANCE:
 		_result("Mist Wisps drift out of the fog toward your camp!", true, "Defend the Camp", "One wave, Mist Wisps only.")
 	else:
-		Run.flame = minf(Run.max_flame, Run.flame + Defs.CAMP_HEAL)
+		Run.heal(Defs.CAMP_HEAL)
 		_result("A quiet rest. The fog lifts by nightfall (+%d flame)." % roundi(Defs.CAMP_HEAL))
 
 

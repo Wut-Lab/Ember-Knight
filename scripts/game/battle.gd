@@ -542,7 +542,7 @@ func _take_lull(o: Dictionary) -> void:
 	else:
 		match o["id"]:
 			"second_wind":
-				Run.flame = minf(Run.max_flame, Run.flame + Defs.LULL_HEAL)
+				Run.heal(Defs.LULL_HEAL)
 				_add_fx("ring", Vector2.ZERO, Color("#fff0b0"), 130.0)
 			"spare_luck":
 				_lull_rerolls = Defs.LULL_REROLLS
@@ -903,7 +903,7 @@ func _on_banished(sp) -> void:
 		if d.kind == "votive" and d.world.distance_to(sp.world) <= d.stats()["range"]:
 			mend = maxf(mend, d.stats()["heal"])
 	if mend > 0.0 and phase != Phase.DONE:
-		Run.flame = minf(Run.max_flame, Run.flame + mend)
+		Run.heal(mend)
 		_add_fx("text", sp.world + Vector2(0, -20), Color("#ffd98a"), 100.0, "+%s" % str(mend).trim_suffix(".0"))
 		_update_hud()
 	if sp.kind == "bellringer":
@@ -955,7 +955,7 @@ func _try_pick_ember(local: Vector2) -> bool:
 func _pick_ember(e) -> void:
 	e.picked = true
 	var heal := Defs.EMBER_HEAL + (Defs.WARM_COALS_BONUS if Run.has_oath("warm_coals") else 0.0)
-	Run.flame = minf(Run.max_flame, Run.flame + heal)
+	Run.heal(heal)
 	_add_fx("ring", e.world, Color("#ffb238"), 40.0)
 	_add_fx("text", e.world, Color("#ffd27a"), 100.0, "+%d" % int(heal))
 	AudioDirector.play_sfx("ember_pickup", -3.0)
@@ -1092,7 +1092,7 @@ func _add_fx(kind: String, at: Vector2, col: Color, r := 100.0, txt := "") -> vo
 ## Oath of the Immortals: a spirit Char banished himself may heal him.
 func char_kill(at: Vector2) -> void:
 	if Run.has_oath("immortals") and Run.rng.randf() < Defs.IMMORTAL_CHANCE:
-		Run.flame = minf(Run.max_flame, Run.flame + Defs.IMMORTAL_HEAL)
+		Run.heal(Defs.IMMORTAL_HEAL)
 		_add_fx("text", at, Color("#ffd27a"), 100.0, "+%d" % int(Defs.IMMORTAL_HEAL))
 		_update_hud()
 
@@ -1167,8 +1167,11 @@ func _warm_ashes() -> void:
 		if not d.placed and d.face == "ashes":
 			left += 1
 	if left > 0 and Run.has_oath("ash_buckets"):
-		Run.flame = minf(Run.max_flame, Run.flame + Defs.ASH_BUCKET_HEAL * left)
+		Run.heal(Defs.ASH_BUCKET_HEAL * left)
 		_add_fx("text", Vector2(0, -110), Color("#ffd27a"), 100.0, "+%d" % int(Defs.ASH_BUCKET_HEAL * left))
+	if left > 0 and Run.has_oath(Defs.MINE_OATH):
+		Run.heal(Defs.MINE_ASH_HEAL * left)
+		_add_fx("text", Vector2(30, -125), Color("#ff9a3a"), 100.0, "+%d" % int(Defs.MINE_ASH_HEAL * left))
 	if left > 0 and Run.has_oath("banked_fire"):
 		banked = minf(Defs.BANKED_CAP, Defs.BANKED_PER_ASH * left)
 		_add_fx("text", Vector2(0, -140), Color("#ff8a4c"), 100.0, "+%d%% damage" % roundi(banked * 100.0))
@@ -1183,7 +1186,7 @@ func _warm_ashes() -> void:
 		var at := Vector2(-40.0 + 40.0 * n, -60.0 - 22.0 * n)
 		n += 1
 		if Run.rng.randf() < chance:
-			Run.flame = minf(Run.max_flame, Run.flame + heal)
+			Run.heal(heal)
 			_add_fx("text", at, Color("#ffd27a"), 100.0, "+%d" % int(heal))
 		else:
 			_add_fx("text", at, Color("#8a8078"), 100.0, "fizzle")
@@ -1335,7 +1338,7 @@ func _target_at(local: Vector2, face: String) -> int:
 ## Heals from dice on the fire fall off within a wave, so stacking healers
 ## can't outpace a whole wave of damage.
 func _fire_heal(amount: float) -> void:
-	Run.flame = minf(Run.max_flame, Run.flame + amount * maxf(Defs.FIRE_HEAL_FLOOR, 1.0 - Defs.FIRE_HEAL_FALLOFF * _fire_heals))
+	Run.heal(amount * maxf(Defs.FIRE_HEAL_FLOOR, 1.0 - Defs.FIRE_HEAL_FALLOFF * _fire_heals))
 	_fire_heals += 1
 
 

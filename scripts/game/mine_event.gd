@@ -61,7 +61,7 @@ func _dig() -> void:
 
 
 func _bank(text: String) -> void:
-	Run.flame = minf(Run.max_flame, Run.flame + _pile)
+	Run.heal(_pile)
 	_banked = 0.01
 	_result("%s (%d Embers: +%d flame)" % [text, roundi(_pile), roundi(_pile)])
 

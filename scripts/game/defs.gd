@@ -191,6 +191,16 @@ const OATHS := {
 		"short": "Your most shared face gets +10% per die that has it.",
 		"desc": "Char commits to one craft.\n\nThe face found on the most of tonight's dice gets +10% for each die that has it: damage (Torch, Mortar), slow (Steam Vent), healing (Kindle, Pine Log), HP (Ember Wall), reach (Guide Light), haste (Bellows) or burn (Ember Brazier). Ashes don't count; ties go to the earlier die.",
 	},
+	## Unique, found only at the bottom of the Old Ember Mine (mine_only: never
+	## offered at dawn or in the woods' cache).
+	"heart_of_the_mine": {
+		"rarity": "unique",
+		"mine_only": true,
+		"name": "Oath of the Heart of the Mine",
+		"icon": "mine_heart",
+		"short": "Overflow heals raise max flame (up to +30); each Ashes showing heals 2.",
+		"desc": "A heart of living ember, dug from the deep rock.\n\nHealing past max flame isn't wasted: half the overflow raises max flame (up to +30 this run). When a wave starts, each Ashes die still showing heals 2 flame.",
+	},
 	"immortals": {
 		"rarity": "unique",
 		"name": "Oath of the Immortals",
@@ -573,7 +583,7 @@ static func swamp_dawn_dice(rng: RandomNumberGenerator, dice_owned: Array, own: 
 static func dawn_oaths(rng: RandomNumberGenerator, oaths_owned: Array, night_idx: int) -> Array:
 	var left := []
 	for id in OATHS:
-		if not id in oaths_owned and (not id in LOCKED_OATHS or Profile.is_unlocked(id)):
+		if not id in oaths_owned and not OATHS[id].get("mine_only", false) and (not id in LOCKED_OATHS or Profile.is_unlocked(id)):
 			left.append(id)
 	var out := []
 	while out.size() < DAWN_OATHS and not left.is_empty():
@@ -595,7 +605,7 @@ static func dawn_oaths(rng: RandomNumberGenerator, oaths_owned: Array, night_idx
 static func woods_oaths(rng: RandomNumberGenerator, oaths_owned: Array, count: int) -> Array:
 	var left := []
 	for id in OATHS:
-		if not id in oaths_owned and OATHS[id].get("rarity", "common") != "common" and (not id in LOCKED_OATHS or Profile.is_unlocked(id)):
+		if not id in oaths_owned and not OATHS[id].get("mine_only", false) and OATHS[id].get("rarity", "common") != "common" and (not id in LOCKED_OATHS or Profile.is_unlocked(id)):
 			left.append(id)
 	var out := []
 	while out.size() < count and not left.is_empty():
@@ -1018,6 +1028,9 @@ const MINE_CAVE_IN := 10.0
 ## Reaching the bottom (all 5 digs safe, ~2.5%) also swears this Unique Oath,
 ## found nowhere else. Until it exists in OATHS, the bottom just pays the pile.
 const MINE_OATH := "heart_of_the_mine"
+const MINE_OVERFLOW := 0.5       ## Heart of the Mine: share of overflow healing that raises max flame
+const MINE_MAX_BONUS := 30.0     ## ...up to this much over the run
+const MINE_ASH_HEAL := 2.0       ## ...and each Ashes showing at wave start heals this
 
 
 ## The Fog Cloud ambush: one wave of Mist Wisps, as many as the night's first wave.
