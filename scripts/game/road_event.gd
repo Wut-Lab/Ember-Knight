@@ -8,11 +8,16 @@ signal done(ambush: bool)
 const Defs := preload("res://scripts/game/defs.gd")
 const Style := preload("res://scripts/ui/ui_style.gd")
 const ChoiceCard := preload("res://scripts/ui/choice_card.gd")
+const DrawProxy := preload("res://scripts/ui/draw_proxy.gd")
+const ART_SIZE := Vector2(480, 150)
 
 var _root: VBoxContainer
 var _sub: Label
 var _row: HBoxContainer
 var _status := Label.new()
+var _ambient: Control   ## full-screen mood layer behind everything
+var _art: Control       ## the event's picture above its title
+var _t := 0.0
 
 
 ## options: Array of [title, desc, Callable]
@@ -20,12 +25,23 @@ func _build(title: String, color: Color, intro: String, options: Array) -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	theme = Style.make_theme()
+	_ambient = DrawProxy.new()
+	_ambient.draw_fn = func(ci): _draw_ambient(ci, ci.size, _t)
+	_ambient.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_ambient.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_ambient)
 	_root = VBoxContainer.new()
 	_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_root.alignment = BoxContainer.ALIGNMENT_CENTER
 	_root.add_theme_constant_override("separation", 16)
 	_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_root)
+	_art = DrawProxy.new()
+	_art.custom_minimum_size = ART_SIZE
+	_art.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	_art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_art.draw_fn = func(ci): _draw_art(ci, ART_SIZE, _t)
+	_root.add_child(_art)
 	var h := Label.new()
 	h.text = title
 	h.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -83,3 +99,28 @@ func _result(text: String, ambush := false, go_title := "Onward", go_desc := "Th
 	go.grab_focus.call_deferred()
 	if Run.autoplay:
 		get_tree().create_timer(1.2).timeout.connect(go.emit_signal.bind("pressed"))
+
+
+func _process(delta: float) -> void:
+	_t += delta
+	if _ambient:
+		_ambient.queue_redraw()
+		_art.queue_redraw()
+
+
+## Each event paints its own scene: override these.
+func _draw_ambient(_ci: CanvasItem, _sz: Vector2, _time: float) -> void:
+	pass
+
+
+func _draw_art(_ci: CanvasItem, _sz: Vector2, _time: float) -> void:
+	pass
+
+
+## A filled ellipse (Godot has no draw_ellipse).
+static func _ellipse(ci: CanvasItem, c: Vector2, r: Vector2, col: Color) -> void:
+	var pts := PackedVector2Array()
+	for k in 32:
+		var a := TAU * k / 32.0
+		pts.append(c + Vector2(cos(a) * r.x, sin(a) * r.y))
+	ci.draw_colored_polygon(pts, col)

@@ -134,6 +134,9 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	theme = Style.make_theme()
 
+	if not ambush:   # tonight's numbers for the dawn recap
+		Run.recap = {"flame": Run.flame, "banished": Run.spirits_banished,
+			"essence": Profile.essence, "hits": 0, "low": Run.flame}
 	board = Board.new()
 	board.layout_seed = Run.layout_seed
 	board.stop = Run.current_stop()
@@ -703,6 +706,8 @@ func _process(delta: float) -> void:
 	_glare.color = Color(1.0, 0.85, 0.45, 0.22 * _glare_k)
 	if sear > 0.0 and phase != Phase.DONE:
 		Run.flame = maxf(0.0, Run.flame - sear * delta)
+		if Run.recap.has("low"):
+			Run.recap["low"] = minf(Run.recap["low"], Run.flame)
 		_sear_tick -= delta
 		if _sear_tick <= 0.0:
 			_sear_tick = 1.0
@@ -990,6 +995,9 @@ func _hurt_fire(sp, sfx := "hurt") -> void:
 			AudioDirector.play_sfx("chime", -8.0)
 			return
 	Run.flame = maxf(0.0, Run.flame - dmg)
+	if not ambush and Run.recap.has("hits"):
+		Run.recap["hits"] += 1
+		Run.recap["low"] = minf(Run.recap["low"], Run.flame)
 	char_unit.hurt()
 	_flame_bar.flash()
 	_add_fx("ring", Vector2.ZERO, Color("#8fa0ff"), 110.0)

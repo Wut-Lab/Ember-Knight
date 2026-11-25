@@ -374,6 +374,10 @@ func _open_journey() -> void:
 	add_child(_leaders)
 	_journey.reset_size()
 	_journey.position = (size - _journey.size) / 2
+	for n in [_dim, _journey, _leaders]:
+		if n:
+			n.modulate.a = 0.0
+			create_tween().tween_property(n, "modulate:a", 1.0, 0.18)
 	back.grab_focus()
 
 

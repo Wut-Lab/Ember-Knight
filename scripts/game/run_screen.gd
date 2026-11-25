@@ -50,9 +50,17 @@ func _ready() -> void:
 
 
 func _show(screen: Control, fade := true) -> void:
-	if fade:
+	# Battles swap the backdrop, so they dip through black. Every other screen
+	# crossfades over the night sky: the old one dims out, the new one fades in.
+	var dip := fade and (screen is Battle or _screen is Battle or _screen == null)
+	_fade.mouse_filter = Control.MOUSE_FILTER_STOP   # no clicks mid-transition
+	if dip:
 		var t := create_tween()
 		t.tween_property(_fade, "color:a", 1.0, 0.35)
+		await t.finished
+	elif fade:
+		var t := create_tween()
+		t.tween_property(_screen, "modulate:a", 0.0, 0.22)
 		await t.finished
 	if _screen:
 		_screen.queue_free()
@@ -62,7 +70,12 @@ func _show(screen: Control, fade := true) -> void:
 	_sky.visible = not (screen is Battle)
 	_sky.dawn = screen is DawnScreen
 	var t2 := create_tween()
-	t2.tween_property(_fade, "color:a", 0.0, 0.45)
+	if fade and not dip:
+		screen.modulate.a = 0.0
+		t2.tween_property(screen, "modulate:a", 1.0, 0.32).set_ease(Tween.EASE_OUT)
+	else:
+		t2.tween_property(_fade, "color:a", 0.0, 0.45)
+	t2.finished.connect(func(): _fade.mouse_filter = Control.MOUSE_FILTER_IGNORE)
 
 
 func _make_map() -> Control:

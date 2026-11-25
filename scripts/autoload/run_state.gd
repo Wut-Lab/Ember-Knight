@@ -26,6 +26,7 @@ var perks: Dictionary = {}       ## lull permanent rewards: id (or "hone_<kind>"
 var night_flames: Array = []   ## flame left at the end of each night cleared
 var riders: Array = []         ## Defs.CARAVAN ids riding along this run
 var rites_used := false        ## Paolo, the Priest: Last Rites spent this run
+var recap: Dictionary = {}     ## tonight's numbers for the dawn recap (set by Battle)
 var cook_healed := 0.0        ## flame the Cook actually healed this dawn (for the dawn screen)
 var spare_parts := 0           ## Terry, the Tinker: parts banked toward the next free reroll
 var riders_picked := false     ## the seat pick has been made this run

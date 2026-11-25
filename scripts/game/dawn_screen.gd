@@ -8,6 +8,10 @@ signal continued
 const Defs := preload("res://scripts/game/defs.gd")
 const Style := preload("res://scripts/ui/ui_style.gd")
 const ChoiceCard := preload("res://scripts/ui/choice_card.gd")
+const DrawProxy := preload("res://scripts/ui/draw_proxy.gd")
+const Icons := preload("res://scripts/game/icons.gd")
+const RECAP_SIZE := Vector2(780, 104)
+const DAWN := Color("#ffd58f")
 
 
 func _ready() -> void:
@@ -27,6 +31,8 @@ func _ready() -> void:
 	h.add_theme_font_size_override("font_size", 64)
 	h.add_theme_color_override("font_color", Color("#ffd58f"))
 	root.add_child(h)
+	if not Run.recap.is_empty() and not Run.night_flames.is_empty():
+		root.add_child(_recap_strip())
 	var sub := Label.new()
 	var healed := Run.dawn_heal() + (Defs.BOSS_DAWN_HEAL if Defs.ends_leg(Run.night) else 0.0)
 	sub.text = "The spirits fade with the sunrise. Char's flame recovers (+%d)." % roundi(healed)
@@ -248,3 +254,87 @@ static func _tally(faces: Array) -> String:
 			if n > 0:
 				parts.append("%d %s%s" % [n, Defs.FACE_INFO[f]["name"], up])
 	return ", ".join(parts)
+
+
+# ------------------------------------------------------------ night recap
+var _recap: Array = []   ## [{icon, value, prefix, label, note}]
+var _recap_t := 0.0
+var _recap_head := ""
+
+
+## A strip summing up the night just survived, cells revealed one by one.
+func _recap_strip() -> Control:
+	var r: Dictionary = Run.recap
+	var end_flame: float = Run.night_flames.back()
+	var lost := roundi(r["flame"] - end_flame)
+	_recap_head = "NIGHT %d  ·  %s" % [Run.night + 1, Defs.STOPS.get(Run.current_stop(), {}).get("name", "").to_upper()]
+	_recap = [
+		{"icon": "flame", "value": absi(lost), "prefix": "−" if lost >= 0 else "+", "label": "flame lost" if lost >= 0 else "flame gained",
+			"note": "struck %d×" % r["hits"] if r["hits"] > 0 else "untouched!"},
+		{"icon": "wisp", "value": Run.spirits_banished - int(r["banished"]), "prefix": "", "label": "spirits banished", "note": ""},
+		{"icon": "gem", "value": Profile.essence - int(r["essence"]), "prefix": "+", "label": "Essence earned", "note": ""},
+		{"icon": "hourglass", "value": roundi(r["low"]), "prefix": "", "label": "closest call", "note": "lowest flame"},
+	]
+	var p := DrawProxy.new()
+	p.custom_minimum_size = RECAP_SIZE
+	p.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	p.draw_fn = _draw_recap
+	var tw := p.create_tween()
+	tw.tween_method(func(v: float):
+		_recap_t = v
+		p.queue_redraw(), 0.0, 1.6, 1.6)
+	return p
+
+
+func _draw_recap(ci: CanvasItem) -> void:
+	var sz := RECAP_SIZE
+	var bg := StyleBoxFlat.new()
+	bg.bg_color = Color(Style.CARD, 0.82)
+	bg.border_color = Color(DAWN, 0.4)
+	bg.set_border_width_all(2)
+	bg.set_corner_radius_all(10)
+	bg.anti_aliasing = true
+	ci.draw_style_box(bg, Rect2(Vector2.ZERO, sz))
+	var body: Font = Style.BODY_MEDIUM
+	ci.draw_string(body, Vector2(0, 22), _recap_head, HORIZONTAL_ALIGNMENT_CENTER, sz.x, 14, Style.MUTE)
+	var cw := sz.x / _recap.size()
+	for k in _recap.size():
+		var cell: Dictionary = _recap[k]
+		var a := clampf((_recap_t - k * 0.18) / 0.35, 0.0, 1.0)
+		if a <= 0.0:
+			continue
+		var x0 := k * cw
+		if k > 0:
+			ci.draw_line(Vector2(x0, 34), Vector2(x0, sz.y - 14), Color(Style.LINE, 0.8), 1.0)
+		var ic := Vector2(x0 + 34, 62 - (1.0 - a) * 8.0)
+		_recap_icon(ci, cell["icon"], ic, Color(DAWN, a))
+		var shown := roundi(cell["value"] * clampf((_recap_t - k * 0.18) / 0.7, 0.0, 1.0))
+		var num: String = cell["prefix"] + str(shown) if shown != 0 or cell["prefix"] == "" else "0"
+		ci.draw_string(Style.display_font(), Vector2(x0 + 62, 65), num, HORIZONTAL_ALIGNMENT_LEFT, -1, 34, Color(Style.ACCENT, a))
+		ci.draw_string(body, Vector2(x0 + 62, 82), cell["label"], HORIZONTAL_ALIGNMENT_LEFT, cw - 66, 15, Color(Style.FG, a))
+		if cell["note"] != "":
+			ci.draw_string(body, Vector2(x0 + 62, 96), cell["note"], HORIZONTAL_ALIGNMENT_LEFT, cw - 66, 13, Color(Style.MUTE, a))
+
+
+func _recap_icon(ci: CanvasItem, kind: String, c: Vector2, col: Color) -> void:
+	match kind:
+		"flame":
+			Icons.draw(ci, "torch", c, 40.0, Color(Style.ACCENT2, col.a))
+		"wisp":   # a little spirit with a trailing tail, faded out
+			var pts := PackedVector2Array()
+			for k in 9:
+				var t := k / 8.0
+				pts.append(c + Vector2(-t * 16.0 + 4.0, 6.0 + t * 10.0 + sin(t * 5.0) * 3.0))
+			ci.draw_polyline(pts, Color(col, col.a * 0.5), 4.0, true)
+			ci.draw_circle(c + Vector2(4, -2), 11.0, Color(col, col.a * 0.25))
+			ci.draw_circle(c + Vector2(4, -2), 7.5, col)
+			ci.draw_circle(c + Vector2(1.5, -3), 1.4, Color(Style.CARD, col.a))
+			ci.draw_circle(c + Vector2(6.5, -3), 1.4, Color(Style.CARD, col.a))
+		"gem":   # an Essence shard
+			var g := PackedVector2Array([c + Vector2(0, -14), c + Vector2(11, -3), c + Vector2(0, 14), c + Vector2(-11, -3)])
+			ci.draw_colored_polygon(g, Color("#c9a8ff", col.a))
+			ci.draw_line(c + Vector2(-11, -3), c + Vector2(11, -3), Color(1, 1, 1, col.a * 0.5), 1.5, true)
+			ci.draw_line(c + Vector2(0, -14), c + Vector2(0, 14), Color(1, 1, 1, col.a * 0.3), 1.5, true)
+		_:
+			Icons.draw(ci, kind, c, 38.0, col)

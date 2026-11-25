@@ -30,6 +30,8 @@ func _ready() -> void:
 	add_child(dim)
 	resized.connect(_layout)
 	_show_list()
+	modulate.a = 0.0
+	create_tween().tween_property(self, "modulate:a", 1.0, 0.18)
 
 
 func _unhandled_input(event: InputEvent) -> void:
