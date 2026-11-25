@@ -64,6 +64,7 @@ func _walk_on() -> void:
 const EMBER := Color("#ff9a4c")
 const ORE := Color("#ff7a2a")
 const DUST := Color("#9a8a78")
+const Woods := preload("res://scripts/game/woods_event.gd")   # shared tree silhouettes and fog
 
 
 func _process(delta: float) -> void:
@@ -103,6 +104,11 @@ func _draw_art(ci: CanvasItem, sz: Vector2, time: float) -> void:
 	var since := _t - _swing
 	if since >= 0.0 and since < 0.4:
 		shake = Vector2(sin(since * 80.0), cos(since * 70.0)) * 2.0 * (1.0 - since / 0.4)
+	# The forest it hides in: two rows of pine and oak silhouettes behind the
+	# hill, the far row paler in the haze, with fog drifting between.
+	Woods._silhouettes(ci, sz, ground - 40.0, 1.0, Color("#1a2230"), 5.0, time)
+	Woods._fog(ci, sz, ground - 70.0, time * 0.9, 0.04)
+	Woods._silhouettes(ci, sz, ground - 22.0, 1.45, Color("#12181d"), 29.0, time)
 	# The hillside: a lumpy rock mound, warm where the mine's glow reaches.
 	var hill := PackedVector2Array([Vector2(-10, ground)])
 	for k in range(1, 24):   # (skip the ends: they'd repeat the corner points)
@@ -200,9 +206,59 @@ func _draw_art(ci: CanvasItem, sz: Vector2, time: float) -> void:
 	ci.draw_line(pk, head, Color("#6a4a2e"), 3.0, true)
 	var dir := (head - pk).normalized().orthogonal()
 	ci.draw_line(head - dir * 14.0, head + dir * 12.0 + (head - pk).normalized() * 4.0, Color("#8a8f94"), 3.0, true)
+	# Trees closing in on either side, in front: 2.5D pines and an oak,
+	# shadowed on the outside and touched by the mine's glow on the inside.
+	_near_pine(ci, Vector2(28, ground + 6), 96.0, -1.0, g, time)
+	_near_oak(ci, Vector2(70, ground + 8), 62.0, -1.0, g, time)
+	_near_pine(ci, Vector2(sz.x - 24, ground + 6), 104.0, 1.0, g, time)
+	_near_pine(ci, Vector2(sz.x - 66, ground + 8), 74.0, 1.0, g, time)
+	Woods._fog(ci, sz, ground - 2.0, time * 0.7 + 3.0, 0.045)
+	# Faint lights dancing round the clearing: little wandering motes, warm
+	# near the mine, cool out among the trees.
+	for k in 7:
+		var c := Vector2(fposmod(k * 71.0 + 30.0, sz.x), ground - 30.0 - fposmod(k * 23.0, 70.0))
+		var p := c + Vector2(sin(time * (0.7 + k * 0.13) + k) * 22.0, sin(time * (1.3 + k * 0.11) + k * 2.0) * 12.0)
+		var near := clampf(1.0 - absf(p.x - cx) / 160.0, 0.0, 1.0)
+		var col := Color("#cfe2ff").lerp(Color("#ffd27a"), near)
+		var tw := 0.5 + 0.5 * sin(time * 3.1 + k * 1.7)
+		for j in 3:
+			ci.draw_circle(p, 3.0 + j * 4.0, Color(col, 0.04 * tw))
+		ci.draw_circle(p, 1.6, Color(col, 0.55 * tw))
 	# Dust trickling from the lintel: more the deeper you've dug.
 	var trickle := 2 + _digs * 3
 	for k in trickle:
 		var life := fposmod(time * 0.9 + k * 0.37, 1.0)
 		var p := Vector2(cx - 50 + fposmod(k * 29.0, 100.0), ground - 94 + life * 60.0)
 		ci.draw_circle(p, 1.3, Color(DUST, 0.6 * (1.0 - life)))
+
+
+## A near pine at the edge of the clearing: a trunk and drooping tiers with a
+## dark outer side and a warm-lit inner side (side = -1 on the left).
+static func _near_pine(ci: CanvasItem, base: Vector2, h: float, side: float, g: float, time: float) -> void:
+	var dark := Color("#0c1110")
+	var mid := Color("#152019")
+	var warm := Color("#4a3a22").lerp(Color("#1a1f1a"), 1.0 - g)
+	ci.draw_rect(Rect2(base.x - 3, base.y - h * 0.25, 6, h * 0.25), Color("#1a120c"))
+	for t in 5:
+		var ty := base.y - h * (0.16 + t * 0.17)
+		var tw := h * (0.3 - t * 0.05)
+		var tip := Vector2(base.x + sin(time * 0.5 + base.x) * 0.8 * (t + 1), ty - h * 0.2)
+		ci.draw_colored_polygon(PackedVector2Array([Vector2(base.x - tw, ty + h * 0.03), Vector2(base.x + tw, ty + h * 0.03), tip]), mid)
+		var outer := Vector2(base.x + side * tw, ty + h * 0.03)
+		var inner := Vector2(base.x - side * tw, ty + h * 0.03)
+		ci.draw_colored_polygon(PackedVector2Array([Vector2(base.x, ty + h * 0.03), outer, tip]), dark)
+		ci.draw_line(inner, tip, Color(warm, 0.9), 1.5, true)
+
+
+## A near oak: a short trunk and a broad lumpy crown, lit on its inner side.
+static func _near_oak(ci: CanvasItem, base: Vector2, h: float, side: float, g: float, time: float) -> void:
+	var warm := Color("#4a3a22").lerp(Color("#1a1f1a"), 1.0 - g)
+	ci.draw_rect(Rect2(base.x - 4, base.y - h * 0.45, 8, h * 0.45), Color("#1e150e"))
+	ci.draw_rect(Rect2(base.x - 4 if side > 0 else base.x + 1, base.y - h * 0.45, 3, h * 0.45), Color(warm, 0.6))
+	var c := Vector2(base.x + sin(time * 0.4 + base.x) * 1.0, base.y - h * 0.7)
+	for b in 6:
+		var off := Vector2(cos(b * 1.3) * h * 0.26, sin(b * 1.9) * h * 0.14)
+		_ellipse(ci, c + off, Vector2(h * 0.24, h * 0.18), Color("#122018"))
+	for b in 3:   # the lit inner lobes
+		var off := Vector2(-side * h * (0.1 + b * 0.08), -h * 0.08 + b * h * 0.07)
+		_ellipse(ci, c + off, Vector2(h * 0.14, h * 0.1), Color(warm, 0.55))
