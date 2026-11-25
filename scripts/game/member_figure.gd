@@ -10,6 +10,9 @@ var board
 var _t := 0.0
 var _pulse := 0.0   # 1 right after react(), fading
 var _flip := 1.0
+var _outline := false   # first pass: every solid shape drawn fat and dark, so only the silhouette shows
+const OUTLINE := Color("#1a110c", 0.9)
+var _u := 1.0       # current draw scale, so edge feathering stays ~1 screen pixel
 
 
 func setup(k: String, w: Vector2, bd) -> void:
@@ -32,7 +35,7 @@ func _process(delta: float) -> void:
 
 
 # ------------------------------------------------------------ primitives
-func _ell(c: Vector2, rx: float, ry: float, from := 0.0, to := TAU, n := 22) -> PackedVector2Array:
+func _ell(c: Vector2, rx: float, ry: float, from := 0.0, to := TAU, n := 36) -> PackedVector2Array:
 	var pts := PackedVector2Array()
 	for k in n + 1:
 		var a := lerpf(from, to, float(k) / n)
@@ -41,21 +44,83 @@ func _ell(c: Vector2, rx: float, ry: float, from := 0.0, to := TAU, n := 22) -> 
 
 
 func _e(c: Vector2, rx: float, ry: float, col: Color) -> void:
-	draw_colored_polygon(_ell(c, rx, ry), col)
+	if _outline:
+		if col.a >= 0.6:
+			var o := 1.3 / _u
+			draw_colored_polygon(_ell(c, rx + o, ry + o), OUTLINE)
+		return
+	var pts := _ell(c, rx, ry)
+	draw_colored_polygon(pts, col)
+	_soft_edge(pts, col)
 
 
-## A rounded, fire-lit shape: shadowed back, lit front, a small sheen.
+## Fills have hard, stair-stepped edges; a hairline of the same colour round
+## them, antialiased, smooths the silhouette.
+func _soft_edge(pts: PackedVector2Array, col: Color) -> void:
+	if col.a < 0.6:
+		return
+	var ring := pts.duplicate()
+	if ring[0] != ring[ring.size() - 1]:
+		ring.append(ring[0])
+	draw_polyline(ring, col, 1.1 / _u, true)
+
+
+## A rounded, fire-lit shape: a soft ramp from a shadowed back to a lit front,
+## and a gentle sheen toward the fire.
 func _blob(c: Vector2, rx: float, ry: float, col: Color) -> void:
-	_e(c, rx, ry, col.darkened(0.45))
-	_e(c + Vector2(rx * 0.16, -ry * 0.08), rx * 0.82, ry * 0.88, col)
-	_e(c + Vector2(rx * 0.4, -ry * 0.36), rx * 0.3, ry * 0.26, col.lightened(0.28))
+	if _outline:
+		_e(c, rx, ry, col)
+		return
+	var dark := col.darkened(0.45)
+	var steps := 4
+	for k in steps + 1:
+		var f := float(k) / steps
+		var sc := lerpf(1.0, 0.8, f)
+		_e(c + Vector2(rx * 0.18, -ry * 0.1) * f, rx * sc, ry * lerpf(1.0, 0.86, f), dark.lerp(col, smoothstep(0.0, 1.0, f)))
+	var hi := col.lightened(0.3)
+	for k in 3:
+		var f := float(k) / 2.0
+		draw_colored_polygon(_ell(c + Vector2(rx * 0.38, -ry * 0.34), rx * lerpf(0.42, 0.22, f), ry * lerpf(0.36, 0.18, f)), Color(hi, 0.35 + 0.3 * f))
 
 
 func _poly(pts: Array, col: Color) -> void:
-	draw_colored_polygon(PackedVector2Array(pts), col)
+	var p := PackedVector2Array(pts)
+	if _outline:
+		if col.a >= 0.6:
+			var ring := p.duplicate()
+			ring.append(p[0])
+			draw_colored_polygon(p, OUTLINE)
+			draw_polyline(ring, OUTLINE, 2.6 / _u, true)
+		return
+	draw_colored_polygon(p, col)
+	_soft_edge(p, col)
+
+
+func _dw_circle(c: Vector2, r: float, col: Color) -> void:
+	if not _outline:
+		draw_circle(c, r, col)
+
+
+func _dw_arc(c: Vector2, r: float, a0: float, a1: float, n: int, col: Color, w := -1.0, aa := false) -> void:
+	if not _outline:
+		draw_arc(c, r, a0, a1, n, col, w, aa)
+
+
+func _dw_polyline(pts: PackedVector2Array, col: Color, w := -1.0, aa := false) -> void:
+	if not _outline:
+		draw_polyline(pts, col, w, aa)
+
+
+func _dw_rect(r: Rect2, col: Color, filled := true, w := -1.0) -> void:
+	if not _outline:
+		draw_rect(r, col, filled, w)
 
 
 func _line(a: Vector2, b: Vector2, col: Color, w: float) -> void:
+	if _outline:
+		if col.a >= 0.6 and w >= 1.2:
+			draw_line(a, b, OUTLINE, w + 2.6 / _u, true)
+		return
 	draw_line(a, b, col, w, true)
 
 
@@ -88,6 +153,7 @@ func _ring(u: float) -> void:
 # ------------------------------------------------------------ draw
 func _draw() -> void:
 	var u: float = board.view_scale * 1.6
+	_u = u
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2(u * _flip, u))
 	var calm := kind == "lamplighter"   # his lamp fires often: the lantern flares instead
 	if not calm:
@@ -95,6 +161,13 @@ func _draw() -> void:
 	_e(Vector2(2, 0), 22.0, 6.5, Color(0, 0, 0, 0.32))   # shadow
 	var hop := 0.0 if calm else -sin(PI * _pulse) * 5.0
 	draw_set_transform(Vector2(0, hop * u), 0.0, Vector2(u * _flip, u))
+	for pass_i in 2:   # outline pass, then the figure itself
+		_outline = pass_i == 0
+		_draw_member()
+	_outline = false
+
+
+func _draw_member() -> void:
 	match kind:
 		"cook": _draw_cook()
 		"tinker": _draw_tinker()
@@ -116,7 +189,7 @@ func _draw_cook() -> void:
 	_blob(Vector2(5, -12), 9.0, 5.0, Color("#4d5a73"))   # lap
 	# the pot
 	var p := Vector2(27, -6)
-	draw_circle(p + Vector2(0, 5), 4.0 + sin(_t * 9.0) * 0.6, Color("#ff9a3a", 0.85))
+	_dw_circle(p + Vector2(0, 5), 4.0 + sin(_t * 9.0) * 0.6, Color("#ff9a3a", 0.85))
 	_line(p + Vector2(-9, 6), p + Vector2(0, -16), Color("#3b3633"), 1.6)
 	_line(p + Vector2(9, 6), p + Vector2(0, -16), Color("#3b3633"), 1.6)
 	_blob(p + Vector2(0, -4), 9.0, 7.0, Color("#3a3634"))
@@ -125,7 +198,7 @@ func _draw_cook() -> void:
 	for i in 3:   # steam
 		var k := fmod(_t * 0.5 + i / 3.0, 1.0)
 		var s := p + Vector2(-4 + i * 4 + sin(_t * 2.0 + i) * 2.5, -13 - k * 18)
-		draw_circle(s, 2.0 + k * 2.5, Color(1, 1, 1, 0.22 * (1.0 - k)))
+		_dw_circle(s, 2.0 + k * 2.5, Color(1, 1, 1, 0.22 * (1.0 - k)))
 	var a := _t * 2.6
 	var hand := p + Vector2(cos(a) * 4.0 - 2.0, -16 + sin(a) * 1.2)
 	_line(hand, p + Vector2(cos(a) * 3.0, -10 + sin(a) * 1.0), Color("#b98a5a"), 1.6)
@@ -156,19 +229,19 @@ func _draw_tinker() -> void:
 		var a := rot + TAU * k / 16.0
 		pts.append(g + Vector2.from_angle(a) * (6.5 if k % 2 == 0 else 4.8))
 	_poly(pts, Color("#b8863a"))
-	draw_circle(g, 3.6, Color("#d9a94e"))
-	draw_circle(g, 1.4, Color("#5a3d1a"))
+	_dw_circle(g, 3.6, Color("#d9a94e"))
+	_dw_circle(g, 1.4, Color("#5a3d1a"))
 	if fmod(_t, 2.3) < 0.18:
 		for i in 4:
 			var d := Vector2.from_angle(i * 1.7 + _t * 3.0) * (6.0 + fmod(_t, 2.3) * 40.0)
-			draw_circle(g + d, 0.9, Color("#ffe6a0"))
+			_dw_circle(g + d, 0.9, Color("#ffe6a0"))
 	# cap with goggles
 	_e(head + Vector2(0, -4), 7.6, 5.0, Color("#5b3d28"))
 	_e(head + Vector2(5, -4), 4.5, 1.6, Color("#4a311f"))
-	draw_circle(head + Vector2(2, -3), 2.2, Color("#c99b45"))
-	draw_circle(head + Vector2(5.5, -3), 2.2, Color("#c99b45"))
-	draw_circle(head + Vector2(2, -3), 1.3, Color("#9fd7e8"))
-	draw_circle(head + Vector2(5.5, -3), 1.3, Color("#9fd7e8"))
+	_dw_circle(head + Vector2(2, -3), 2.2, Color("#c99b45"))
+	_dw_circle(head + Vector2(5.5, -3), 2.2, Color("#c99b45"))
+	_dw_circle(head + Vector2(2, -3), 1.3, Color("#9fd7e8"))
+	_dw_circle(head + Vector2(5.5, -3), 1.3, Color("#9fd7e8"))
 
 
 ## Carl: curled up asleep on a crate; ears twitch now and then.
@@ -187,7 +260,7 @@ func _draw_cat() -> void:
 	for k in 9:
 		var a := lerpf(2.6, 5.2, k / 8.0)
 		tp.append(Vector2(-1, -22) + Vector2(cos(a) * 11.0, sin(a) * 4.5 + sin(tail + k * 0.5) * 0.5 * k / 8.0))
-	draw_polyline(PackedVector2Array(tp), fur.darkened(0.35), 3.2, true)
+	_dw_polyline(PackedVector2Array(tp), fur.darkened(0.35), 3.2, true)
 	_blob(Vector2(-1, -24), 10.5, 5.5, fur)
 	for x in [-6, -2, 2]:   # stripes
 		_line(Vector2(x, -29), Vector2(x + 1.5, -25), fur.darkened(0.35), 1.2)
@@ -200,13 +273,14 @@ func _draw_cat() -> void:
 	_poly([hd + Vector2(1.8, -3.5), hd + Vector2(3 + tw, -7), hd + Vector2(4, -3)], Color("#e8a0a0"))
 	_blob(hd, 5.5, 4.6, fur)
 	_e(hd + Vector2(3.5, 1.2), 2.4, 1.6, Color("#f0d4b0"))
-	draw_circle(hd + Vector2(5.4, 0.6), 0.8, Color("#d77"))
+	_dw_circle(hd + Vector2(5.4, 0.6), 0.8, Color("#d77"))
 	if awake:
-		draw_circle(hd + Vector2(2.5, -1.2), 1.1, Color("#9be05a"))
+		_dw_circle(hd + Vector2(2.5, -1.2), 1.1, Color("#9be05a"))
 	else:
 		_line(hd + Vector2(1.2, -1.0), hd + Vector2(3.6, -0.8), Color("#3a2414"), 0.8)
 		var z := fmod(_t * 0.4, 1.0)
-		draw_string(ThemeDB.fallback_font, hd + Vector2(-2 + z * 4, -10 - z * 10), "z", HORIZONTAL_ALIGNMENT_LEFT, -1, 8, Color(1, 1, 1, 0.5 * (1.0 - z)))
+		if not _outline:
+			draw_string(ThemeDB.fallback_font, hd + Vector2(-2 + z * 4, -10 - z * 10), "z", HORIZONTAL_ALIGNMENT_LEFT, -1, 8, Color(1, 1, 1, 0.5 * (1.0 - z)))
 
 
 ## Hella: lying by the fire, head up, tail thumping; barks on react().
@@ -225,14 +299,14 @@ func _draw_hound() -> void:
 	_line(Vector2(10, -10), hd + Vector2(-1, 4), Color("#b8322a"), 2.0)   # collar
 	_blob(hd, 6.5, 5.5, fur)
 	_blob(hd + Vector2(6.5, 2), 4.2, 2.8, Color("#c89868"))
-	draw_circle(hd + Vector2(10.5, 0.8), 1.4, Color("#1c1210"))
-	draw_circle(hd + Vector2(2.5, -1.8), 1.0, Color("#1c1210"))
+	_dw_circle(hd + Vector2(10.5, 0.8), 1.4, Color("#1c1210"))
+	_dw_circle(hd + Vector2(2.5, -1.8), 1.0, Color("#1c1210"))
 	_e(hd + Vector2(-2.5, 1.5), 2.6, 4.8, fur.darkened(0.4))   # floppy ear
 	if _pulse > 0.4:   # bark
 		_poly([hd + Vector2(5, 4), hd + Vector2(10, 4), hd + Vector2(8, 7)], Color("#5a1f1f"))
 		for i in 3:
 			var r := 6.0 + i * 4.0 + (1.0 - _pulse) * 10.0
-			draw_arc(hd + Vector2(12, 1), r, -0.6, 0.6, 8, Color("#ffd58f", _pulse * 0.8), 1.2, true)
+			_dw_arc(hd + Vector2(12, 1), r, -0.6, 0.6, 8, Color("#ffd58f", _pulse * 0.8), 1.2, true)
 
 
 ## Leopold: tall in a top hat, his lamplighter's pole, a small hand lantern.
@@ -250,10 +324,10 @@ func _draw_lamplighter() -> void:
 	var pole_hand := Vector2(-6, -26)
 	var head := _person(Vector2(0, -18), coat, lh, pole_hand, 0.85)
 	_line(Vector2(-9, -2), Vector2(-3, -60), Color("#6b4a2a"), 1.6)   # pole
-	draw_arc(Vector2(-1.5, -60), 2.5, PI, TAU + 0.6, 8, Color("#c99b45"), 1.2, true)
+	_dw_arc(Vector2(-1.5, -60), 2.5, PI, TAU + 0.6, 8, Color("#c99b45"), 1.2, true)
 	_line(lh, lc + Vector2(0, -3.5), Color("#333"), 0.8)
 	var glow := 0.55 + 0.1 * sin(_t * 13.0) + _pulse * 0.5
-	draw_circle(lc, 9.0, Color("#ffb04a", 0.16 * glow))
+	_dw_circle(lc, 9.0, Color("#ffb04a", 0.16 * glow))
 	_poly([lc + Vector2(-3, -3.5), lc + Vector2(3, -3.5), lc + Vector2(3, 3), lc + Vector2(-3, 3)], Color("#2a2622"))
 	_poly([lc + Vector2(-2, -2.5), lc + Vector2(2, -2.5), lc + Vector2(2, 2), lc + Vector2(-2, 2)], Color("#ffd27a").lerp(Color.WHITE, _pulse * 0.6))
 	_poly([lc + Vector2(-4, -3.5), lc + Vector2(4, -3.5), lc + Vector2(0, -6)], Color("#2a2622"))
@@ -279,7 +353,7 @@ func _draw_smith() -> void:
 	_poly([an + Vector2(-8, -8), an + Vector2(7, -8), an + Vector2(13, -11), an + Vector2(7, -12), an + Vector2(-8, -12)], Color("#55565c"))
 	_poly([an + Vector2(-8, -12), an + Vector2(7, -12), an + Vector2(13, -11), an + Vector2(6, -13.5), an + Vector2(-7, -13.5)], Color("#8a8c94"))
 	_e(an + Vector2(0, -13.5), 4.0, 1.2, Color("#ff8a2a"))
-	draw_circle(an + Vector2(0, -14), 5.0, Color("#ff9a3a", 0.18))
+	_dw_circle(an + Vector2(0, -14), 5.0, Color("#ff9a3a", 0.18))
 	var sh := Vector2(2, -27)
 	var hand := sh + Vector2.from_angle(ang) * 10.0 + Vector2(4, 2)
 	var head := _person(Vector2(0, -12), Color("#7a5236"), hand, an + Vector2(-6, -15), 1.25)
@@ -293,7 +367,7 @@ func _draw_smith() -> void:
 	if strike or _pulse > 0.5:
 		for i in 6:
 			var d := Vector2.from_angle(-PI * (0.1 + 0.8 * i / 5.0)) * (5.0 + (cyc - 1.35) * 90.0)
-			draw_circle(an + Vector2(0, -14) + d, 0.9, Color("#ffd27a"))
+			_dw_circle(an + Vector2(0, -14) + d, 0.9, Color("#ffd27a"))
 
 
 ## Paolo: a hooded priest in a grey-brown robe, swinging a smoking censer on
@@ -315,10 +389,10 @@ func _draw_priest() -> void:
 	front.append_array(_ell(Vector2(2.5, -1), 9.0, 3.0, 0.0, PI * 0.62, 10))
 	_poly(Array(front), robe)
 	_poly([Vector2(5.5, -27), Vector2(7, -27), Vector2(10, -3), Vector2(7.5, -2)], robe.lightened(0.22))
-	draw_polyline(_ell(Vector2(0.5, -1), 11.0, 3.4, 0.0, PI, 14), robe.darkened(0.6), 1.0, true)   # hem edge
+	_dw_polyline(_ell(Vector2(0.5, -1), 11.0, 3.4, 0.0, PI, 14), robe.darkened(0.6), 1.0, true)   # hem edge
 	_line(Vector2(-6, -15), Vector2(8.5, -15), Color("#c9b48a"), 1.5)   # rope belt
 	_line(Vector2(6, -15), Vector2(7.5, -5), Color("#c9b48a"), 1.0)
-	draw_circle(Vector2(7.6, -4.5), 1.0, Color("#c9b48a"))
+	_dw_circle(Vector2(7.6, -4.5), 1.0, Color("#c9b48a"))
 	var swing := sin(_t * 1.8) * 0.5
 	var hand := Vector2(11, -19)
 	var cz := hand + Vector2.from_angle(PI / 2 - swing) * 13.0
@@ -329,9 +403,9 @@ func _draw_priest() -> void:
 	_e(head + Vector2(3.2, 1.2), 4.4, 5.6, Color("#1e1916"))           # shadow inside the hood
 	_e(head + Vector2(4.0, 1.6), 3.4, 4.6, skin.darkened(0.25))
 	_e(head + Vector2(4.6, 1.2), 2.4, 3.6, skin)
-	draw_circle(head + Vector2(5.2, 0.4), 0.9, Color("#2a1a14"))       # eye
+	_dw_circle(head + Vector2(5.2, 0.4), 0.9, Color("#2a1a14"))       # eye
 	_e(head + Vector2(7.0, 2.2), 1.3, 1.1, skin.darkened(0.15))        # nose
-	draw_arc(head + Vector2(3.2, 1.2), 5.0, -PI * 0.55, PI * 0.5, 12, robe.lightened(0.3), 1.2, true)   # lit hood rim
+	_dw_arc(head + Vector2(3.2, 1.2), 5.0, -PI * 0.55, PI * 0.5, 12, robe.lightened(0.3), 1.2, true)   # lit hood rim
 	# censer: chain, a little brass pot with a lid, its coals and smoke
 	_line(hand, cz + Vector2(0, -4), Color("#8a7a5a"), 0.7)
 	var brass := Color("#b8902e")
@@ -339,8 +413,8 @@ func _draw_priest() -> void:
 	_e(cz + Vector2(0.6, 0.2), 3.0, 2.6, brass)
 	_e(cz + Vector2(1.4, -0.6), 1.0, 0.8, brass.lightened(0.5))
 	_poly([cz + Vector2(-2.8, -2.0), cz + Vector2(2.8, -2.0), cz + Vector2(0.4, -5.2)], Color("#d9ae4a"))
-	draw_circle(cz + Vector2(0, 0.5), 5.0, Color("#ff9a3a", 0.0 if spent else 0.12 + 0.25 * _pulse))
+	_dw_circle(cz + Vector2(0, 0.5), 5.0, Color("#ff9a3a", 0.0 if spent else 0.12 + 0.25 * _pulse))
 	for k in 3:
 		var f := fmod(_t * 0.35 + k / 3.0, 1.0)
 		var sp := cz + Vector2(sin(_t + k * 2.0) * 3.0 + f * 4.0, -5.0 - f * 22.0)
-		draw_circle(sp, 1.5 + f * 3.0, Color(0.85, 0.82, 0.78, (0.12 if spent else 0.3) * (1.0 - f)))
+		_dw_circle(sp, 1.5 + f * 3.0, Color(0.85, 0.82, 0.78, (0.12 if spent else 0.3) * (1.0 - f)))
