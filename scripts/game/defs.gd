@@ -944,16 +944,17 @@ const GATE_COOLDOWN := 4.0
 
 
 # ------------------------------------------------------------ road events
-## Fog Cloud: may roll after the player picks a stop, from night 2 on.
-const FOG_CHANCE := 0.3
+## From night 2 on, after the player picks a stop: EVENT_CHANCE that a road
+## event happens, then one is picked at random from the pool (Fog Cloud is
+## repeatable; Ember Shrine and Abandoned Stagecoach happen once per run).
+const EVENT_CHANCE := 0.3
 const POTHOLE_CHANCE := 0.33   ## Press On: the stagecoach hits a pothole
 const POTHOLE_DAMAGE := 8.0
 const AMBUSH_CHANCE := 0.5     ## Make Camp Early: Mist Wisps find the camp
 const CAMP_HEAL := 10.0        ## Make Camp Early always ends with this
 
 
-## Ember Shrine: same chance as Fog Cloud, at most once per run.
-const SHRINE_CHANCE := 0.3
+## Ember Shrine: at most once per run.
 const SHRINE_OFFER_COST := 15.0   ## Kneel and Offer: flame paid
 const SHRINE_REROLLS := 1         ## ...for this many extra rerolls every wave, rest of run
 const SHRINE_TAKE_HEAL := 20.0    ## Take the Embers: flame gained
@@ -962,7 +963,6 @@ const SHRINE_CURSE_HP := 1.25     ## ...but tonight's spirits have this much HP
 ## Abandoned Stagecoach: at most once per run. Searching it turns up one random
 ## die (from the dawn pool); taking it means its lost passengers follow you:
 ## every wave tonight brings this many extra Wisps.
-const COACH_CHANCE := 0.25
 const COACH_HAUNT_SPIRITS := 2
 
 

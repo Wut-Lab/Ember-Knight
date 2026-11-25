@@ -95,14 +95,14 @@ func _on_stop_chosen(id: String) -> void:
 	_ambush = false
 	Run.shrine_curse = false
 	Run.coach_haunt = false
-	# Road events from night 2 on. Each rolls its own chance; at most one per night.
+	# Road events from night 2 on: one roll for whether an event happens, then
+	# one picked at random from the pool (once-per-run events drop out once seen).
 	var events := []
-	if Run.night > 0:
-		if Run.rng.randf() < Defs.FOG_CHANCE:
-			events.append(FogEvent)
-		if not Run.shrine_seen and Run.rng.randf() < Defs.SHRINE_CHANCE:
+	if Run.night > 0 and Run.rng.randf() < Defs.EVENT_CHANCE:
+		events.append(FogEvent)
+		if not Run.shrine_seen:
 			events.append(ShrineEvent)
-		if not Run.coach_seen and Run.rng.randf() < Defs.COACH_CHANCE:
+		if not Run.coach_seen:
 			events.append(CoachEvent)
 	if events.is_empty():
 		_to_loadout()
