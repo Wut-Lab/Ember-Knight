@@ -1,7 +1,8 @@
 extends Control
 ## Before each night: fill the dice slots from the dice owned this run.
 ## Tap a die in the bag to put it in the first empty slot; tap a slot to
-## empty it. Filters narrow the bag to dice carrying a given face.
+## empty it. The Faces dropdown narrows the bag to dice carrying any of the
+## faces ticked in it.
 
 signal confirmed
 signal oaths_requested
@@ -15,9 +16,10 @@ const DrawProxy := preload("res://scripts/ui/draw_proxy.gd")
 const FILTERS := [["torch", "Torch"], ["vent", "Steam Vent"], ["mortar", "Mortar"], ["guide", "Guide Light"], ["bellows", "Bellows"], ["brazier", "Ember Brazier"], ["kindle", "Kindle"], ["pine", "Pine Log"], ["wall", "Ember Wall"], ["mire", "Mire"], ["lure", "Wisp Lantern"], ["ward", "Ash Ward"]]
 
 var _slots: Array = []        ## die id per slot, "" when empty
-var _filter := ""
+var _filters: Array = []     ## face ids ticked in the Faces dropdown
 var _slot_row: HBoxContainer
-var _filter_row: HBoxContainer
+var _filter_btn: Button
+var _filter_pop: PopupPanel
 var _grid: GridContainer
 var _go: Button
 
@@ -62,10 +64,10 @@ func _ready() -> void:
 	bag.add_theme_font_size_override("font_size", 15)
 	root.add_child(bag)
 
-	_filter_row = HBoxContainer.new()
-	_filter_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	_filter_row.add_theme_constant_override("separation", 8)
-	root.add_child(_filter_row)
+	var frow := HBoxContainer.new()
+	frow.alignment = BoxContainer.ALIGNMENT_CENTER
+	root.add_child(frow)
+	frow.add_child(_build_filter())
 
 	var scroll := ScrollContainer.new()
 	scroll.custom_minimum_size = Vector2(0, 250)
@@ -130,31 +132,12 @@ func _confirm() -> void:
 
 
 func _refresh() -> void:
-	for c in _slot_row.get_children() + _filter_row.get_children() + _grid.get_children():
+	for c in _slot_row.get_children() + _grid.get_children():
 		c.queue_free()
 	for i in _slots.size():
 		_slot_row.add_child(_slot_button(i))
-	for f in FILTERS:
-		var b := Button.new()
-		b.text = f[1]
-		b.toggle_mode = true
-		b.button_pressed = _filter == f[0]
-		b.custom_minimum_size = Vector2(0, 44)
-		b.add_theme_font_size_override("font_size", 18)
-		b.pressed.connect(func():
-			_filter = "" if _filter == f[0] else f[0]   # tap an active filter again to clear it
-			_refresh())
-		_filter_row.add_child(b)
-	var reset := Button.new()
-	reset.text = "Reset"
-	reset.disabled = _filter == ""
-	reset.custom_minimum_size = Vector2(0, 44)
-	reset.add_theme_font_size_override("font_size", 18)
-	reset.pressed.connect(func():
-		_filter = ""
-		_refresh())
-	_filter_row.add_child(reset)
-	if _filter == "" and Defs.has_forks(Run.current_stop()):
+	_filter_btn.queue_redraw()
+	if _filters.is_empty() and Defs.has_forks(Run.current_stop()):
 		_grid.add_child(_gate_card())
 	for id in _bag_ids():
 		_grid.add_child(_bag_card(id))
@@ -162,15 +145,134 @@ func _refresh() -> void:
 	_go.text = "Begin Night" if not _go.disabled else "Fill every slot"
 
 
-## Owned die kinds, filtered, those with the most of the filter face first.
+## Owned die kinds carrying any ticked face, those with the most of them first.
 func _bag_ids() -> Array:
 	var ids := []
 	for id in Defs.DICE:
-		if Run.owned(id) > 0 and (_filter == "" or Defs.face_count(Defs.DICE[id]["faces"], _filter) > 0):
+		if Run.owned(id) > 0 and (_filters.is_empty() or _hits(id) > 0):
 			ids.append(id)
-	if _filter != "":
-		ids.sort_custom(func(a, b): return Defs.face_count(Defs.DICE[a]["faces"], _filter) > Defs.face_count(Defs.DICE[b]["faces"], _filter))
+	if not _filters.is_empty():
+		ids.sort_custom(func(a, b): return _hits(a) > _hits(b))
 	return ids
+
+
+func _hits(id: String) -> int:
+	var n := 0
+	for f in _filters:
+		n += Defs.face_count(Defs.DICE[id]["faces"], f)
+	return n
+
+
+## Faces found on the dice owned this run, in FILTERS order.
+func _owned_faces() -> Array:
+	var out := []
+	for f in FILTERS:
+		for id in Defs.DICE:
+			if Run.owned(id) > 0 and Defs.face_count(Defs.DICE[id]["faces"], f[0]) > 0:
+				out.append(f)
+				break
+	return out
+
+
+## The Faces dropdown: a button showing what is ticked, opening a panel of
+## face toggles (icon, name, tick) that stays open while choosing several.
+func _build_filter() -> Button:
+	_filter_btn = Button.new()
+	_filter_btn.custom_minimum_size = Vector2(340, 46)
+	var lab := DrawProxy.new()
+	lab.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	lab.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	lab.draw_fn = func(ci: CanvasItem):
+		var w := _filter_btn.size.x
+		var txt := "Faces:  All"
+		if _filters.size() == 1:
+			txt = "Faces:  " + _face_name(_filters[0])
+		elif _filters.size() > 1:
+			txt = "Faces:  %d chosen" % _filters.size()
+		var x := 16.0
+		for f in _filters.slice(0, 4):
+			Icons.draw(ci, f, Vector2(x + 9, 23), 18.0, Color(Defs.FACE_INFO[f]["color"]))
+			x += 22.0
+		_text(ci, txt, Vector2(x + 4, 30), w - x - 44, 18, Style.FG if _filters.is_empty() else Style.ACCENT, HORIZONTAL_ALIGNMENT_LEFT)
+		var a := Vector2(w - 24, 23)   # the drop arrow
+		ci.draw_colored_polygon(PackedVector2Array([a + Vector2(-7, -3), a + Vector2(7, -3), a + Vector2(0, 5)]), Style.MUTE)
+	_filter_btn.add_child(lab)
+	_filter_btn.draw.connect(lab.queue_redraw)
+
+	_filter_pop = PopupPanel.new()
+	_filter_pop.theme = Style.make_theme()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Style.CARD
+	sb.border_color = Style.ACCENT.darkened(0.4)
+	sb.set_border_width_all(2)
+	sb.set_corner_radius_all(10)
+	sb.set_content_margin_all(10)
+	_filter_pop.add_theme_stylebox_override("panel", sb)
+	add_child(_filter_pop)
+	_filter_btn.pressed.connect(_open_filter)
+	return _filter_btn
+
+
+func _open_filter() -> void:
+	for c in _filter_pop.get_children():
+		c.queue_free()
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 6)
+	_filter_pop.add_child(box)
+	var grid := GridContainer.new()
+	grid.columns = 2
+	grid.add_theme_constant_override("h_separation", 6)
+	grid.add_theme_constant_override("v_separation", 6)
+	box.add_child(grid)
+	for f in _owned_faces():
+		grid.add_child(_face_toggle(f[0], f[1]))
+	var clear := Button.new()
+	clear.text = "Show all dice"
+	clear.custom_minimum_size = Vector2(0, 40)
+	clear.add_theme_font_size_override("font_size", 17)
+	clear.pressed.connect(func():
+		_filters.clear()
+		_filter_pop.hide()
+		_refresh())
+	box.add_child(clear)
+	_filter_pop.reset_size()
+	var r := _filter_btn.get_global_rect()
+	_filter_pop.popup(Rect2i(Vector2i(r.position.x + r.size.x / 2 - 220, r.end.y + 6), Vector2i(440, 0)))
+
+
+func _face_toggle(f: String, label: String) -> Button:
+	var b := Button.new()
+	b.toggle_mode = true
+	b.button_pressed = f in _filters
+	b.custom_minimum_size = Vector2(208, 42)
+	var art := DrawProxy.new()
+	art.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	art.draw_fn = func(ci: CanvasItem):
+		var on := f in _filters
+		var bx := Rect2(12, 12, 18, 18)   # tick box
+		ci.draw_rect(bx, Style.ACCENT if on else Style.MUTE, false, 2.0)
+		if on:
+			ci.draw_polyline(PackedVector2Array([Vector2(15, 21), Vector2(20, 26), Vector2(28, 15)]), Style.ACCENT, 3.0, true)
+		Icons.draw(ci, f, Vector2(50, 21), 22.0, Color(Defs.FACE_INFO[f]["color"]))
+		_text(ci, label, Vector2(68, 28), 136, 18, Style.FG if on else Style.MUTE, HORIZONTAL_ALIGNMENT_LEFT)
+	b.add_child(art)
+	b.toggled.connect(func(on: bool):
+		if on and not f in _filters:
+			_filters.append(f)
+		elif not on:
+			_filters.erase(f)
+		art.queue_redraw()
+		AudioDirector.play_sfx("tap", -8.0)
+		_refresh())
+	return b
+
+
+func _face_name(f: String) -> String:
+	for e in FILTERS:
+		if e[0] == f:
+			return e[1]
+	return f
 
 
 func _slot_button(i: int) -> Button:
