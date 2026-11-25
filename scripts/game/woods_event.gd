@@ -81,6 +81,11 @@ func _draw_ambient(ci: CanvasItem, sz: Vector2, time: float) -> void:
 		var x := fposmod(k * 250.0 + time * (6.0 + k), sz.x + 400.0) - 200.0
 		for j in 3:
 			_ellipse(ci, Vector2(x, sz.y - 50.0 - (k % 3) * 34.0), Vector2(250.0 - j * 60.0, 34.0 - j * 8.0), Color(MOON, 0.012))
+	for k in 5:   # fog clouds floating by at mid height, flattened by the angle
+		var x := fposmod(k * 330.0 + time * (9.0 + k * 2.0), sz.x + 600.0) - 300.0
+		var y := sz.y * (0.3 + 0.12 * k)
+		for j in 5:
+			_ellipse(ci, Vector2(x + j * 18.0, y - j * 3.0), Vector2(220.0 - j * 34.0, 40.0 - j * 6.0), Color(MOON, 0.012))
 	var lit := 1.0 - _lost
 	for k in 6:   # stray lights wandering the screen
 		var p := Vector2(fposmod(k * 223.0 + sin(time * 0.21 + k) * 160.0, sz.x), sz.y * (0.2 + 0.6 * fposmod(k * 0.37, 1.0)) + cos(time * 0.3 + k * 1.7) * 40.0)
@@ -104,6 +109,12 @@ func _draw_ambient(ci: CanvasItem, sz: Vector2, time: float) -> void:
 func _draw_art(ci: CanvasItem, sz: Vector2, time: float) -> void:
 	var ground := sz.y - 10.0
 	var cx := sz.x * 0.5
+	# Depth: two rows of oak and pine silhouettes behind the trunks, the far row
+	# paler in the haze, with fog drifting between the rows.
+	_silhouettes(ci, sz, ground - 22.0, 1.15, Color("#1c2532").lerp(Color("#0c0f14"), _lost * 0.7), 11.0, time)
+	_fog(ci, sz, ground - 58.0, time, 0.045)
+	_silhouettes(ci, sz, ground - 10.0, 1.55, Color("#131a20").lerp(Color("#080a0c"), _lost * 0.7), 37.0, time)
+	_fog(ci, sz, ground - 30.0, time * 1.3 + 5.0, 0.06)
 	# Canopy: overlapping clumps of dark leaves across the top.
 	for k in 16:
 		var x := fposmod(k * 37.0, sz.x + 40.0) - 20.0
@@ -145,6 +156,7 @@ func _draw_art(ci: CanvasItem, sz: Vector2, time: float) -> void:
 			var yy := 24.0 + b * 30.0 + fposmod(x, 17.0)
 			var cxx := lerpf(x + lean, x, yy / base_y)
 			ci.draw_line(Vector2(cxx - w * 0.15, yy), Vector2(cxx + w * 0.1, yy + 9), Color(dark, 0.8), 1.0, true)
+	_fog(ci, sz, ground - 4.0, time * 0.8 + 11.0, 0.05)   # a low wisp in front of the roots
 	# The cache, glowing among the roots at the end of the path.
 	if _found > 0.02:
 		var c := Vector2(cx, ground - 20)
@@ -172,3 +184,42 @@ func _draw_art(ci: CanvasItem, sz: Vector2, time: float) -> void:
 		for j in 5:
 			ci.draw_circle(p, 4.0 + j * 4.0, Color(col, 0.05 * wink))
 		ci.draw_circle(p, 3.0, Color(col, 0.9 * wink))
+
+
+## A row of tree silhouettes (pines and oaks mixed) standing on base_y; scale
+## shrinks the far row. seed shifts which tree stands where.
+static func _silhouettes(ci: CanvasItem, sz: Vector2, base_y: float, scale: float, col: Color, seed: float, time: float) -> void:
+	var x := -20.0 + fposmod(seed * 7.0, 30.0)
+	var k := 0
+	while x < sz.x + 30.0:
+		var h := (46.0 + fposmod(seed * 3.0 + k * 17.0, 30.0)) * scale
+		var pine := fposmod(seed + k * 5.0, 3.0) < 1.8
+		var sway := sin(time * 0.4 + k + seed) * 1.0
+		if pine:   # a pine: stacked, drooping tiers on a thin trunk
+			ci.draw_line(Vector2(x, base_y), Vector2(x, base_y - h * 0.3), col, 2.0 * scale)
+			for t in 4:
+				var ty := base_y - h * (0.18 + t * 0.2)
+				var tw := h * (0.34 - t * 0.07)
+				ci.draw_colored_polygon(PackedVector2Array([Vector2(x - tw, ty + h * 0.05), Vector2(x + tw, ty + h * 0.05), Vector2(x + sway * (t + 1) * 0.3, ty - h * 0.24)]), col)
+		else:      # an oak: a short thick trunk and a broad, lumpy crown
+			ci.draw_rect(Rect2(x - 3.0 * scale, base_y - h * 0.4, 6.0 * scale, h * 0.4), col)
+			var c := Vector2(x + sway, base_y - h * 0.62)
+			for b in 5:
+				var off := Vector2(cos(b * 1.3 + seed) * h * 0.24, sin(b * 1.9 + seed) * h * 0.12)
+				_ellipse(ci, c + off, Vector2(h * 0.24, h * 0.18), col)
+		x += (26.0 + fposmod(seed * 11.0 + k * 13.0, 22.0)) * scale
+		k += 1
+
+
+## Soft fog clouds drifting along at height y: layered flat ellipses, the
+## same height of ground so they read as lying in the scene, not on the screen.
+static func _fog(ci: CanvasItem, sz: Vector2, y: float, time: float, alpha: float) -> void:
+	for k in 4:
+		var x := fposmod(k * 151.0 + time * (5.0 + k * 1.5), sz.x + 220.0) - 110.0
+		var w := 50.0 + fposmod(k * 37.0, 40.0)
+		# a puffy cloud: a few flattened lobes, wider at the base
+		for j in 6:
+			var lx := x + (j - 2.5) * w * 0.28
+			var ly := y - absf(sin(j * 1.7 + k)) * 7.0 + sin(time * 0.3 + k) * 2.0
+			_ellipse(ci, Vector2(lx, ly), Vector2(w * 0.32, 7.0 + (j % 3) * 2.0), Color(MOON.lightened(0.35), alpha))
+		_ellipse(ci, Vector2(x, y + 4.0), Vector2(w * 1.0, 5.0), Color(MOON.lightened(0.35), alpha * 0.8))
