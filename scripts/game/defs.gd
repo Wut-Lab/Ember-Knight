@@ -5,9 +5,9 @@ extends RefCounted
 # ------------------------------------------------------------ dice
 ## Every face that exists. "kindle" (star) goes on the fire to power up Char.
 ## Every other face must be a key in DEFENSES.
-const DIE_FACES := ["kindle", "torch", "vent", "mortar", "guide", "bellows", "brazier", "wall", "mire", "lure", "pine", "ward", "ashes"]
+const DIE_FACES := ["kindle", "torch", "vent", "mortar", "guide", "bellows", "brazier", "wall", "mire", "lure", "votive", "pine", "ward", "reliquary", "ashes"]
 ## Fire faces go on the fire instead of a tile.
-const FIRE_FACES := ["kindle", "pine", "ward"]
+const FIRE_FACES := ["kindle", "pine", "ward", "reliquary"]
 ## A die is a D6: a list of 6 faces. Opposite sides are i and 5 - i.
 ## The player starts every run with STARTING_DICE copies of the starter die.
 const STARTER_DIE := ["torch", "vent", "kindle", "kindle", "vent", "torch"]
@@ -53,8 +53,17 @@ const DICE := {
 	"will_o_wisp": {"name": "Will-o'-Wisp Die", "faces": ["lure", "mortar", "brazier", "ashes", "mortar", "lure"]},
 	## Bone Die: no Ashes at all, three "+" faces. Plain, raw power.
 	"bone": {"name": "Bone Die", "faces": ["torch+", "mortar+", "guide", "wall", "vent+", "kindle"]},
+	## Chapel dice (CHAPEL_DICE): only offered at dawn after a Sunken Chapel night.
+	## Votive Die: candles that mend the fire as spirits fall near them.
+	"votive": {"name": "Votive Die", "faces": ["votive", "torch+", "kindle", "ashes", "vent", "votive+"]},
+	## Reliquary Die: a blessed box on the fire soaks up the first hurts of a wave.
+	"reliquary": {"name": "Reliquary Die", "faces": ["reliquary", "mortar", "ward", "ashes", "torch", "reliquary+"]},
+	## Pilgrim Die: heal, ward and wall; next to no attack of its own.
+	"pilgrim": {"name": "Pilgrim Die", "faces": ["pine+", "ward+", "kindle", "wall", "guide", "pine"]},
 }
 const SWAMP_DICE := ["bog", "will_o_wisp", "bone"]
+## Chapel dice (CHAPEL_DICE): only offered at dawn after a Sunken Chapel night.
+const CHAPEL_DICE := ["votive", "reliquary", "pilgrim"]
 
 ## A "+" face ("torch+") acts as its base face but adds two levels at once;
 ## a "++" face adds three (a level-3 defense in one die).
@@ -248,8 +257,9 @@ const DAWN_REROLL_ESSENCE := 3
 
 ## Unlockables shown in the main menu's Unlocks list, grouped by "type"
 ## (oath, die, misc; listed in that order). Each counts a Profile stat up to
-## "goal"; "ref" is the Oath or die id it unlocks.
-const UNLOCK_TYPES := [["oath", "Oaths"], ["die", "Dice"], ["misc", "Misc"], ["outfit", "Outfits"]]
+## "goal"; "ref" is the Oath or die id it unlocks. "hidden" ones stay off the
+## list until earned (the route and everything that comes with it).
+const UNLOCK_TYPES := [["oath", "Oaths"], ["die", "Dice"], ["misc", "Misc"], ["outfit", "Outfits"], ["route", "Routes"], ["member", "Caravan"]]
 const UNLOCKS := {
 	"dawn_offerings": {"type": "oath", "ref": "dawn_offerings", "stat": "dawn_skips", "goal": 10,
 		"hint": "Skip 10 Dawn Offerings."},
@@ -260,7 +270,11 @@ const UNLOCKS := {
 	"ash_clouds": {"type": "oath", "ref": "ash_clouds", "stat": "ashes_rolled", "goal": 50,
 		"hint": "Roll 50 Ashes."},
 	"swamp": {"type": "route", "ref": "swamp", "stat": "routes_chosen", "goal": 10,
-		"hint": "Choose 10 routes. Appears from night 5."},
+		"hint": "Choose 10 routes. Appears from night 5.", "hidden": true},
+	"chapel": {"type": "route", "ref": "chapel", "stat": "night_11_won", "goal": 1,
+		"hint": "Reach night 12. Appears from night 9.", "hidden": true},
+	"paolo": {"type": "member", "ref": "priest", "stat": "chapel_nights_won", "goal": 1,
+		"hint": "Survive a night in the Sunken Chapel.", "hidden": true},
 	"heavy_support": {"type": "misc", "ref": "heavy_support", "stat": "night_3_won", "goal": 1,
 		"hint": "Survive night 3."},
 	"warden_helm": {"type": "outfit", "ref": "helm", "stat": "night_4_won", "goal": 1,
@@ -284,6 +298,7 @@ const LAMP_RANGE := 0.75    ## reach, as a share of the farthest trail start
 const LAMP_TURN := PI / 8.0 ## the ring turns this much each volley
 const SMITH_FACES := ["torch", "vent", "mortar", "wall"]   ## Simon, the Smith: faces he can forge a "+" onto
 const HOUND_SCARES := 1   ## Hella, the Caravan Hound: Wisps she scares off each wave
+const PRIEST_RITES := 0.3   ## Paolo, the Priest: Last Rites relight Char to this share of max flame
 const COOK_HEAL := 5.0   ## Carson, the Cook: his own heal at each dawn
 const CARAVAN := {
 	"cook": {"name": "Carson, the Cook", "role": "Sustain", "icon": "cook", "cost": 30,
@@ -298,6 +313,9 @@ const CARAVAN := {
 		"desc": "A Lit Lamp beside Char fires a ring of 8 white shots every few seconds."},
 	"smith": {"name": "Simon, the Smith", "role": "Power", "icon": "smith", "cost": 120,
 		"desc": "Forges one random face on one of your dice into its \"+\" version for the run."},
+	## Hidden until his unlock (survive a night in the Sunken Chapel), then for hire.
+	"priest": {"name": "Paolo, the Priest", "role": "Rescue", "icon": "censer", "cost": 120, "unlock": "paolo",
+		"desc": "Last Rites: once per run, when Char's flame would go out, Paolo relights it to 30%."},
 }
 
 ## Char's outfits (Caravan > Wardrobe). "swap" recolours the Char SVGs
@@ -524,7 +542,7 @@ const UNIQUE_EARLY_CHANCE := 0.02
 static func dawn_dice(rng: RandomNumberGenerator, dice_owned: Array) -> Array:
 	var pool := []
 	for id in DICE:
-		if dice_owned.count(id) < MAX_DIE_COPIES and not id in SWAMP_DICE and (not id in LOCKED_DICE or Profile.is_unlocked(id)):
+		if dice_owned.count(id) < MAX_DIE_COPIES and not id in SWAMP_DICE and not id in CHAPEL_DICE and (not id in LOCKED_DICE or Profile.is_unlocked(id)):
 			pool.append(id)
 	var out := []
 	while out.size() < DAWN_DICE and not pool.is_empty():
@@ -533,8 +551,8 @@ static func dawn_dice(rng: RandomNumberGenerator, dice_owned: Array) -> Array:
 
 ## Dawn after a Swamp Turnpike night: one swamp die (SWAMP_DICE) and one from
 ## the normal pool.
-static func swamp_dawn_dice(rng: RandomNumberGenerator, dice_owned: Array) -> Array:
-	var bog := SWAMP_DICE.filter(func(id): return dice_owned.count(id) < MAX_DIE_COPIES)
+static func swamp_dawn_dice(rng: RandomNumberGenerator, dice_owned: Array, own: Array = SWAMP_DICE) -> Array:
+	var bog := own.filter(func(id): return dice_owned.count(id) < MAX_DIE_COPIES)
 	var out := []
 	if not bog.is_empty():
 		out.append(bog[rng.randi() % bog.size()])
@@ -611,6 +629,10 @@ const FACE_INFO := {
 		"desc": "Build across a trail: spirits stop and burn through it, scorched by its embers."},
 	"pine": {"name": "Pine Log", "color": Color("#c98a4a"),
 		"desc": "Place on the fire: heals 3 flame, and every Torch reaches 10% farther this wave."},
+	"votive": {"name": "Votive Candles", "color": Color("#ffd98a"),
+		"desc": "A stand of chapel candles. Each spirit banished in their glow mends the fire a little (1 / 1.5 / 2 flame). Doesn't stack."},
+	"reliquary": {"name": "Reliquary", "color": Color("#e8c66a"),
+		"desc": "Place on the fire: a blessed box that soaks up the first 8 / 12 / 16 damage the fire takes this wave."},
 	"ward": {"name": "Ash Ward", "color": Color("#b9a8d8"),
 		"desc": "Place on the fire. When the fire falls to half flame this wave, it pulses: every spirit 50% slower for 3s (+1.5s per extra Ward)."},
 	"ashes": {"name": "Ashes", "color": Color("#8a8078"),
@@ -667,6 +689,12 @@ const DEFENSES := {
 	],
 	## Wisp Lantern: spirits in range with another spirit in range behind them on
 	## their trail (over LURE_GAP back) are slowed by "lure", so packs close up.
+	## Votive Candles: spirits banished within "range" heal the fire by "heal".
+	"votive": [
+		{"range": 150.0, "heal": 1.0},
+		{"range": 165.0, "heal": 1.5},
+		{"range": 180.0, "heal": 2.0},
+	],
 	"lure": [
 		{"range": 210.0, "lure": 0.3},
 		{"range": 225.0, "lure": 0.4},
@@ -704,6 +732,11 @@ const SPIRITS := {
 	## revive_speed of its pace. Each one banished pays MUD_ESSENCE.
 	"mud_wisp": {"hp": 20.0, "speed": 38.0, "damage": 8.0, "size": 1.0, "color": Color("#d9cdb4"),
 		"glow": Color("#8a5a2c"), "revive_chance": 0.25, "revive_time": 1.2, "revive_hp": 0.5, "revive_speed": 0.7},
+	## Sunken Chapel only: a pale bronze Wisp with a little bell hanging under it.
+	## Every ring_every seconds it tolls: other spirits within ring_range are
+	## hastened by haste for haste_time. Banish it first.
+	"bellringer": {"hp": 28.0, "speed": 40.0, "damage": 8.0, "size": 1.05, "color": Color("#f0e2b6"),
+		"glow": Color("#c99a3a"), "ring_every": 3.5, "ring_range": 120.0, "haste": 0.35, "haste_time": 2.5},
 	## Elite, wave 3 only: a yellow Wisp in red crackle. Stops short of the fire and
 	## zaps it every zap_every seconds until banished. zap_range is from the fire's
 	## centre, kept under Char's shortest reach so he can always hit it.
@@ -839,6 +872,8 @@ const STOPS := {
 		"mist_bonus": 0.15},
 	"swamp": {"name": "Swamp Turnpike", "desc": "A causeway through the bog. 3-4 trails wade murky pools under dead trees. Tougher spirits and Mud Wisps, richer spoils: double Essence.",
 		"icon": "swamp", "unlock": "swamp", "min_night": 4},
+	"chapel": {"name": "Sunken Chapel", "desc": "A ruined chapel half sunk in the earth. 3-5 aisles between broken pews and a shattered altar. Tougher spirits and Bellringers; double Essence and a stronger dawn heal.",
+		"icon": "altar", "unlock": "chapel", "min_night": 8},
 }
 ## Quiet Lakeside: a lake fills one side, its near shore this far from the fire.
 ## Spirits crossing the water drift slower. 2-3 land trails + 1 water crossing.
@@ -850,8 +885,16 @@ const LAKE_FOUR_LANE_CHANCE := 0.5
 ## Swamp Turnpike: murky pools (trails wade through, no tiles), dead trees,
 ## faint drifting orbs. Offered from night 5 once unlocked; spirits are
 ## tougher, but the night pays double Essence (and +1 per Mud Wisp banished).
+const RELIQUARY := [8.0, 12.0, 16.0]   ## fire damage a Reliquary soaks up, by level
+const PINE_PLUS_HEAL := 0.5      ## Pine Log+: heals this much more per extra level
+const CHAPEL_HP := 1.2          ## Sunken Chapel: spirits a bit tougher than the swamp's
+const CHAPEL_ESSENCE := 2        ## dawn Essence multiplier at the chapel
+const BELL_ESSENCE := 2          ## Essence for each Bellringer banished
+const CHAPEL_DAWN_HEAL := 8.0    ## extra dawn heal after a chapel night
 const SWAMP_HP := 1.15
 const SWAMP_ESSENCE := 2
+const CHAPEL_BELL_CHANCE := 0.15   ## share of plain Wisps that come as Bellringers
+const CHAPEL_BELL_MAX := 2          ## at most this many in one wave
 const SWAMP_MUD_CHANCE := 0.35   ## share of plain Wisps that come as Mud Wisps
 const MUD_ESSENCE := 1           ## Essence for each Mud Wisp banished
 const SWAMP_POOLS_MIN := 1
@@ -985,6 +1028,12 @@ static func wave_spirits(night: int, wave: int, stop: String, rng: RandomNumberG
 		for i in out.size():
 			if out[i] == "wisp" and rng.randf() < SWAMP_MUD_CHANCE:
 				out[i] = "mud_wisp"
+	if stop == "chapel":   # the chapel's own: a Bellringer or two among the Wisps
+		var bells := 0
+		for i in out.size():
+			if bells < CHAPEL_BELL_MAX and out[i] == "wisp" and rng.randf() < CHAPEL_BELL_CHANCE:
+				out[i] = "bellringer"
+				bells += 1
 	if boss:
 		out.insert(count / 3, boss_id)
 		return out
@@ -1019,4 +1068,6 @@ static func spirit_hp_scale(night: int, stop: String) -> float:
 	var s := 1.0 + 0.15 * night_step(night)
 	if stop == "swamp":
 		s *= SWAMP_HP
+	elif stop == "chapel":
+		s *= CHAPEL_HP
 	return s

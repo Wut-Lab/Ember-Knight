@@ -692,6 +692,31 @@ def sfx_lamp():
     return out
 
 
+def sfx_bell_toll():
+    """A Bellringer drifts in: two slow tolls of a small, old bronze bell
+    (church-bell partials: hum, prime, minor third, fifth, nominal), with a
+    hollow stone-chapel tail."""
+    dur = 2.6
+    out = np.zeros(int(dur * SR))
+    partials = ((0.5, 0.55, 1.1), (1.0, 1.0, 1.9), (1.19, 0.45, 2.6), (1.5, 0.3, 3.2),
+                (2.0, 0.4, 3.8), (2.66, 0.18, 6.0), (3.01, 0.12, 8.0))
+    for at, midi, amp in ((0.0, 74, 1.0), (0.62, 74, 0.7)):
+        f = mtof(midi)
+        n = int(2.0 * SR)
+        t = np.arange(n) / SR
+        sig = np.zeros(n)
+        for ratio, a, dec in partials:
+            beat = 1 + 0.004 * np.sin(2 * np.pi * (1.3 + ratio) * t)   # slow warble of an old bell
+            sig += a * np.sin(2 * np.pi * f * ratio * np.cumsum(beat) / SR) * np.exp(-t * dec)
+        clank = _noise(int(0.03 * SR), lo=2500) * _env(int(0.03 * SR), 0.0005, 0.006)
+        sig[:len(clank)] += 0.35 * clank
+        _place(out, amp * sig * np.minimum(1, t / 0.0015), at)
+    ir = reverb_ir(1.6, 2.2, 7, bright=3500)[0]
+    m = len(out) + len(ir)
+    wet = np.fft.irfft(np.fft.rfft(out, m) * np.fft.rfft(ir, m), m)[:len(out)]   # linear, no wrap
+    return 0.75 * out + 0.35 * wet / (np.max(np.abs(wet)) + 1e-9) * np.max(np.abs(out))
+
+
 def write_sfx(only=None):
     global OUT
     base = OUT
@@ -702,7 +727,7 @@ def write_sfx(only=None):
                      ("charge_hum", sfx_charge_hum), ("zap", sfx_zap), ("wind", sfx_wind),
                      ("dark_arrive", sfx_dark_arrive), ("thief_arrive", sfx_thief_arrive), ("helio_arrive", sfx_helio_arrive),
                      ("dash", sfx_dash), ("snuff", sfx_snuff), ("ember_pickup", sfx_ember_pickup), ("vine", sfx_vine),
-                     ("hound", sfx_hound), ("lamp", sfx_lamp)]:
+                     ("hound", sfx_hound), ("lamp", sfx_lamp), ("bell_toll", sfx_bell_toll)]:
         if only and name not in only:
             continue
         mono = fn()

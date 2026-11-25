@@ -241,6 +241,27 @@ func _draw_kind(v: float, lit: float) -> void:
 			draw_circle(base, w, iron.darkened(0.15))
 			draw_circle(tip, w * 1.15, iron.darkened(0.45))
 			draw_circle(tip, w * 0.75, Color("#ff7a1e").lerp(Color("#5a2410"), 0.7 - 0.7 * _puff))
+		"votive":
+			# An iron candle stand: a tiered rack of small candles, more with level.
+			var iron := Color("#2e2a28").lerp(Color("#5a5048"), lit)
+			draw_line(Vector2(0, 2 * v), Vector2(0, -24 * v), iron, 3 * v)
+			for lx in [-9.0, 9.0]:
+				draw_line(Vector2(lx * v, 2 * v), Vector2(0, -6 * v), iron, 2 * v)
+			var rows := [[-24.0, 3 + level], [-34.0, 1 + level]]
+			var g := 0.8 + 0.2 * sin(_t * 3.0)
+			draw_circle(Vector2(0, -36 * v), (26.0 + 4.0 * level) * v, Color(1.0, 0.8, 0.45, 0.07 * g))
+			for R in rows:
+				var n: int = R[1]
+				var hw := (n - 1) * 4.5 * v
+				draw_line(Vector2(-hw - 3 * v, R[0] * v), Vector2(hw + 3 * v, R[0] * v), iron, 2.5 * v)
+				for k in n:
+					var x := -hw + k * 9.0 * v
+					var h := (6.0 + 2.0 * sin(k * 2.3 + R[0])) * v
+					var base := Vector2(x, R[0] * v)
+					draw_line(base, base - Vector2(0, h), Color("#e8dcc0"), 3 * v)
+					var fl := 0.8 + 0.2 * sin(_t * 9.0 + k * 1.7 + R[0])
+					draw_circle(base - Vector2(0, h + 3 * v * fl), 2.2 * v * fl, Color(1.0, 0.8, 0.35, 0.95))
+					draw_circle(base - Vector2(0, h + 2.5 * v), 1.0 * v, Color(1.0, 0.97, 0.85))
 		"lure":
 			# A crooked pole with a hook; a caught swamp orb bobs in a wire cage.
 			draw_line(Vector2(0, 2 * v), Vector2(-2 * v, -50 * v), wood, 5 * v)

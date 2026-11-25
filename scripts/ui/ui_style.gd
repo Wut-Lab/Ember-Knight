@@ -112,3 +112,21 @@ static func _box(bg: Color, border: Color, width: int) -> StyleBoxFlat:
 	b.content_margin_bottom = 12
 	b.anti_aliasing = true
 	return b
+
+
+## "Something New!" under a dawn or game-over screen when a (non-hidden)
+## unlock was earned since the last one shown. Clears Profile.fresh.
+static func add_something_new(root: Control) -> void:
+	if Profile.fresh.is_empty():
+		return
+	Profile.fresh.clear()
+	var l := Label.new()
+	l.text = "Something New!"
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	l.add_theme_font_override("font", display_font())
+	l.add_theme_font_size_override("font_size", 36)
+	l.add_theme_color_override("font_color", ACCENT)
+	root.add_child(l)
+	var tw := l.create_tween().set_loops()
+	tw.tween_property(l, "modulate:a", 0.55, 0.8)
+	tw.tween_property(l, "modulate:a", 1.0, 0.8)

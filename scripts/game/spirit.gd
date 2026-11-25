@@ -33,6 +33,12 @@ var down_t := 0.0          ## time left lying in the mud before it gets back up
 var revived := false
 var mire_t := 0.0          ## time left slowed by a Mire patch
 var mire_slow := 0.0
+var ring_every := 0.0      ## >0 (Bellringer): tolls this often, hastening spirits nearby
+var _ring_t := 0.0
+var _toll := 0.0           ## time since the last toll (drives the swing and sound rings)
+var tolled := false        ## set on the frame it tolls; the battle applies the haste
+var haste := 0.0           ## speed bonus from a Bellringer's toll
+var haste_t := 0.0
 var zap_range := 0.0       ## >0: stops this close to the fire and zaps it
 var zap_every := 2.0
 var _zap_t := 0.0
@@ -93,6 +99,9 @@ func setup(b, k: String, path: int, hp_scale: float) -> void:
 	burn_range = d.get("burn_range", 0.0)
 	burn_dps = d.get("burn_dps", 0.0)
 	revive_chance = d.get("revive_chance", 0.0)
+	ring_every = d.get("ring_every", 0.0)
+	_ring_t = ring_every * randf_range(0.4, 0.8)
+	_toll = 9.0
 	_zap_t = zap_every * 0.5
 	_t = randf() * 10.0
 	world = board.path_point(path_idx, 0.0)
@@ -187,6 +196,15 @@ func _process(delta: float) -> void:
 		down_t -= delta
 		queue_redraw()
 		return
+	_toll += delta
+	if ring_every > 0.0:
+		_ring_t -= delta
+		if _ring_t <= 0.0:
+			_ring_t = ring_every
+			_toll = 0.0
+			tolled = true
+	if haste_t > 0.0:
+		haste_t -= delta
 	if smoulder_t > 0.0:
 		smoulder_t -= delta
 		hit(smoulder_dps * delta, false)
@@ -221,6 +239,8 @@ func _process(delta: float) -> void:
 			_trail.pop_back()
 		if _trail.size() > 6:
 			_trail.pop_back()
+	if haste_t > 0.0:
+		burst *= 1.0 + haste
 	dist += speed * burst * (1.0 - slow) * board.speed_at(world) * delta   # water slows them
 	for w in board.walls:   # an Ember Wall ahead: stop and burn through it
 		if is_instance_valid(w) and w.blocks(world) \
@@ -283,6 +303,7 @@ func _draw() -> void:
 	var lit: float = board.light_at(world)
 	var alpha := _fade_in * (1.0 - _death / 0.35)
 	var mud := kind == "mud_wisp"
+	var bell := ring_every > 0.0
 	if down_t > 0.0:   # Mud Wisp down: sunk low and dim, rising as it recovers
 		var k := clampf(down_t / Defs.SPIRITS[kind]["revive_time"], 0.0, 1.0)
 		bob = s * 1.5 * k
@@ -293,6 +314,15 @@ func _draw() -> void:
 	_oval(Vector2(0, 2), s * 0.7, s * 0.2, Color(0, 0, 0, 0.3 * lit * alpha))
 	if scorch_t > 0.0:   # Oath of Crossfire: a smouldering ring while scorched
 		draw_arc(Vector2(0, -s * 1.9 + bob), s * 1.25, 0.0, TAU, 24, Color(1.0, 0.45, 0.15, 0.7 * minf(1.0, scorch_t) * alpha), 2.5 * board.view_scale, true)
+	if haste_t > 0.0:   # hastened by a toll: faint gold speed lines behind it
+		var back: Vector2 = board.proj(board.path_point(path_idx, maxf(dist - 30.0, 0.0))) - position
+		back = back.normalized() * s
+		for k in 3:
+			var o := Vector2(-back.y, back.x).normalized() * s * (k - 1) * 0.5
+			var a0 := Vector2(0, -s * 1.9 + bob) + back * 1.1 + o
+			draw_line(a0, a0 + back * (0.8 + 0.3 * k), Color(1.0, 0.85, 0.45, 0.45 * minf(haste_t, 1.0) * alpha), 1.6 * board.view_scale, true)
+	if bell:
+		_draw_bell(Vector2(0, -s * 1.9 + bob), s, alpha)
 	# On death the ball swells and fades out.
 	var grow := 1.0 + _death * 2.0
 	draw_set_transform(Vector2(0, -s * 1.9 + bob), 0.0, Vector2.ONE * grow)
@@ -302,9 +332,9 @@ func _draw() -> void:
 	# Faded glow: a soft radial falloff around the ball.
 	var mist := kind == "mist_wisp"
 	var charged := kind == "charged_wisp"
-	var gr: float = s * (3.4 if mist else 3.3 if mud else 2.8) * pulse
-	var glow_col: Color = Color("#ff9a3c") if charged else (Defs.SPIRITS[kind]["glow"] if mud else col)
-	draw_texture_rect(_glow_tex(), Rect2(-gr, -gr, gr * 2.0, gr * 2.0), false, Color(glow_col, (0.4 if mist else 0.95 if mud else 0.7 if charged else 0.55) * alpha))
+	var gr: float = s * (3.4 if mist else 3.3 if mud else 3.0 if bell else 2.8) * pulse
+	var glow_col: Color = Color("#ff9a3c") if charged else (Defs.SPIRITS[kind]["glow"] if mud or bell else col)
+	draw_texture_rect(_glow_tex(), Rect2(-gr, -gr, gr * 2.0, gr * 2.0), false, Color(glow_col, (0.4 if mist else 0.95 if mud else 0.8 if bell else 0.7 if charged else 0.55) * alpha))
 	if mist:
 		# Haze: soft puffs drifting slowly around the ball.
 		for i in 5:
@@ -352,6 +382,42 @@ func _draw() -> void:
 ## Carl, the Dark Wisp: a big black ball with a faint lavender glow, white and
 ## purple swirls that wrap around it every few seconds, and a dim circle on the
 ## ground that bobs up and down with him.
+## Bellringer: a small bronze bell hung on a cord under the ball. It swings
+## hard when it tolls, and rings of sound spread out to ring_range.
+func _draw_bell(ball: Vector2, s: float, alpha: float) -> void:
+	var vs: float = board.view_scale
+	var swing := sin(_t * 2.0) * 0.12 + (sin(_toll * 18.0) * 0.6 * exp(-_toll * 2.5) if _toll < 2.0 else 0.0)
+	var top := ball + Vector2(0, s * 0.9)
+	var dir := Vector2(sin(swing), cos(swing))
+	var nrm := Vector2(dir.y, -dir.x)
+	var cord := top + dir * s * 0.55
+	draw_line(top, cord, Color(0.25, 0.18, 0.1, 0.8 * alpha), 1.4 * vs, true)
+	var h := s * 0.95
+	var w := s * 0.55
+	var bronze := Color("#b8862e")
+	var pts := PackedVector2Array()
+	for k in 9:   # dome
+		var a := PI * k / 8.0
+		pts.append(cord + dir * (h * 0.38 - sin(a) * h * 0.38) + nrm * cos(a) * w * 0.55)
+	pts.append(cord + dir * h * 0.85 - nrm * w * 0.72)
+	pts.append(cord + dir * h - nrm * w)
+	pts.append(cord + dir * h + nrm * w)
+	pts.append(cord + dir * h * 0.85 + nrm * w * 0.72)
+	pts.reverse()
+	draw_colored_polygon(pts, Color(bronze, alpha))
+	draw_line(cord + dir * h * 0.7 - nrm * w * 0.6, cord + dir * h * 0.7 + nrm * w * 0.6, Color(bronze.lightened(0.35), 0.8 * alpha), 1.4 * vs, true)
+	draw_line(cord + dir * h * 0.2 + nrm * w * 0.25, cord + dir * h * 0.75 + nrm * w * 0.5, Color(1, 0.95, 0.75, 0.6 * alpha), 1.2 * vs, true)
+	draw_circle(cord + dir * h * 1.08 - nrm * sin(swing * 2.0) * w * 0.3, s * 0.13, Color(bronze.darkened(0.4), alpha))
+	if _toll < 1.2:   # sound rings spreading from the bell
+		var R: float = Defs.SPIRITS[kind]["ring_range"] * vs
+		for k in 2:
+			var f := clampf((_toll - k * 0.18) / 1.0, 0.0, 1.0)
+			if f <= 0.0 or f >= 1.0:
+				continue
+			var rr := R * f
+			draw_arc(Vector2(0, -s * 0.2), rr, 0.0, TAU, 40, Color(1.0, 0.86, 0.5, 0.5 * (1.0 - f) * alpha), 2.0 * vs, true)
+
+
 ## Smouldering: a few sparks rising off the spirit.
 ## Mud Wisp: a faint skull outline in the light around its face (cranium,
 ## cheekbones narrowing to a jaw, a nose notch and a row of teeth).

@@ -25,6 +25,7 @@ var bosses: Array = []         ## boss id per leg (Defs.roll_bosses), rolled at 
 var perks: Dictionary = {}       ## lull permanent rewards: id (or "hone_<kind>") -> times picked
 var night_flames: Array = []   ## flame left at the end of each night cleared
 var riders: Array = []         ## Defs.CARAVAN ids riding along this run
+var rites_used := false        ## Paolo, the Priest: Last Rites spent this run
 var cook_healed := 0.0        ## flame the Cook actually healed this dawn (for the dawn screen)
 var spare_parts := 0           ## Terry, the Tinker: parts banked toward the next free reroll
 var riders_picked := false     ## the seat pick has been made this run
@@ -48,6 +49,7 @@ func _init() -> void:
 func new_run() -> void:
 	rng.randomize()
 	night = 0
+	rites_used = false
 	max_flame = Defs.MAX_FLAME
 	flame = max_flame
 	pool.clear()
@@ -71,6 +73,10 @@ func new_run() -> void:
 	bosses = Defs.roll_bosses(rng)
 	riders.clear()
 	riders_picked = false
+	for arg in OS.get_cmdline_user_args():   # `-- --riders=a,b`: these members ride along (tests)
+		if arg.begins_with("--riders="):
+			riders.assign(arg.trim_prefix("--riders=").split(",", false))
+			riders_picked = true
 	spare_parts = 0
 	forged = []
 	gates = Defs.GATES_FREE
@@ -220,7 +226,8 @@ func healthy_bonus() -> float:
 func dawn_heal() -> float:
 	return Defs.DAWN_HEAL - (Defs.HEARTH_DAWN_PENALTY if has_oath("hearth_bound") else 0.0) \
 		+ Defs.HEARTHSTONE_HEAL * perk("hearthstones") \
-		+ (Defs.SIMPLICITY_DAWN * (Defs.leg_of(night) + 1) if has_oath("simplicity") else 0.0)
+		+ (Defs.SIMPLICITY_DAWN * (Defs.leg_of(night) + 1) if has_oath("simplicity") else 0.0) \
+		+ (Defs.CHAPEL_DAWN_HEAL if current_stop() == "chapel" else 0.0)
 
 
 ## 2-3 camps drawn at random from the pool of stops (Defs.STOPS).
@@ -248,7 +255,7 @@ const SAVE_PATH := "user://run.save"
 const SAVE_KEYS := ["night", "flame", "max_flame", "stop_options", "chosen_stops",
 	"spirits_banished", "nights_survived"]
 ## Newer keys: older saves load without them.
-const EXTRA_KEYS := ["bonus_rerolls", "shrine_seen", "gates", "spare_parts", "forged"]
+const EXTRA_KEYS := ["bonus_rerolls", "shrine_seen", "gates", "spare_parts", "forged", "rites_used"]
 
 var resume := false   ## set by the menu's Continue; read by the run screen
 var _checkpoint := {}

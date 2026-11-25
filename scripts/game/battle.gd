@@ -94,6 +94,7 @@ var _lamp = null
 var _figures := {}   ## rider id -> MemberFigure by the fire
 var _lull_rerolls := 0     ## lull reward Spare Luck: extra rerolls next prep
 var banked := 0.0          ## Oath of the Banked Fire: + damage this wave (read by Defense, Char)
+var shield := 0.0          ## Reliquaries on the fire: damage left to soak up this wave
 var wards := 0             ## Ash Wards on the fire this wave, waiting to pulse
 var ward_t := 0.0          ## seconds left on the Ash Ward slow
 var pine_logs := 0         ## Pine Logs on the fire this wave (Torches reach farther; read by Defense)
@@ -409,6 +410,8 @@ func _wave_cleared() -> void:
 	fighting = false
 	pine_logs = 0
 	wards = 0
+	shield = 0.0
+	board.shield = 0.0
 	ward_t = 0.0
 	banked = 0.0
 	AudioDirector.set_tension(false)
@@ -429,6 +432,9 @@ func _wave_cleared() -> void:
 		var gained := Defs.essence_for_night(Run.flame, Run.night)
 		if Run.current_stop() == "swamp":
 			gained *= Defs.SWAMP_ESSENCE
+		elif Run.current_stop() == "chapel":
+			gained *= Defs.CHAPEL_ESSENCE
+			Profile.add_stat("chapel_nights_won")   # for Paolo the Priest, later
 		Profile.add_essence(gained)
 		_show_banner("Dawn breaks!  +%d Essence" % gained)
 		AudioDirector.play_sfx("chime", -2.0)
@@ -538,6 +544,20 @@ func _take_lull(o: Dictionary) -> void:
 
 
 func _flame_out() -> void:
+	if Run.has_rider("priest") and not Run.rites_used:   # Paolo's Last Rites: once per run
+		Run.rites_used = true
+		Run.flame = Run.max_flame * Defs.PRIEST_RITES
+		member_react("priest")
+		char_unit.set_mood("happy")
+		_flame_bar.flash()
+		_add_fx("ring", Vector2.ZERO, Color("#fff2c8"), 260.0)
+		_add_fx("ring", Vector2.ZERO, Color("#ffd58f"), 160.0)
+		AudioDirector.play_sfx("bell_toll", -4.0, 0.0)
+		_show_banner("Last Rites!  Paolo relights Char's flame.")
+		_update_hud()
+		if Run.autoplay:
+			print("  last rites: flame relit to %d" % roundi(Run.flame))
+		return
 	phase = Phase.DONE
 	fighting = false
 	AudioDirector.set_tension(false)
@@ -621,6 +641,17 @@ func _process(delta: float) -> void:
 			_spawn_timer = Defs.spawn_gap(Run.night, wave) * Run.rng.randf_range(0.8, 1.2)
 			if e[1] >= 0:
 				_spawn_timer *= Defs.SWARM_GAP
+	# Bellringers' tolls hasten the other spirits around them.
+	for b in spirits:
+		if b.tolled:
+			b.tolled = false
+			if b.dead:
+				continue
+			var bd: Dictionary = Defs.SPIRITS[b.kind]
+			for o in spirits:
+				if o != b and not o.dead and not o.boss and o.world.distance_to(b.world) <= bd["ring_range"]:
+					o.haste = bd["haste"]
+					o.haste_t = bd["haste_time"]
 	# Defenses with a "slow" stat slow spirits inside their reach (strongest wins).
 	for sp in spirits:
 		var slow := 0.0
@@ -815,6 +846,8 @@ func _spawn(kind: String, lane := -1, hearty := false):
 	sp.summoned.connect(_on_summoned)
 	if sp.zap_range > 0.0:
 		AudioDirector.play_sfx("charge_hum", -5.0)
+	if sp.ring_every > 0.0:   # a Bellringer drifts in tolling
+		AudioDirector.play_sfx("bell_toll", -6.0, 0.03)
 	if sp.boss:
 		AudioDirector.play_sfx(Defs.SPIRITS[kind].get("arrive_sfx", "charge_hum"), -4.0, 0.0)
 		AudioDirector.start_boss_music()
@@ -847,6 +880,17 @@ func _on_banished(sp) -> void:
 	if sp.kind == "mud_wisp":
 		Profile.add_essence(Defs.MUD_ESSENCE)
 		_add_fx("text", sp.world, Color("#9fd0ff"), 100.0, "+%d" % Defs.MUD_ESSENCE)
+	var mend := 0.0   # Votive Candles: the strongest one in reach mends the fire
+	for d in defenses:
+		if d.kind == "votive" and d.world.distance_to(sp.world) <= d.stats()["range"]:
+			mend = maxf(mend, d.stats()["heal"])
+	if mend > 0.0 and phase != Phase.DONE:
+		Run.flame = minf(Run.max_flame, Run.flame + mend)
+		_add_fx("text", sp.world + Vector2(0, -20), Color("#ffd98a"), 100.0, "+%s" % str(mend).trim_suffix(".0"))
+		_update_hud()
+	if sp.kind == "bellringer":
+		Profile.add_essence(Defs.BELL_ESSENCE)
+		_add_fx("text", sp.world, Color("#9fd0ff"), 100.0, "+%d" % Defs.BELL_ESSENCE)
 	if sp.smoulder_t > 0.0 and Run.has_oath("smouldering_wake"):   # the burn jumps on
 		var best = null
 		for o in spirits:
@@ -935,7 +979,17 @@ func _on_zapped(sp) -> void:
 func _hurt_fire(sp, sfx := "hurt") -> void:
 	if phase == Phase.DONE:
 		return
-	Run.flame = maxf(0.0, Run.flame - sp.damage)
+	var dmg: float = sp.damage
+	if shield > 0.0:   # the Reliquary takes it first
+		var soak := minf(shield, dmg)
+		shield -= soak
+		dmg -= soak
+		board.shield = shield
+		_add_fx("ring", Vector2.ZERO, Color("#ffe39a"), 120.0)
+		if dmg <= 0.0:
+			AudioDirector.play_sfx("chime", -8.0)
+			return
+	Run.flame = maxf(0.0, Run.flame - dmg)
 	char_unit.hurt()
 	_flame_bar.flash()
 	_add_fx("ring", Vector2.ZERO, Color("#8fa0ff"), 110.0)
@@ -1264,10 +1318,14 @@ func _try_place(d, local: Vector2) -> bool:
 		return false
 	if target == -2 and d.face == "pine":
 		pine_logs += 1
-		Run.flame = minf(Run.max_flame, Run.flame + Run.pine_heal())
+		Run.flame = minf(Run.max_flame, Run.flame + Run.pine_heal() * (1.0 + Defs.PINE_PLUS_HEAL * (d.levels - 1)))
 		_add_fx("ring", Vector2.ZERO, Color("#c98a4a"), 130.0)
+	elif target == -2 and d.face == "reliquary":
+		shield += Defs.RELIQUARY[mini(d.levels, 3) - 1]
+		board.shield = shield
+		_add_fx("ring", Vector2.ZERO, Color("#e8c66a"), 130.0)
 	elif target == -2 and d.face == "ward":
-		wards += 1
+		wards += d.levels
 		_add_fx("ring", Vector2.ZERO, Color("#b9a8d8"), 130.0)
 	elif target == -2:
 		char_unit.kindle_up()
@@ -1829,7 +1887,7 @@ func _draw_parts(ci: Control) -> void:
 func _draw_badge(ci: CanvasItem, id: String) -> void:
 	var c := Vector2(20, 18)
 	var p: float = _badge_pulse.get(id, 0.0)
-	var on := not (id == "hound" and _hella_left <= 0)
+	var on := not (id == "hound" and _hella_left <= 0) and not (id == "priest" and Run.rites_used)
 	ci.draw_circle(c + Vector2(0, 2), 19.0, Color(0, 0, 0, 0.35))
 	ci.draw_circle(c, 18.0, Color("#3a2418"))
 	ci.draw_circle(c + Vector2(-2, -3), 13.0, Color("#5a3820", 0.8))

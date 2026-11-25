@@ -13,7 +13,7 @@ const Icons := preload("res://scripts/game/icons.gd")
 const DieView := preload("res://scripts/game/die_view.gd")
 const DrawProxy := preload("res://scripts/ui/draw_proxy.gd")
 
-const FILTERS := [["torch", "Torch"], ["vent", "Steam Vent"], ["mortar", "Mortar"], ["guide", "Guide Light"], ["bellows", "Bellows"], ["brazier", "Ember Brazier"], ["kindle", "Kindle"], ["pine", "Pine Log"], ["wall", "Ember Wall"], ["mire", "Mire"], ["lure", "Wisp Lantern"], ["ward", "Ash Ward"]]
+const FILTERS := [["torch", "Torch"], ["vent", "Steam Vent"], ["mortar", "Mortar"], ["guide", "Guide Light"], ["bellows", "Bellows"], ["brazier", "Ember Brazier"], ["kindle", "Kindle"], ["pine", "Pine Log"], ["wall", "Ember Wall"], ["mire", "Mire"], ["lure", "Wisp Lantern"], ["votive", "Votive Candles"], ["ward", "Ash Ward"], ["reliquary", "Reliquary"]]
 
 var _slots: Array = []        ## die id per slot, "" when empty
 var _filters: Array = []     ## face ids ticked in the Faces dropdown

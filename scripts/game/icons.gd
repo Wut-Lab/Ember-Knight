@@ -39,6 +39,8 @@ static func draw(ci: CanvasItem, kind: String, c: Vector2, s: float, col: Color,
 			_ash_cloud(ci, c, s, col)
 		"swamp":
 			_swamp(ci, c, s, col)
+		"altar":
+			_altar(ci, c, s, col)
 		"mire":   # a mud splat with bubbles
 			var pts := PackedVector2Array()
 			for k in 25:
@@ -49,6 +51,23 @@ static func draw(ci: CanvasItem, kind: String, c: Vector2, s: float, col: Color,
 			ci.draw_arc(c + Vector2(-s * 0.1, 0.0), s * 0.07, 0.0, TAU, 12, col, s * 0.05, true)
 			ci.draw_arc(c + Vector2(s * 0.12, s * 0.1), s * 0.05, 0.0, TAU, 12, col, s * 0.05, true)
 			ci.draw_arc(c + Vector2(s * 0.03, -s * 0.24), s * 0.04, 0.0, TAU, 10, col, s * 0.04, true)
+		"votive":   # three candles of different heights, flames lit
+			for k in 3:
+				var x := (k - 1) * s * 0.22
+				var h := s * (0.3 + 0.12 * (1 - absi(k - 1)))
+				var b := c + Vector2(x, s * 0.32)
+				ci.draw_line(b, b - Vector2(0, h), col, s * 0.1, true)
+				var tip := b - Vector2(0, h + s * 0.2)
+				ci.draw_colored_polygon(PackedVector2Array([b - Vector2(s * 0.05, h + s * 0.05), tip, b - Vector2(-s * 0.05, h + s * 0.05), b - Vector2(0, h)]), col)
+			ci.draw_line(c + Vector2(-s * 0.36, s * 0.34), c + Vector2(s * 0.36, s * 0.34), col, s * 0.06, true)
+		"reliquary":   # a small casket with a peaked lid and a ring of light
+			var bx := Rect2(c + Vector2(-s * 0.26, -s * 0.02), Vector2(s * 0.52, s * 0.3))
+			ci.draw_rect(bx, col, false, s * 0.06)
+			ci.draw_colored_polygon(PackedVector2Array([c + Vector2(-s * 0.3, -s * 0.02), c + Vector2(0, -s * 0.2), c + Vector2(s * 0.3, -s * 0.02)]), col)
+			ci.draw_line(c + Vector2(0, -s * 0.2), c + Vector2(0, -s * 0.34), col, s * 0.05, true)
+			ci.draw_line(c + Vector2(-s * 0.07, -s * 0.28), c + Vector2(s * 0.07, -s * 0.28), col, s * 0.05, true)
+			ci.draw_circle(c + Vector2(0, s * 0.13), s * 0.05, col)
+			ci.draw_arc(c + Vector2(0, s * 0.05), s * 0.44, PI * 1.15, PI * 1.85, 20, col, s * 0.035, true)
 		"lure":   # an orb in a wire cage hanging from a hook
 			ci.draw_line(c + Vector2(-s * 0.18, -s * 0.38), c + Vector2(0, -s * 0.38), col, s * 0.06, true)
 			ci.draw_line(c + Vector2(0, -s * 0.38), c + Vector2(0, -s * 0.22), col, s * 0.05, true)
@@ -71,6 +90,22 @@ static func draw(ci: CanvasItem, kind: String, c: Vector2, s: float, col: Color,
 			_hound(ci, c, s, col)
 		"smith":
 			_smith(ci, c, s, col)
+		"censer":   # a censer on its chain with a curl of smoke
+			ci.draw_line(c + Vector2(-s * 0.02, -s * 0.42), c + Vector2(-s * 0.02, -s * 0.06), col, s * 0.04, true)
+			ci.draw_arc(c + Vector2(-s * 0.02, -s * 0.44), s * 0.05, 0.0, TAU, 10, col, s * 0.04, true)
+			var pot := PackedVector2Array()
+			for k in 13:
+				var a := PI * k / 12.0
+				pot.append(c + Vector2(cos(a) * s * 0.2, s * 0.1 + sin(a) * s * 0.18))
+			pot.append(c + Vector2(-s * 0.2, s * 0.1))
+			ci.draw_colored_polygon(pot, col)
+			ci.draw_colored_polygon(PackedVector2Array([c + Vector2(-s * 0.17, s * 0.06), c + Vector2(s * 0.17, s * 0.06), c + Vector2(0, -s * 0.08)]), col)
+			ci.draw_line(c + Vector2(-s * 0.1, s * 0.3), c + Vector2(s * 0.1, s * 0.3), col, s * 0.05, true)
+			var sm := PackedVector2Array()
+			for k in 12:
+				var f := k / 11.0
+				sm.append(c + Vector2(s * (0.22 + 0.08 * sin(f * TAU * 1.2)) + f * s * 0.08, s * (0.0 - f * 0.4)))
+			ci.draw_polyline(sm, col, s * 0.04, true)
 		"shift":
 			_shift(ci, c, s, col)
 		"hearth":
@@ -339,6 +374,30 @@ static func _swamp(ci: CanvasItem, c: Vector2, s: float, col: Color) -> void:
 			var a := PI * i / 32.0
 			pts.append(c + Vector2(cos(a) * rx, s * 0.24 + sin(a) * rx * 0.3))
 		ci.draw_polyline(pts, col, w * 0.7, true)
+
+
+static func _altar(ci: CanvasItem, c: Vector2, s: float, col: Color) -> void:
+	# A stone altar: an overhanging slab on a block, split by a jagged crack,
+	# the right end broken off and fallen, a chunk on the ground beside it.
+	var w := s * 0.05
+	var g := c.y + s * 0.26          # ground
+	var sy := c.y - s * 0.14         # slab top
+	var by := sy + s * 0.08          # slab underside / block top
+	var cx := c.x + s * 0.04         # crack
+	var crack := PackedVector2Array([Vector2(cx, sy), Vector2(cx + s * 0.05, by + s * 0.04), Vector2(cx - s * 0.03, by + s * 0.16), Vector2(cx + s * 0.03, g)])
+	# left, still standing: slab (overhang) + block
+	var left := PackedVector2Array([Vector2(c.x - s * 0.26, g), Vector2(c.x - s * 0.26, by), Vector2(c.x - s * 0.34, by), Vector2(c.x - s * 0.34, sy)])
+	left.append_array(crack)
+	left.append(Vector2(c.x - s * 0.26, g))
+	ci.draw_polyline(left, col, w, true)
+	ci.draw_line(Vector2(c.x - s * 0.26, by), Vector2(cx + s * 0.02, by), col, w * 0.7, true)
+	# right, broken off: a tilted wedge slumped against the crack
+	var o := Vector2(s * 0.05, 0)
+	ci.draw_polyline(PackedVector2Array([crack[3] + o, crack[2] + o, crack[1] + o + Vector2(0, s * 0.06),
+		Vector2(c.x + s * 0.3, by + s * 0.1), Vector2(c.x + s * 0.27, g), crack[3] + o]), col, w, true)
+	# fallen chunk and the floor
+	ci.draw_polyline(PackedVector2Array([Vector2(c.x + s * 0.32, g), Vector2(c.x + s * 0.35, g - s * 0.07), Vector2(c.x + s * 0.43, g - s * 0.05), Vector2(c.x + s * 0.44, g)]), col, w * 0.8, true)
+	ci.draw_line(Vector2(c.x - s * 0.44, g), Vector2(c.x + s * 0.47, g), col, w * 0.8, true)
 
 
 static func _ash_cloud(ci: CanvasItem, c: Vector2, s: float, col: Color) -> void:
