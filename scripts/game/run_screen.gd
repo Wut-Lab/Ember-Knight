@@ -14,6 +14,7 @@ const OathsMenu := preload("res://scripts/ui/oaths_menu.gd")
 const FogEvent := preload("res://scripts/game/fog_event.gd")
 const ShrineEvent := preload("res://scripts/game/shrine_event.gd")
 const CoachEvent := preload("res://scripts/game/coach_event.gd")
+const FerryEvent := preload("res://scripts/game/ferry_event.gd")
 const RiderScreen := preload("res://scripts/game/rider_screen.gd")
 
 const TITLE_SCENE := "res://scenes/title_screen.tscn"
@@ -95,11 +96,14 @@ func _on_stop_chosen(id: String) -> void:
 	_ambush = false
 	Run.shrine_curse = false
 	Run.coach_haunt = false
+	Run.ferry_soaked = false
+	Run.ferry_blessed = false
 	# Road events from night 2 on: one roll for whether an event happens, then
 	# one picked at random from the pool (once-per-run events drop out once seen).
 	var events := []
 	if Run.night > 0 and Run.rng.randf() < Defs.EVENT_CHANCE:
 		events.append(FogEvent)
+		events.append(FerryEvent)
 		if not Run.shrine_seen:
 			events.append(ShrineEvent)
 		if not Run.coach_seen:

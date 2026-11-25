@@ -262,6 +262,13 @@ func _start_prep() -> void:
 		Run.spare_parts %= Defs.TINKER_PARTS
 		_rerolls += built
 	_rerolls += _lull_rerolls   # Spare Luck goes past the cap
+	if Run.ferry_soaked and not ambush:   # forded the river: dice dry off by wave 3
+		if wave == 0:
+			_rerolls = 0
+		elif wave == 1:
+			_rerolls = mini(_rerolls, Defs.FERRY_SOAKED_W2)
+	if wave == 0 and Run.ferry_blessed and not ambush and char_unit.kindle == 0:
+		char_unit.kindle_up()   # the Ferryman's blessing
 	_fire_heals = 0
 	_sixth_used = false
 	_lull_rerolls = 0
@@ -1772,6 +1779,10 @@ func _update_hud() -> void:
 		_wave_label.text += "  ·  Shrine's Wrath"
 	if Run.coach_haunt and not ambush:
 		_wave_label.text += "  ·  Lost Passengers"
+	if Run.ferry_soaked and not ambush and wave < 2:
+		_wave_label.text += "  ·  Soaked Dice"
+	if Run.ferry_blessed and not ambush:
+		_wave_label.text += "  ·  Ferryman's Blessing"
 	var prep := phase == Phase.PREP
 	_roll_btn.text = "Roll (%d)" % _rerolls
 	_roll_btn.disabled = not prep or _rerolls <= 0

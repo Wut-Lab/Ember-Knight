@@ -965,6 +965,14 @@ const SHRINE_CURSE_HP := 1.25     ## ...but tonight's spirits have this much HP
 ## every wave tonight brings this many extra Wisps.
 const COACH_HAUNT_SPIRITS := 2
 
+## The Ferryman's Toll (repeatable): pay FERRY_FLAME, trade a die for a random
+## one "the river took", or ford the river (soaked dice: no rerolls in wave 1,
+## at most FERRY_SOAKED_W2 in wave 2). Whatever you pick, FERRY_BLESS_CHANCE
+## that he blesses the night: Char starts it at Kindle level 1.
+const FERRY_FLAME := 12.0
+const FERRY_SOAKED_W2 := 1
+const FERRY_BLESS_CHANCE := 0.1
+
 
 ## The Fog Cloud ambush: one wave of Mist Wisps, as many as the night's first wave.
 static func ambush_spirits(night: int) -> Array:
