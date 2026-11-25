@@ -89,7 +89,7 @@ func stats() -> Dictionary:
 		for d in battle.defenses:
 			if is_instance_valid(d) and d.kind == "bellows":
 				n += 1
-		s["rate"] *= 1.0 + Defs.FORGE_CHAR_RATE * n
+		s["rate"] *= 1.0 + Defs.FORGE_CHAR_RATE * mini(n, Defs.FORGE_MAX_BELLOWS)
 	if Run.has_oath("urgency"):
 		s["rate"] *= Defs.URGENCY_RATE
 		s["damage"] *= Defs.URGENCY_DAMAGE

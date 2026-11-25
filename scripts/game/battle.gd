@@ -73,6 +73,7 @@ var _spawn_queue: Array = []
 var _spawn_timer := 0.0
 var _dice: Array = []
 var _rerolls := 0
+var _fire_heals := 0   ## Kindle/Pine heals on the fire this wave (Defs.FIRE_HEAL_FALLOFF)
 var _sixth_used := false    ## Oath of the Sixth Face: used this wave
 var _choose_btn: Button
 var _choose_card: PanelContainer
@@ -254,12 +255,14 @@ func _start_prep() -> void:
 		_gates_left = Run.gates if Defs.has_forks(Run.current_stop()) else 0
 	fighting = false
 	char_unit.set_mood("open")
-	_rerolls = Defs.REROLLS_PER_WAVE + Run.bonus_rerolls + _lull_rerolls
+	_rerolls = mini(Defs.MAX_REROLLS, Defs.REROLLS_PER_WAVE + Run.bonus_rerolls)
 	var built := 0
 	if Run.has_rider("tinker"):   # banked parts become free rerolls this wave
-		built = Run.spare_parts / Defs.TINKER_PARTS
-		Run.spare_parts %= Defs.TINKER_PARTS
+		built = mini(Run.spare_parts / Defs.TINKER_PARTS, maxi(0, Defs.MAX_REROLLS - _rerolls))
+		Run.spare_parts -= built * Defs.TINKER_PARTS
 		_rerolls += built
+	_rerolls += _lull_rerolls   # Spare Luck goes past the cap
+	_fire_heals = 0
 	_sixth_used = false
 	_lull_rerolls = 0
 	_hella_left = Defs.HOUND_SCARES if Run.has_rider("hound") else 0
@@ -901,7 +904,8 @@ func _on_banished(sp) -> void:
 		for o in spirits:
 			if not o.dead and o.world.distance_to(sp.world) <= Defs.WAKE_RANGE and (best == null or o.world.distance_to(sp.world) < best.world.distance_to(sp.world)):
 				best = o
-		if best != null:
+		if best != null and sp.wake_jumps < Defs.WAKE_MAX_JUMPS:
+			best.wake_jumps = sp.wake_jumps + 1
 			best.smoulder_t = 0.0
 			best.ignite(sp.smoulder_dps, Defs.DEFENSES["brazier"][0]["burn_t"])
 			_add_fx("spark", best.world, Color("#ff7a3a"))
@@ -1318,6 +1322,13 @@ func _target_at(local: Vector2, face: String) -> int:
 	return t if board.can_place(face, t) else -1
 
 
+## Heals from dice on the fire fall off within a wave, so stacking healers
+## can't outpace a whole wave of damage.
+func _fire_heal(amount: float) -> void:
+	Run.flame = minf(Run.max_flame, Run.flame + amount * pow(Defs.FIRE_HEAL_FALLOFF, _fire_heals))
+	_fire_heals += 1
+
+
 func _try_place(d, local: Vector2) -> bool:
 	if d == null or d.placed or d.is_rolling():
 		return false
@@ -1326,7 +1337,7 @@ func _try_place(d, local: Vector2) -> bool:
 		return false
 	if target == -2 and d.face == "pine":
 		pine_logs += 1
-		Run.flame = minf(Run.max_flame, Run.flame + Run.pine_heal() * (1.0 + Defs.PINE_PLUS_HEAL * (d.levels - 1)))
+		_fire_heal(Run.pine_heal() * (1.0 + Defs.PINE_PLUS_HEAL * (d.levels - 1)))
 		_add_fx("ring", Vector2.ZERO, Color("#c98a4a"), 130.0)
 	elif target == -2 and d.face == "reliquary":
 		shield += Defs.RELIQUARY[mini(d.levels, 3) - 1]
@@ -1337,7 +1348,7 @@ func _try_place(d, local: Vector2) -> bool:
 		_add_fx("ring", Vector2.ZERO, Color("#b9a8d8"), 130.0)
 	elif target == -2:
 		char_unit.kindle_up()
-		Run.flame = minf(Run.max_flame, Run.flame + Run.kindle_heal())
+		_fire_heal(Run.kindle_heal())
 		_add_fx("ring", Vector2.ZERO, Color("#fff0b0"), 130.0)
 	elif target == -3:
 		_build_wall(d.levels)

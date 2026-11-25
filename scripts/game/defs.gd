@@ -111,14 +111,14 @@ const OATHS := {
 		"name": "Oath of the Roaring Forge",
 		"icon": "forge",
 		"short": "Each Bellows also makes Char attack 6% faster.",
-		"desc": "The bellows fan the campfire too.\n\nFor each Bellows on the board, Char attacks 6% faster, on top of the faster attacks on its patch.",
+		"desc": "The bellows fan the campfire too.\n\nFor each Bellows on the board, Char attacks 6% faster (up to 4 Bellows, +24%), on top of the faster attacks on its patch.",
 	},
 	"smouldering_wake": {
 		"rarity": "uncommon",
 		"name": "Oath of the Ember Wake",
 		"icon": "wake",
 		"short": "A banished spirit passes its burn on.",
-		"desc": "Embers find new fuel.\n\nWhen a smouldering spirit is banished, its burn jumps to the nearest spirit close by, fresh and at full strength.",
+		"desc": "Embers find new fuel.\n\nWhen a smouldering spirit is banished, its burn jumps to the nearest spirit close by, fresh and at full strength. A burn jumps at most 3 times.",
 	},
 	"healing_ash": {
 		"rarity": "common",
@@ -432,9 +432,15 @@ const SHIFT_COST := 2.0
 
 ## Lull rewards: picked just before wave 3 of every night (not the fog ambush).
 ## Each lull offers LULL_QUICK quick-use rewards (tonight only) and 1 permanent
-## one (rest of the run). Permanent rewards stack up to PERK_CAP picks each.
+## one (rest of the run). Permanent rewards stack up to PERK_CAP picks each
+## (PERK_CAPS overrides that for the strongest).
 const LULL_QUICK := 2
 const PERK_CAP := 3
+const PERK_CAPS := {"steady_hand": 1, "deep_embers": 2, "hearthstones": 2}
+
+
+static func perk_cap(id: String) -> int:
+	return int(PERK_CAPS.get(id, PERK_CAP))
 const LULL_HEAL := 15.0          ## Second Wind
 const LULL_REROLLS := 2          ## Spare Luck
 const STOKE_RATE := 1.25         ## Stoke: defenses fire this much faster
@@ -476,9 +482,9 @@ const HEAVY_RANGE := 2.0
 const HEAVY_SPLASH := 50.0
 const PERKS := {
 	"hone": {"name": "Hone", "desc": "%s: %s for the rest of the run."},
-	"steady_hand": {"name": "Steady Hand", "desc": "+1 reroll every wave for the rest of the run."},
-	"deep_embers": {"name": "Deep Embers", "desc": "+10 max flame, and heal 10."},
-	"hearthstones": {"name": "Hearthstones", "desc": "Dawn heals 5 more for the rest of the run."},
+	"steady_hand": {"name": "Steady Hand", "desc": "+1 reroll every wave for the rest of the run. Once per run."},
+	"deep_embers": {"name": "Deep Embers", "desc": "+10 max flame, and heal 10. Up to twice per run."},
+	"hearthstones": {"name": "Hearthstones", "desc": "Dawn heals 5 more for the rest of the run. Up to twice per run."},
 }
 
 
@@ -506,7 +512,7 @@ static func lull_offer(rng: RandomNumberGenerator, perks: Dictionary, quick_ok: 
 			for k in hone_kinds:
 				if int(perks.get("hone_" + k, 0)) < PERK_CAP:
 					perm.append({"type": "perk", "id": "hone", "kind": k})
-		elif int(perks.get(id, 0)) < PERK_CAP:
+		elif int(perks.get(id, 0)) < perk_cap(id):
 			perm.append({"type": "perk", "id": id})
 	if not perm.is_empty():
 		out.append(perm[rng.randi() % perm.size()])
@@ -603,6 +609,9 @@ static func oath_rarity_roll(rng: RandomNumberGenerator, night_idx: int) -> Stri
 	return "common"
 
 const REROLLS_PER_WAVE := 1
+const MAX_REROLLS := 3        ## rerolls a wave starts with, at most (Tinker parts past it stay banked; Spare Luck adds on top)
+const FIRE_HEAL_FALLOFF := 0.75  ## each Kindle/Pine heal on the fire after the first in a wave heals this share of the one before
+const DAWN_HEAL_MAX := 40.0      ## dawn heal (before the boss bonus and the Cook) never exceeds this
 const MAX_LEVEL := 3
 
 ## Name, colour and tooltip for each die face.
@@ -795,6 +804,8 @@ const LIGHT_DEFENSES := ["torch", "mortar"]
 const SUPPORT_FACES := ["guide", "bellows", "brazier"]
 const WAKE_RANGE := 140.0   ## Oath of the Ember Wake: how far a burn jumps
 const FORGE_CHAR_RATE := 0.06   ## Oath of the Roaring Forge: Char's rate per Bellows
+const FORGE_MAX_BELLOWS := 4    ## ...counting at most this many (+24%)
+const WAKE_MAX_JUMPS := 3       ## Oath of the Ember Wake: jumps per burn chain
 
 
 ## Is this the boss wave? Wave 3 of each leg's 4th night (0-based night/wave).

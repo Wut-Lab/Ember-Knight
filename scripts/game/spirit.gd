@@ -26,6 +26,7 @@ var slow := 0.0            ## 0..1, set by the battle from nearby slowing defens
 var scorch_t := 0.0        ## Oath of Crossfire: time left scorched by a Mortar (Torches hit harder)
 var smoulder_dps := 0.0   ## Ember Brazier burn: damage a second while smoulder_t lasts
 var smoulder_t := 0.0
+var wake_jumps := 0       ## Oath of the Ember Wake: jumps this burn has made
 var vine_t := 0.0          ## time left wrapped in the Forest Friend's vines
 var dead := false
 var revive_chance := 0.0   ## >0 (Mud Wisp): chance to get back up when banished (once)
