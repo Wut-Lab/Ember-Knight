@@ -65,6 +65,16 @@ var _pause_t := 0.0        ## time left on a summoning stop
 var _rage_t := 0.0         ## time left on an angry shake
 var _rage_cd := 2.0
 var _flares: Array = []    ## Helio's dark orange wisps: [angle, age, life, len]
+var halt_at := 0.0         ## >0 (Frederick): stops this far from the fire
+var bolt_every := 0.0
+var summon_every := 0.0
+var decay := 0.0           ## share of max hp lost a second once halted
+var fog_range := 0.0
+var fog_boost := 1.0
+var _bolt_t := 0.0
+var _summon_t := 0.0
+var _bolt := 0.0           ## time left on the visible phantom bolt
+var boost := 1.0           ## speed multiplier set by the battle (Frederick's fog)
 
 var board
 var _t := 0.0
@@ -96,6 +106,14 @@ func setup(b, k: String, path: int, hp_scale: float) -> void:
 	snuff_range = d.get("snuff_range", 0.0)
 	snuff_time = d.get("snuff_time", 0.0)
 	summon_at = d.get("summon_at", [])
+	halt_at = d.get("halt_at", 0.0)
+	bolt_every = d.get("bolt_every", 0.0)
+	summon_every = d.get("summon_every", 0.0)
+	decay = d.get("decay", 0.0)
+	fog_range = d.get("fog_range", 0.0)
+	fog_boost = d.get("fog_boost", 1.0)
+	_bolt_t = bolt_every * 0.6
+	_summon_t = summon_every * 0.4
 	summon_pause = d.get("summon_pause", 0.0)
 	burn_range = d.get("burn_range", 0.0)
 	burn_dps = d.get("burn_dps", 0.0)
@@ -220,6 +238,10 @@ func _process(delta: float) -> void:
 			zapped.emit(self)
 		queue_redraw()
 		return
+	if halted():
+		_haunt_tick(delta)
+		queue_redraw()
+		return
 	if burn_range > 0.0:
 		_helio_tick(delta)
 		if burning() or _pause_t > 0.0:
@@ -242,6 +264,7 @@ func _process(delta: float) -> void:
 			_trail.pop_back()
 	if haste_t > 0.0:
 		burst *= 1.0 + haste
+	burst *= boost
 	dist += speed * burst * (1.0 - slow) * board.speed_at(world) * delta   # water slows them
 	for w in board.walls:   # an Ember Wall ahead: stop and burn through it
 		if is_instance_valid(w) and w.blocks(world) \
@@ -261,6 +284,25 @@ func _process(delta: float) -> void:
 	world = board.path_point(path_idx, dist)
 	position = board.proj(world)
 	queue_redraw()
+
+
+## Frederick, halted mid-trail: bolts the fire, raises Phantom Wisps, and fades.
+func halted() -> bool:
+	return halt_at > 0.0 and not dead and world.length() <= halt_at
+
+
+func _haunt_tick(delta: float) -> void:
+	_bolt = maxf(0.0, _bolt - delta)
+	_bolt_t -= delta
+	if _bolt_t <= 0.0:
+		_bolt_t = bolt_every
+		_bolt = 0.35
+		zapped.emit(self)
+	_summon_t -= delta
+	if _summon_t <= 0.0:
+		_summon_t = summon_every
+		summoned.emit(self, 1)
+	hit(max_hp * decay * delta, false)
 
 
 ## Helio's moods: flares, angry shakes, summoning stops.
@@ -292,6 +334,9 @@ func _draw() -> void:
 		_draw_smoulder()
 	if burn_range > 0.0:
 		_draw_helio()
+		return
+	if halt_at > 0.0 or kind == "phantom_wisp":
+		_draw_phantom()
 		return
 	if dim_range > 0.0:
 		_draw_dark()
@@ -606,6 +651,88 @@ func _draw_helio() -> void:
 	# A scowling mouth.
 	draw_polyline(PackedVector2Array([Vector2(-s * 0.3, s * 0.52), Vector2(0, s * 0.4), Vector2(s * 0.3, s * 0.52)]), ink, maxf(2.0, s * 0.08), true)
 	draw_set_transform(Vector2.ZERO)
+
+
+## Frederick, the Phantom (and, small and faint, his Phantom Wisps): a hazy
+## pale-blue ghost with a faint skull inside, glowing eyes and no mouth, pale blue
+## and lavender streams curling slowly round him. Frederick drags a wide fog cloud
+## and, once halted, sends a wavering phantom bolt to the fire.
+func _draw_phantom() -> void:
+	var big := halt_at > 0.0
+	var s: float = 15.0 * size_k * board.view_scale
+	var alpha := _fade_in * (1.0 - _death / 0.35)
+	var bob: float = sin(_t * 1.8) * 4.0 * board.view_scale
+	var sway := 0.0 if big else sin(_t * 2.3 + get_instance_id() % 7) * s * 0.5
+	var col := base_color
+	if _flash > 0.0:
+		col = col.lerp(Color.WHITE, 0.8)
+	var lav := Color("#b9a3ff")
+	if big and not dead:   # the fog cloud, drifting puffs on the ground around him
+		for i in 9:
+			var a := TAU * i / 9.0 + _t * 0.12
+			var rr := fog_range * (0.45 + 0.4 * (0.5 + 0.5 * sin(_t * 0.5 + i * 1.9)))
+			var p: Vector2 = board.proj(world + Vector2(cos(a), sin(a)) * rr) - position
+			var pr: float = fog_range * board.view_scale * (0.55 + 0.15 * sin(_t * 0.7 + i))
+			draw_texture_rect(_glow_tex(), Rect2(p.x - pr, p.y - pr * 0.6, pr * 2.0, pr * 1.2), false, Color(0.72, 0.78, 0.92, 0.24 * alpha))
+		draw_texture_rect(_glow_tex(), Rect2(-s * 6, -s * 3.2, s * 12, s * 6.4), false, Color(0.75, 0.8, 0.95, 0.2 * alpha))
+	_oval(Vector2(0, 2), s * 0.6, s * 0.18, Color(0, 0, 0, 0.2 * alpha))
+	var grow := 1.0 + _death * 2.0
+	draw_set_transform(Vector2(sway, -s * 1.9 + bob), 0.0, Vector2.ONE * grow)
+	var see := 1.0 if big else 0.55   # Phantom Wisps are see-through
+	draw_texture_rect(_glow_tex(), Rect2(-s * 3, -s * 3, s * 6, s * 6), false, Color(col.lerp(lav, 0.3), 0.5 * see * alpha))
+	# A wispy tail trailing under the body.
+	var tail := PackedVector2Array()
+	for i in 9:
+		var u := i / 8.0
+		tail.append(Vector2(sin(_t * 3.0 + u * 4.0) * s * 0.35 * u, s * (0.5 + 1.2 * u)))
+	for i in 9:   # soft overlapping puffs, thinning toward the tip
+		var u := 1.0 - i / 9.0
+		draw_circle(tail[i], s * 0.55 * u + 1.0, Color(col, 0.35 * u * see * alpha))
+	draw_circle(Vector2.ZERO, s, Color(col, 0.78 * see * alpha))
+	draw_circle(Vector2(-s * 0.1, -s * 0.1), s * 0.75, Color(1, 1, 1, 0.18 * see * alpha))
+	# The faint skull: cranium, cheek-and-jaw, nose. No mouth.
+	var bone := Color(0.32, 0.3, 0.52, 0.32 * see * alpha)
+	draw_circle(Vector2(0, -s * 0.12), s * 0.62, bone)
+	draw_colored_polygon(PackedVector2Array([Vector2(-s * 0.45, s * 0.1), Vector2(s * 0.45, s * 0.1), Vector2(s * 0.3, s * 0.62), Vector2(-s * 0.3, s * 0.62)]), bone)
+	draw_colored_polygon(PackedVector2Array([Vector2(0, s * 0.12), Vector2(-s * 0.09, s * 0.3), Vector2(s * 0.09, s * 0.3)]), Color(0.12, 0.1, 0.25, 0.45 * see * alpha))
+	# Hollow sockets with glowing eyes, looking toward the fire.
+	var look: Vector2 = (-world).normalized() * s * 0.05
+	for side in [-1.0, 1.0]:
+		var c := Vector2(side * s * 0.25, -s * 0.08) + look
+		draw_circle(c, s * 0.2, Color(0.1, 0.08, 0.22, 0.75 * see * alpha))
+		draw_texture_rect(_glow_tex(), Rect2(c.x - s * 0.3, c.y - s * 0.3, s * 0.6, s * 0.6), false, Color(0.75, 0.9, 1.0, 0.7 * alpha))
+		draw_circle(c, s * 0.08, Color(0.92, 0.97, 1.0, alpha))
+	# Pale blue and lavender streams curling slowly round him.
+	var n := 3 if big else 2
+	for i in n:
+		var a0 := _t * (0.6 + 0.15 * i) + TAU * i / n
+		var pts := PackedVector2Array()
+		for k in 12:
+			var a := a0 + k * 0.16
+			var rr := s * (1.25 + 0.15 * sin(_t * 1.3 + i + k * 0.3))
+			pts.append(Vector2(cos(a) * rr, sin(a) * rr * 0.75))
+		var sc := Color("#9fd0ff") if i % 2 == 0 else lav
+		for k in 11:
+			var u := sin(PI * k / 11.0)
+			draw_line(pts[k], pts[k + 1], Color(sc, 0.75 * u * see * alpha), maxf(1.5, s * 0.12 * u), true)
+	draw_set_transform(Vector2.ZERO)
+	if _bolt > 0.0 and not dead:   # a wavering lavender bolt to the fire
+		var from := Vector2(0, -s * 1.9 + bob)
+		var to: Vector2 = board.proj(Vector2.ZERO) - position
+		var side_v := (to - from).orthogonal().normalized()
+		var pts := PackedVector2Array()
+		for i in 13:
+			var f := i / 12.0
+			pts.append(from.lerp(to, f) + side_v * sin(f * 9.0 - _t * 20.0) * s * 0.35 * sin(f * PI))
+		var k: float = _bolt / 0.35
+		draw_polyline(pts, Color(lav, 0.4 * k * alpha), s * 0.45, true)
+		draw_polyline(pts, Color(0.9, 0.95, 1.0, 0.9 * k * alpha), maxf(1.5, s * 0.12), true)
+	# Phantom Wisps: a small health bar once hurt.
+	if not big and hp < max_hp and not dead:
+		var w := s * 2.0
+		var y: float = -s * 3.4 + bob
+		draw_rect(Rect2(-w / 2, y, w, 4), Color(0, 0, 0, 0.6 * alpha))
+		draw_rect(Rect2(-w / 2, y, w * clampf(hp / max_hp, 0, 1), 4), Color(lav, alpha))
 
 
 ## Red crackle: short jagged bolts flicking around the ball, re-drawn every

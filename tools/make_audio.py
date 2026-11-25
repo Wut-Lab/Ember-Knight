@@ -586,6 +586,52 @@ def sfx_helio_arrive():
     return np.tanh(1.2 * out)
 
 
+def sfx_phantom_arrive():
+    """Frederick, the Phantom appears: a wavering ghostly wail sliding down over a
+    cold breathy fog, a hollow choir-like hum and a soft low thud."""
+    dur = 2.4
+    n = int(dur * SR)
+    t = np.arange(n) / SR
+    env = np.clip(t / 0.6, 0, 1) * np.clip((dur - t) / 1.0, 0, 1)
+    f = 720 * np.exp(-t * 0.45) * (1 + 0.025 * np.sin(2 * np.pi * 5.5 * t))   # theremin-ish wail
+    wail = np.sin(2 * np.pi * np.cumsum(f) / SR) + 0.3 * np.sin(4 * np.pi * np.cumsum(f) / SR)
+    wail *= env
+    hum = sum(np.sin(2 * np.pi * fr * t + 0.3 * np.sin(2 * np.pi * 0.7 * t + i)) for i, fr in enumerate([110, 131, 165, 196]))
+    hum = hum / np.abs(hum).max() * env
+    fog = _noise(n, 300, 1800)
+    fog = fog / np.abs(fog).max() * (np.clip(t / 1.0, 0, 1) * np.clip((dur - t) / 0.8, 0, 1))
+    out = 0.4 * wail + 0.35 * hum + 0.3 * fog
+    _place(out, 0.5 * _tone(70, 40, 0.9, 5.0), 0.15)
+    return np.tanh(1.2 * out)
+
+
+def sfx_phantom_bolt():
+    """A phantom bolt hits the fire: a breathy ghostly whoosh that bends down into
+    a hollow ring."""
+    dur = 0.6
+    n = int(dur * SR)
+    t = np.arange(n) / SR
+    whoosh = _noise(n, 500, 3500)
+    whoosh = whoosh / np.abs(whoosh).max() * np.clip(t / 0.12, 0, 1) * np.exp(-np.clip(t - 0.12, 0, None) * 9)
+    f = np.geomspace(900, 380, n)
+    ring = np.sin(2 * np.pi * np.cumsum(f) / SR) * np.clip((t - 0.1) / 0.03, 0, 1) * np.exp(-np.clip(t - 0.1, 0, None) * 7)
+    ring += 0.4 * np.sin(2 * np.pi * np.cumsum(f * 1.5) / SR) * np.exp(-t * 10)
+    return np.tanh(1.3 * (0.5 * whoosh + 0.45 * ring))
+
+
+def sfx_phantom_summon():
+    """A Phantom Wisp rises from Frederick: a soft rising breath and an airy shimmer."""
+    dur = 0.9
+    n = int(dur * SR)
+    t = np.arange(n) / SR
+    env = np.sin(np.pi * np.clip(t / dur, 0, 1)) ** 1.5
+    breath = _noise(n, 250, 1400)
+    breath = breath / np.abs(breath).max() * env
+    f = np.geomspace(300, 640, n)
+    shimmer = sum(np.sin(2 * np.pi * np.cumsum(f * m) / SR) / m for m in (1, 2.01, 3.02)) * env * (0.6 + 0.4 * np.sin(2 * np.pi * 7 * t))
+    return np.tanh(0.5 * breath + 0.35 * shimmer)
+
+
 def sfx_thief_arrive():
     """The Lantern Thief appears: a sly rising whistle and a rattling lantern."""
     dur = 1.0
@@ -725,7 +771,7 @@ def write_sfx(only=None):
                      ("flare", sfx_flare), ("pop", sfx_pop), ("hurt", sfx_hurt), ("tap", sfx_tap),
                      ("chime", sfx_chime), ("wave", sfx_wave), ("button", sfx_button),
                      ("charge_hum", sfx_charge_hum), ("zap", sfx_zap), ("wind", sfx_wind),
-                     ("dark_arrive", sfx_dark_arrive), ("thief_arrive", sfx_thief_arrive), ("helio_arrive", sfx_helio_arrive),
+                     ("dark_arrive", sfx_dark_arrive), ("thief_arrive", sfx_thief_arrive), ("helio_arrive", sfx_helio_arrive), ("phantom_arrive", sfx_phantom_arrive), ("phantom_bolt", sfx_phantom_bolt), ("phantom_summon", sfx_phantom_summon),
                      ("dash", sfx_dash), ("snuff", sfx_snuff), ("ember_pickup", sfx_ember_pickup), ("vine", sfx_vine),
                      ("hound", sfx_hound), ("lamp", sfx_lamp), ("bell_toll", sfx_bell_toll)]:
         if only and name not in only:

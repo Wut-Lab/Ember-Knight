@@ -809,12 +809,25 @@ const SPIRITS := {
 		"blurb": "calls up Midnight Sun Rays, then sears the fire from close by", "arrive_sfx": "helio_arrive"},
 	## Helio's minion: a small, quick, furious yellow Wisp. Light hits only.
 	"sun_ray": {"hp": 8.0, "speed": 88.0, "damage": 3.0, "size": 0.65, "color": Color("#ffe14d")},
+	## Boss: Frederick, the Phantom. A hazy pale-blue ghost about a Charged Wisp's size,
+	## a faint skull inside him, no mouth, pale blue and lavender streams curling round
+	## him, and a wide fog cloud that drifts with him. He stops halt_at from the fire
+	## (past Char's reach, inside the inner tiles' Torches): a phantom bolt hits the fire for `damage` every bolt_every s, a
+	## Phantom Wisp rises every summon_every s, and he fades (decay × max hp a second)
+	## so he falls on his own. His Phantom Wisps move fog_boost × faster inside fog_range.
+	"phantom": {"name": "Frederick, the Phantom", "boss": true, "hp": 180.0, "speed": 24.0, "damage": 4.0,
+		"size": 1.3, "color": Color("#bcd6ff"), "bar_color": Color("#a99cf0"), "halt_at": 280.0,
+		"bolt_every": 4.0, "summon_every": 5.0, "decay": 0.03, "fog_range": 150.0, "fog_boost": 1.6,
+		"minion": "phantom_wisp", "zap_sfx": "phantom_bolt", "summon_sfx": "phantom_summon",
+		"blurb": "haunts the middle of a trail, bolting the fire and raising Phantom Wisps", "arrive_sfx": "phantom_arrive"},
+	## Frederick's minion: a small, weak, see-through copy of him. Speeds up in his fog.
+	"phantom_wisp": {"hp": 10.0, "speed": 50.0, "damage": 3.0, "size": 0.7, "color": Color("#c4d2ff")},
 }
 
 # ------------------------------------------------------------ bosses
 ## The boss pool: each leg's boss on wave 3 of its last night is drawn from
 ## here at the start of a run (Run.bosses), never repeating until all are used.
-const BOSSES := ["dark_wisp", "lantern_thief", "helio"]
+const BOSSES := ["dark_wisp", "lantern_thief", "helio", "phantom"]
 
 
 ## One boss per leg, shuffled; once the pool runs out it reshuffles, never

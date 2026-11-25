@@ -700,6 +700,13 @@ func _process(delta: float) -> void:
 			for d in defenses:
 				if d.world.distance_to(sp.world) <= sp.snuff_range:
 					d.snuff(sp.snuff_time)
+	# Frederick's fog launches his Phantom Wisps toward the fire.
+	for sp in spirits:
+		if sp.kind == "phantom_wisp":
+			sp.boost = 1.0
+			for b in spirits:
+				if b.fog_range > 0.0 and not b.dead and sp.world.distance_to(b.world) <= b.fog_range:
+					sp.boost = b.fog_boost
 	# Mist Wisps near Char slow its attacks (strongest wins, no stacking).
 	var chill := 0.0
 	for sp in spirits:
@@ -881,10 +888,11 @@ func _spawn(kind: String, lane := -1, hearty := false):
 func _on_summoned(boss, count: int) -> void:
 	if phase == Phase.DONE:
 		return
-	_add_fx("ring", boss.world, Color("#ffb238"), 70.0)
-	AudioDirector.play_sfx("charge_hum", -6.0)
+	var bd: Dictionary = Defs.SPIRITS[boss.kind]
+	_add_fx("ring", boss.world, bd.get("bar_color", bd["color"]), 70.0)
+	AudioDirector.play_sfx(bd.get("summon_sfx", "charge_hum"), -6.0)
 	for i in count:
-		var r = _spawn("sun_ray", boss.path_idx)
+		var r = _spawn(bd.get("minion", "sun_ray"), boss.path_idx)
 		r.place_at(maxf(0.0, boss.dist - 6.0 * i))
 
 
@@ -992,7 +1000,7 @@ func _on_reached_fire(sp) -> void:
 
 ## A Charged Wisp's zap: the same hurt as reaching the fire, but it stays.
 func _on_zapped(sp) -> void:
-	_hurt_fire(sp, "zap")
+	_hurt_fire(sp, Defs.SPIRITS[sp.kind].get("zap_sfx", "zap"))
 
 
 func _hurt_fire(sp, sfx := "hurt") -> void:
