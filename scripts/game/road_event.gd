@@ -83,6 +83,25 @@ func _update_status() -> void:
 	_status.text = "Flame %d / %d" % [roundi(Run.flame), roundi(Run.max_flame)]
 
 
+## Swaps the choice cards for a new set (a second step), with new story text.
+func _reoffer(text: String, options: Array) -> void:
+	_sub.text = text
+	for c in _row.get_children():
+		c.queue_free()
+	var cards := []
+	for o in options:
+		var c := ChoiceCard.make(o[0], o[1], 300.0)
+		c.custom_minimum_size.y = 160
+		c.pressed.connect(o[2])
+		_row.add_child(c)
+		cards.append(c)
+	cards[0].grab_focus.call_deferred()
+	_update_status()
+	if Run.autoplay:
+		var pick: Button = cards[Run.rng.randi() % cards.size()]
+		get_tree().create_timer(1.2).timeout.connect(pick.emit_signal.bind("pressed"))
+
+
 ## Shows the outcome, then a card to go on.
 func _result(text: String, ambush := false, go_title := "Onward", go_desc := "The road goes on.") -> void:
 	_sub.text = text

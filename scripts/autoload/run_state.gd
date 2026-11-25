@@ -19,6 +19,8 @@ var bonus_rerolls := 0         ## extra rerolls every wave (Ember Shrine)
 var shrine_seen := false       ## the Ember Shrine shows up once per run
 var gates := 1                ## gates Char can cobble tonight (Defs.GATES_FREE, +1 per traded slot)
 var layout_seed := 0           ## tonight's battle map, rolled when the stop is chosen
+var coach_seen := false        ## the Abandoned Stagecoach shows up once per run
+var coach_haunt := false       ## tonight every wave has extra Wisps (Abandoned Stagecoach)
 var shrine_curse := false      ## tonight's spirits are tougher (Ember Shrine)
 var nights_survived := 0
 var bosses: Array = []         ## boss id per leg (Defs.roll_bosses), rolled at the start of a run
@@ -83,6 +85,8 @@ func new_run() -> void:
 	gates = Defs.GATES_FREE
 	shrine_seen = false
 	shrine_curse = false
+	coach_seen = false
+	coach_haunt = false
 	stop_options.clear()
 	for n in Defs.NIGHTS:
 		stop_options.append(roll_stop_options())
@@ -256,7 +260,7 @@ const SAVE_PATH := "user://run.save"
 const SAVE_KEYS := ["night", "flame", "max_flame", "stop_options", "chosen_stops",
 	"spirits_banished", "nights_survived"]
 ## Newer keys: older saves load without them.
-const EXTRA_KEYS := ["bonus_rerolls", "shrine_seen", "gates", "spare_parts", "forged", "rites_used"]
+const EXTRA_KEYS := ["bonus_rerolls", "shrine_seen", "coach_seen", "gates", "spare_parts", "forged", "rites_used"]
 
 var resume := false   ## set by the menu's Continue; read by the run screen
 var _checkpoint := {}
@@ -335,6 +339,8 @@ func load_run() -> bool:
 	riders_picked = true
 	shrine_seen = bool(d.get("shrine_seen", false))
 	shrine_curse = false
+	coach_seen = bool(d.get("coach_seen", false))
+	coach_haunt = false
 	if d.has("rng_seed") and d.has("rng_state"):
 		rng.seed = int(d["rng_seed"])
 		rng.state = int(d["rng_state"])

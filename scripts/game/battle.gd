@@ -736,6 +736,9 @@ func dim_at(at: Vector2) -> float:
 ## fix_lanes every lane is picked now, so Carl can tell where they'll come.
 func _plan_spawns(fix_lanes: bool) -> Array:
 	var kinds: Array = Defs.ambush_spirits(Run.night) if ambush else Defs.wave_spirits(Run.night, wave, Run.current_stop(), Run.rng, Run.boss_for(Run.night))
+	if Run.coach_haunt and not ambush:   # the stagecoach's lost passengers follow
+		for i in Defs.COACH_HAUNT_SPIRITS:
+			kinds.append("wisp")
 	var q := []
 	for k in kinds:
 		var lane := _swarm_lane if mod == "swarmy" and Run.rng.randf() < Defs.SWARM_SHARE else -1
@@ -1767,6 +1770,8 @@ func _update_hud() -> void:
 		_wave_label.text += "  ·  " + Defs.WAVE_MODS[mod]["name"]
 	if Run.shrine_curse:
 		_wave_label.text += "  ·  Shrine's Wrath"
+	if Run.coach_haunt and not ambush:
+		_wave_label.text += "  ·  Lost Passengers"
 	var prep := phase == Phase.PREP
 	_roll_btn.text = "Roll (%d)" % _rerolls
 	_roll_btn.disabled = not prep or _rerolls <= 0

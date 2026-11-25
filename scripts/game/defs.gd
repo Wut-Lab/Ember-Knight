@@ -959,6 +959,12 @@ const SHRINE_REROLLS := 1         ## ...for this many extra rerolls every wave, 
 const SHRINE_TAKE_HEAL := 20.0    ## Take the Embers: flame gained
 const SHRINE_CURSE_HP := 1.25     ## ...but tonight's spirits have this much HP
 
+## Abandoned Stagecoach: at most once per run. Searching it turns up one random
+## die (from the dawn pool); taking it means its lost passengers follow you:
+## every wave tonight brings this many extra Wisps.
+const COACH_CHANCE := 0.25
+const COACH_HAUNT_SPIRITS := 2
+
 
 ## The Fog Cloud ambush: one wave of Mist Wisps, as many as the night's first wave.
 static func ambush_spirits(night: int) -> Array:
