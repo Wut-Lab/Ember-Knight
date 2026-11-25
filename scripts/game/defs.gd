@@ -1007,6 +1007,15 @@ const WOODS_NEAR_CHANCE := 0.75
 const WOODS_NEAR_FLAME := 10.0
 const WOODS_NEAR_LOSS := 8.0
 
+## The Old Ember Mine (repeatable, push your luck). Each dig is safe with
+## MINE_SAFE[n] (n = digs so far) and adds MINE_GAIN + n * MINE_GAIN_STEP flame
+## to the pile; leave any time to bank the pile. A cave-in loses the pile and
+## MINE_CAVE_IN flame on top.
+const MINE_SAFE := [0.7, 0.6, 0.5, 0.4, 0.3]
+const MINE_GAIN := 8.0
+const MINE_GAIN_STEP := 2.0
+const MINE_CAVE_IN := 10.0
+
 
 ## The Fog Cloud ambush: one wave of Mist Wisps, as many as the night's first wave.
 static func ambush_spirits(night: int) -> Array:
