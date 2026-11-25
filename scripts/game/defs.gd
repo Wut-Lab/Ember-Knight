@@ -971,7 +971,7 @@ const COACH_HAUNT_SPIRITS := 2
 ## that he blesses the night: Char starts it at Kindle level 1.
 const FERRY_FLAME := 12.0
 const FERRY_SOAKED_W2 := 1
-const FERRY_BLESS_CHANCE := 0.1
+const FERRY_BLESS_CHANCE := 0.25
 
 
 ## The Fog Cloud ambush: one wave of Mist Wisps, as many as the night's first wave.
