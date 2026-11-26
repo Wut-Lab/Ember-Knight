@@ -386,31 +386,78 @@ func _pip_x(n: int) -> float:
 	return 20.0 + PIP_GAP * n + LEG_GAP * Defs.leg_of(n)
 
 
+## The nights as a quiet little road: a thin dirt track, worn and warm where
+## the caravan has been, each night behind marked with its camp's sign.
 func _draw_tracker(ci: CanvasItem) -> void:
 	var y := 20.0
 	var x0 := 20.0
+	var x1 := _pip_x(Defs.NIGHTS - 1)
+	var xn := _pip_x(Run.night)
 	var font := Style.BODY_MEDIUM
-	ci.draw_line(Vector2(x0, y), Vector2(_pip_x(Defs.NIGHTS - 1), y), Color(Style.LINE, 1.0), 2.0, true)
+	ci.draw_line(Vector2(x0, y), Vector2(x1, y), Color(DIRT, 0.35), 6.0, true)   # the road ahead
 	if Run.night > 0:
-		ci.draw_line(Vector2(x0, y), Vector2(_pip_x(Run.night), y), Color(Style.ACCENT2, 0.8), 3.0, true)
+		ci.draw_line(Vector2(x0, y), Vector2(xn, y), Color(Style.ACCENT2, 0.10), 14.0, true)
+		ci.draw_line(Vector2(x0, y), Vector2(xn, y), DIRT, 6.0, true)
+	for side in [-1.6, 1.6]:   # ruts, fading out past tonight
+		ci.draw_line(Vector2(x0, y + side), Vector2(xn, y + side), Color(RUT, 0.9), 1.0)
+		ci.draw_line(Vector2(xn, y + side), Vector2(x1, y + side), Color(RUT, 0.35), 1.0)
+	for k in 14:   # a few tufts along the verge
+		var x := lerpf(x0 + 10, x1 - 10, Vignette._r(k, 40))
+		var side := 1.0 if k % 2 else -1.0
+		_tuft(ci, Vector2(x, y + side * 6.0 + (4.0 if side > 0 else 0.0)), 3.5 + 2.5 * Vignette._r(k, 41), k + 90, 0.45 if x < xn else 0.25)
 	for n in Defs.NIGHTS:
 		var c := Vector2(_pip_x(n), y)
 		var label_col := Style.MUTE
-		if n < Run.night:
-			ci.draw_circle(c, PIP_R, Style.ACCENT2)
-		elif n == Run.night:
+		if n < Run.night:   # a camp behind us: its sign, warmly lit
+			ci.draw_circle(c, PIP_R + 2, Color("#2a2018"))
+			ci.draw_arc(c, PIP_R + 2, 0, TAU, 32, Color(Style.ACCENT2, 0.9), 2.0, true)
+			var id: String = Run.chosen_stops[n] if n < Run.chosen_stops.size() else "road"
+			_camp_glyph(ci, id, c, Style.ACCENT)
+		elif n == Run.night:   # tonight: a small campfire waits
 			var pulse := 0.5 + 0.5 * sin(_t * 2.6)
-			ci.draw_circle(c, PIP_R + 7 + 2 * pulse, Color(Style.ACCENT2, 0.12 + 0.1 * pulse))
-			ci.draw_circle(c, PIP_R + 1, Style.BG)
-			ci.draw_arc(c, PIP_R + 1, 0, TAU, 32, Style.ACCENT, 3.0, true)
-			ci.draw_circle(c, PIP_R - 4, Style.ACCENT)
+			ci.draw_circle(c, PIP_R + 7 + 2 * pulse, Color(Style.ACCENT2, 0.10 + 0.08 * pulse))
+			ci.draw_circle(c, PIP_R + 2, Style.BG)
+			ci.draw_arc(c, PIP_R + 2, 0, TAU, 32, Style.ACCENT, 2.5, true)
+			var f := 0.85 + 0.15 * sin(_t * 11.0) * sin(_t * 7.3)
+			ci.draw_line(c + Vector2(-4, 4), c + Vector2(4, 3), Color("#6b4a30"), 1.6)
+			ci.draw_colored_polygon(PackedVector2Array([c + Vector2(-3.5, 3), c + Vector2(0, 3 - 9 * f), c + Vector2(3.5, 3)]), Style.ACCENT)
+			ci.draw_colored_polygon(PackedVector2Array([c + Vector2(-1.5, 3), c + Vector2(0, 3 - 4.5 * f), c + Vector2(1.5, 3)]), Color("#fff0b8"))
 			label_col = Style.FG
 		else:
 			ci.draw_circle(c, PIP_R, Style.BG)
-			ci.draw_arc(c, PIP_R, 0, TAU, 32, Color(Style.MUTE, 0.5), 2.0, true)
+			ci.draw_arc(c, PIP_R, 0, TAU, 32, Color(Style.MUTE, 0.45), 1.5, true)
 		var txt := str(n + 1)
 		var tw := font.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 17).x
 		ci.draw_string(font, Vector2(c.x - tw / 2, y + 36), txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 17, label_col)
+
+
+## A tiny line sign for each camp, to fit inside a tracker pip.
+static func _camp_glyph(ci: CanvasItem, id: String, c: Vector2, col: Color) -> void:
+	match id:
+		"hill":
+			var pts := PackedVector2Array()
+			for i in 9:
+				var a := PI + PI * i / 8.0
+				pts.append(c + Vector2(cos(a) * 6.0, 3.0 + sin(a) * 6.0))
+			ci.draw_polyline(pts, col, 1.6, true)
+		"cliff":
+			ci.draw_polyline(PackedVector2Array([c + Vector2(-6, -2), c + Vector2(1, -2), c + Vector2(2, 1), c + Vector2(0.5, 3), c + Vector2(2, 6)]), col, 1.6, true)
+			ci.draw_line(c + Vector2(3, -4), c + Vector2(6, -6), Color(col, 0.6), 1.2)
+		"lake":
+			for row in 2:
+				var pts := PackedVector2Array()
+				for i in 9:
+					pts.append(c + Vector2(-6 + i * 1.5, -1.5 + row * 4.0 + sin(i * 1.4) * 1.2))
+				ci.draw_polyline(pts, col, 1.4, true)
+		"swamp":
+			ci.draw_line(c + Vector2(0, 6), c + Vector2(0, -5), col, 1.6)
+			ci.draw_line(c + Vector2(0, -1), c + Vector2(-4, -5), col, 1.2)
+			ci.draw_line(c + Vector2(0, 1), c + Vector2(4, -3), col, 1.2)
+		"chapel":
+			ci.draw_polyline(PackedVector2Array([c + Vector2(-4, 6), c + Vector2(-4, -1), c + Vector2(0, -6), c + Vector2(4, -1), c + Vector2(4, 6)]), col, 1.6, true)
+		_:   # road: two tracks running into the distance
+			ci.draw_line(c + Vector2(-5, 6), c + Vector2(-1, -5), col, 1.4)
+			ci.draw_line(c + Vector2(5, 6), c + Vector2(1, -5), col, 1.4)
 
 
 # ------------------------------------------------------------ journey window
