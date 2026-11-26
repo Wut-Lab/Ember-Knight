@@ -9,6 +9,10 @@ var _paid_to := 0.0
 var _splash := -10.0      ## time of the ford splash
 var _bless := 0.0         ## 0..1: gold blessing glow
 var _picker: GridContainer
+var _filter
+var _kinds := []
+
+const FaceFilter := preload("res://scripts/ui/face_filter.gd")
 
 
 func _ready() -> void:
@@ -35,22 +39,43 @@ func _pick_die() -> void:
 	_picker.columns = 4
 	_picker.add_theme_constant_override("h_separation", 14)
 	_picker.add_theme_constant_override("v_separation", 14)
-	_row.add_child(_picker)
-	var kinds := []
 	for id in Run.pool:
-		if Defs.DICE.has(id) and not id in kinds:
-			kinds.append(id)
-	var cards := []
-	for id in kinds:
+		if Defs.DICE.has(id) and not id in _kinds:
+			_kinds.append(id)
+	# Faces filter above the dice; its panel opens to their right.
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 12)
+	_row.add_child(col)
+	_filter = FaceFilter.new(330.0)
+	_filter.source = func(): return _kinds
+	_filter.changed.connect(_fill_picker)
+	_filter.opened.connect(func(open: bool): _picker.columns = 3 if open else 4)
+	col.add_child(_filter)
+	_filter.visible = _kinds.size() > 4   # only worth it with a full bag
+	var scroll := ScrollContainer.new()   # a big bag scrolls, the screen doesn't
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.custom_minimum_size.y = minf(ceili(_kinds.size() / 4.0) * 104 - 14, 260)
+	col.add_child(scroll)
+	scroll.add_child(_picker)
+	_row.add_child(_filter.panel)
+	_fill_picker()
+	if Run.autoplay:
+		var cards := _picker.get_children()
+		var pick: Button = cards[Run.rng.randi() % cards.size()]
+		get_tree().create_timer(1.2).timeout.connect(pick.emit_signal.bind("pressed"))
+
+
+func _fill_picker() -> void:
+	for c in _picker.get_children():
+		_picker.remove_child(c)
+		c.queue_free()
+	for id in _filter.apply(_kinds):
 		var c := ChoiceCard.make(Defs.DICE[id]["name"], "Owned %d" % Run.pool.count(id), 210.0)
 		c.custom_minimum_size.y = 90
 		c.pressed.connect(_give.bind(id))
 		_picker.add_child(c)
-		cards.append(c)
-	cards[0].grab_focus.call_deferred()
-	if Run.autoplay:
-		var pick: Button = cards[Run.rng.randi() % cards.size()]
-		get_tree().create_timer(1.2).timeout.connect(pick.emit_signal.bind("pressed"))
+	if _picker.get_child_count() > 0 and not _filter.panel.visible:
+		_picker.get_child(0).grab_focus.call_deferred()
 
 
 func _give(id: String) -> void:
