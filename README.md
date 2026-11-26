@@ -8,7 +8,7 @@ A tower defense / roguelike. You play as Char, the spirit of a campfire who defe
 Prevent increasingly difficult waves of enemies from putting out the campfire at night, and leaving the stagecoach in the dark. Build defenses, roll dice, and swear oaths to protect the fire.
 <br><br>
 
-## **Play it in your browser:** 
+## **Link to Play:** 
 <p align="center"> 
      https://wut-lab.github.io/Ember-Knight/ 
 </p> 
