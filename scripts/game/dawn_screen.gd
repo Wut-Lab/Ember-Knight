@@ -29,7 +29,7 @@ func _ready() -> void:
 	h.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	h.add_theme_font_override("font", Style.display_font())
 	h.add_theme_font_size_override("font_size", 64)
-	h.add_theme_color_override("font_color", Color("#ffd58f"))
+	h.add_theme_color_override("font_color", Color.BLACK)
 	root.add_child(h)
 	if not Run.recap.is_empty() and not Run.night_flames.is_empty():
 		root.add_child(_recap_strip())
@@ -38,6 +38,7 @@ func _ready() -> void:
 	sub.text = "The spirits fade with the sunrise. Char's flame recovers (+%d)." % roundi(healed)
 	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	sub.add_theme_font_size_override("font_size", 22)
+	sub.add_theme_color_override("font_color", Color.BLACK)
 	root.add_child(sub)
 	Style.add_something_new(root)
 	if Run.has_rider("cook"):
@@ -47,14 +48,14 @@ func _ready() -> void:
 			else "%s, ladles out a hot broth, but Char's flame is already full." % who
 		cook.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		cook.add_theme_font_size_override("font_size", 22)
-		cook.add_theme_color_override("font_color", Color("#ffd58f"))
+		cook.add_theme_color_override("font_color", Color.BLACK)
 		root.add_child(cook)
 	if Defs.ends_leg(Run.night):
 		var leg := Label.new()
 		leg.text = "%s is banished!  Leg %d of the road complete:  +1 dice slot, and an %s joins your bag." % [Defs.SPIRITS[Run.boss_for(Run.night)]["name"], Defs.leg_of(Run.night) + 1, Defs.DICE[Defs.LEG_REWARD_DIE]["name"]]
 		leg.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		leg.add_theme_font_size_override("font_size", 22)
-		leg.add_theme_color_override("font_color", Style.ACCENT)
+		leg.add_theme_color_override("font_color", Color.BLACK)
 		root.add_child(leg)
 	_root = root
 	if Run.current_stop() == "swamp":
@@ -62,7 +63,7 @@ func _ready() -> void:
 		sw.text = "Something stirs in the bog:  one die from the swamp is on offer."
 		sw.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		sw.add_theme_font_size_override("font_size", 20)
-		sw.add_theme_color_override("font_color", Color("#9fc9a0"))
+		sw.add_theme_color_override("font_color", Color.BLACK)
 		root.add_child(sw)
 		_row("A NEW DIE  ·  TAKE ONE", "die", Defs.swamp_dawn_dice(Run.rng, Run.pool))
 	elif Run.current_stop() == "chapel":
@@ -70,7 +71,7 @@ func _ready() -> void:
 		ch.text = "Candlelight lingers in the chapel:  one of its dice is on offer."
 		ch.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		ch.add_theme_font_size_override("font_size", 20)
-		ch.add_theme_color_override("font_color", Color("#ffd98a"))
+		ch.add_theme_color_override("font_color", Color.BLACK)
 		root.add_child(ch)
 		_row("A NEW DIE  ·  TAKE ONE", "die", Defs.swamp_dawn_dice(Run.rng, Run.pool, Defs.CHAPEL_DICE))
 	else:
@@ -81,7 +82,7 @@ func _ready() -> void:
 		lost.text = "AN OATH  ·  Lost in the woods: no Oath this dawn."
 		lost.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		lost.add_theme_font_size_override("font_size", 20)
-		lost.add_theme_color_override("font_color", Color(Style.MUTE, 0.7))
+		lost.add_theme_color_override("font_color", Color.BLACK)
 		root.add_child(lost)
 	else:
 		_row("AN OATH  ·  SWEAR ONE", "oath", Defs.dawn_oaths(Run.rng, Run.oaths, Run.night))
@@ -89,7 +90,7 @@ func _ready() -> void:
 		_add_reroll()
 	_status = Label.new()
 	_status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_status.add_theme_color_override("font_color", Style.MUTE)
+	_status.add_theme_color_override("font_color", Color.BLACK)
 	_status.add_theme_font_size_override("font_size", 20)
 	root.add_child(_status)
 	_update_status()
@@ -114,7 +115,7 @@ func _row(title: String, kind: String, ids: Array) -> void:
 	var lab := Label.new()
 	lab.text = title if not ids.is_empty() else ("NO DICE LEFT TO OFFER" if kind == "die" else "NO OATHS LEFT TO SWEAR")
 	lab.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	lab.add_theme_color_override("font_color", Style.MUTE)
+	lab.add_theme_color_override("font_color", Color.BLACK)
 	lab.add_theme_font_size_override("font_size", 16)
 	_root.add_child(lab)
 	if ids.is_empty():
