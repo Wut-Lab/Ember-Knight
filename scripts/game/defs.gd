@@ -1111,8 +1111,8 @@ static func wave_step(night: int, wave: int) -> float:
 ## dice slot beyond the first 3 and per Oath sworn this run.
 const SLOT_COUNT_SCALE := 0.15   ## +15% spirits per extra dice slot
 const SLOT_HP_SCALE := 0.08      ## +8% spirit health per extra dice slot
-const OATH_COUNT_SCALE := 0.03   ## +3% spirits per Oath sworn
-const OATH_HP_SCALE := 0.02      ## +2% spirit health per Oath sworn
+const OATH_COUNT_SCALE := 0.02   ## +2% spirits per Oath sworn
+const OATH_HP_SCALE := 0.01      ## +1% spirit health per Oath sworn
 
 static func build_scale(night: int, oaths: int) -> float:
 	return 1.0 + SLOT_COUNT_SCALE * (dice_slots(night) - LOADOUT_SIZE) + OATH_COUNT_SCALE * oaths
