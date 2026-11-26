@@ -12,12 +12,14 @@ const Defs := preload("res://scripts/game/defs.gd")
 const Style := preload("res://scripts/ui/ui_style.gd")
 const ChoiceCard := preload("res://scripts/ui/choice_card.gd")
 const DrawProxy := preload("res://scripts/ui/draw_proxy.gd")
+const Vignette := preload("res://scripts/game/camp_vignette.gd")
 
 const PIP_GAP := 54.0      ## distance between night pips
 const LEG_GAP := 34.0      ## extra space between legs
 const PIP_R := 9.0
-const OPTION_W := 300.0
-const CLEARED_SIZE := Vector2(360, 230)
+const OPTION_W := 460.0
+const VIG := Vector2(124, 86)          ## camp picture on each option card
+const CLEARED_SIZE := Vector2(320, 230)
 
 var _root := VBoxContainer.new()
 var _lines: Control
@@ -30,6 +32,9 @@ var _dim: ColorRect
 var _leaders: Control      ## dotted lines from each Journey camp to its flame count
 var _leader_pairs: Array = []
 var _t := 0.0
+var _vigs: Array = []      ## camp pictures, redrawn every frame
+var _coach_u := 0.0        ## 0..1: the coach's way down the hovered trail
+var _coach_on := -1        ## which option's trail it is on
 
 
 func _ready() -> void:
@@ -87,14 +92,12 @@ func _ready() -> void:
 	row.add_child(_cleared)
 
 	var opts := VBoxContainer.new()
-	opts.add_theme_constant_override("separation", 16)
+	opts.add_theme_constant_override("separation", 12)
 	opts.alignment = BoxContainer.ALIGNMENT_CENTER
 	opts.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(opts)
 	for id in Run.stop_options[Run.night]:
-		var info: Dictionary = Defs.STOPS[id]
-		var card := ChoiceCard.make(info["name"], info["desc"], OPTION_W)
-		card.custom_minimum_size.y = 104
+		var card := _camp_card(id)
 		card.pressed.connect(func(): stop_chosen.emit(id))
 		opts.add_child(card)
 		_options.append(card)
@@ -133,6 +136,18 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	_t += delta
 	_lines.queue_redraw()
+	for v in _vigs:
+		v.queue_redraw()
+	# The coach rolls down whichever trail is hovered, then waits and goes again.
+	var hot := -1
+	for i in _options.size():
+		if _options[i].has_focus() or _options[i].is_hovered():
+			hot = i
+	if hot != _coach_on:
+		_coach_on = hot
+		_coach_u = 0.0
+	elif hot != -1:
+		_coach_u = fmod(_coach_u + delta * 0.55, 1.6)
 	_tracker.queue_redraw()
 	if _leaders:
 		_leaders.queue_redraw()
@@ -156,7 +171,7 @@ func _cleared_card() -> PanelContainer:
 	lit.border_color = Color(1.0, 0.9, 0.62, 0.55)
 	lit.set_border_width_all(2)
 	lit.set_corner_radius_all(8)
-	lit.set_content_margin_all(36)
+	lit.set_content_margin_all(28)
 	lit.anti_aliasing = true
 	lit.shadow_color = Color(1.0, 0.94, 0.72, 0.2)
 	lit.shadow_size = 26
@@ -165,6 +180,8 @@ func _cleared_card() -> PanelContainer:
 	box.alignment = BoxContainer.ALIGNMENT_CENTER
 	box.add_theme_constant_override("separation", 8)
 	card.add_child(box)
+	var last: String = "road" if Run.night == 0 or Run.chosen_stops.is_empty() else Run.chosen_stops[Run.night - 1]
+	box.add_child(_vignette(last, Vector2(CLEARED_SIZE.x - 72, 92), true))
 
 	var tag := Label.new()
 	tag.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -196,31 +213,158 @@ func _cleared_card() -> PanelContainer:
 	return card
 
 
-## Dotted trails from the cleared card to each of tonight's camps, glowing orange.
+## A camp on tonight's route: its picture, then its name and what it holds.
+## The card grows to fit the description.
+func _camp_card(id: String) -> Button:
+	var info: Dictionary = Defs.STOPS[id]
+	var b := Button.new()
+	b.custom_minimum_size = Vector2(OPTION_W, VIG.y + 20)
+	b.mouse_entered.connect(b.grab_focus)
+	var row := HBoxContainer.new()
+	row.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	row.offset_left = 10
+	row.offset_right = -14
+	row.offset_top = 10
+	row.offset_bottom = -10
+	row.add_theme_constant_override("separation", 14)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	b.add_child(row)
+	var v := _vignette(id, VIG)
+	v.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(v)
+	var col := VBoxContainer.new()
+	col.alignment = BoxContainer.ALIGNMENT_CENTER
+	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	col.add_theme_constant_override("separation", 2)
+	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(col)
+	var t := Label.new()
+	t.text = info["name"]
+	t.add_theme_font_override("font", Style.display_font(600))
+	t.add_theme_font_size_override("font_size", 28)
+	t.add_theme_color_override("font_color", Style.ACCENT)
+	t.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	col.add_child(t)
+	var d := Label.new()
+	d.text = info["desc"]
+	d.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	d.custom_minimum_size.x = OPTION_W - VIG.x - 38
+	d.add_theme_font_size_override("font_size", 16)
+	d.add_theme_color_override("font_color", Style.FG)
+	d.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	col.add_child(d)
+	row.minimum_size_changed.connect(func():
+		b.custom_minimum_size.y = maxf(VIG.y + 20, row.get_combined_minimum_size().y + 20))
+	return b
+
+
+func _vignette(id: String, sz: Vector2, dawn := false) -> Control:
+	var v := DrawProxy.new()
+	v.custom_minimum_size = sz
+	v.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	v.clip_contents = true
+	v.draw_fn = func(ci): Vignette.draw(ci, id, sz, _t, dawn)
+	_vigs.append(v)
+	return v
+
+
+## Wagon trails from the cleared card to each of tonight's camps: packed
+## dirt with two ruts and grass along the verges, embers drifting down it
+## toward the camp. The hovered trail lights up and the coach rolls down it.
 func _draw_trails(ci: CanvasItem) -> void:
 	if _options.is_empty():
 		return
 	var p0: Vector2 = _cleared.global_position + Vector2(_cleared.size.x, _cleared.size.y / 2) - ci.global_position
+	var hot_pts := []
 	for i in _options.size():
 		var b: Button = _options[i]
 		var p1: Vector2 = b.global_position + Vector2(0, b.size.y / 2) - ci.global_position
-		var hot := b.has_focus() or b.is_hovered()
+		var hot := i == _coach_on
 		var c1: Vector2 = p0 + Vector2((p1.x - p0.x) * 0.5, 0)
 		var c2: Vector2 = p1 - Vector2((p1.x - p0.x) * 0.5, 0)
-		var pts := []
-		var steps := 48
+		var pts := PackedVector2Array()
+		var steps := 40
 		for k in steps + 1:
 			pts.append(_bezier(p0, c1, c2, p1, float(k) / steps))
-		# march the dashes toward the camps
-		var shift := fmod(_t * 0.6, 1.0)
-		for k in steps:
-			if (k + int(shift * 4.0)) % 4 >= 2:
-				continue
-			var a: Vector2 = pts[k]
-			var e: Vector2 = pts[k + 1]
-			ci.draw_line(a, e, Color(Style.ACCENT2, 0.16 if not hot else 0.3), 11.0, true)   # glow
-			ci.draw_line(a, e, Color(Style.ACCENT, 0.55 if not hot else 0.95), 3.5, true)
+		var lit := 1.0 if hot else 0.55
+		if hot:
+			ci.draw_polyline(pts, Color(Style.ACCENT2, 0.10), 34.0, true)   # warm glow under it
+			hot_pts = pts
+		ci.draw_polyline(pts, Color(DIRT_EDGE, lit), 18.0, true)
+		ci.draw_polyline(pts, Color(DIRT, lit), 14.0, true)
+		for side in [-1.0, 1.0]:   # ruts
+			var rut := PackedVector2Array()
+			for k in pts.size():
+				rut.append(pts[k] + _normal(pts, k) * 3.5 * side)
+			ci.draw_polyline(rut, Color(RUT, lit), 1.6, true)
+		for k in range(3, steps - 2, 3):   # grass on the verges
+			var side := 1.0 if (k + i) % 2 else -1.0
+			var base: Vector2 = pts[k] + _normal(pts, k) * (10.0 + 4.0 * Vignette._r(k + i * 7, 2)) * side
+			_tuft(ci, base, 5.0 + 6.0 * Vignette._r(k + i * 7, 3), k + i * 13, lit)
+		# embers drifting toward the camp
+		var n := 5 if hot else 3
+		for e in n:
+			var u := fmod(_t * (0.22 if hot else 0.12) + float(e) / n + i * 0.13, 1.0)
+			var p := _bezier(p0, c1, c2, p1, u)
+			var a := sin(u * PI) * (0.95 if hot else 0.45)
+			ci.draw_circle(p, 5.0, Color(Style.ACCENT2, 0.18 * a))
+			ci.draw_circle(p, 1.8, Color(Style.ACCENT, a))
+	# you are here: a lantern post at the end of last night's road
+	var pulse := 0.5 + 0.5 * sin(_t * 2.4)
+	ci.draw_circle(p0, 12.0 + 3.0 * pulse, Color(Style.ACCENT2, 0.12 + 0.08 * pulse))
 	ci.draw_circle(p0, 6.0, Style.ACCENT)
+	ci.draw_circle(p0, 2.6, Color("#fff0b8"))
+	if not hot_pts.is_empty():
+		_draw_coach(ci, hot_pts, clampf(_coach_u, 0.0, 1.0))
+
+
+const DIRT := Color("#4a3e2e")
+const DIRT_EDGE := Color("#2b241c")
+const RUT := Color("#241e18")
+
+
+static func _normal(pts: PackedVector2Array, k: int) -> Vector2:
+	var a := pts[maxi(k - 1, 0)]
+	var b := pts[mini(k + 1, pts.size() - 1)]
+	return (b - a).normalized().orthogonal()
+
+
+static func _tuft(ci: CanvasItem, p: Vector2, h: float, i: int, lit: float) -> void:
+	for k in 5:
+		var lean := (Vignette._r(i, 10 + k) - 0.5) * 7.0
+		var hh := h * (0.55 + 0.6 * Vignette._r(i, 20 + k))
+		var x := p.x + (k - 2) * 1.8
+		var col := Color("#5f6d4f").lerp(Color("#8e9a6c"), Vignette._r(i, 30 + k) * 0.7)
+		ci.draw_line(Vector2(x, p.y), Vector2(x + lean, p.y - hh), Color(col, lit), 1.4, true)
+
+
+## The little stagecoach, rolling along the trail (u 0..1), wheels turning.
+func _draw_coach(ci: CanvasItem, pts: PackedVector2Array, u: float) -> void:
+	var f := u * (pts.size() - 1)
+	var k := mini(int(f), pts.size() - 2)
+	var p := pts[k].lerp(pts[k + 1], f - k)
+	var dir := (pts[k + 1] - pts[k]).normalized()
+	var ang := clampf(dir.angle(), -0.5, 0.5)
+	var bob := sin(_t * 14.0) * 0.6 if u < 1.0 else 0.0
+	ci.draw_set_transform(p + Vector2(0, -9 + bob), ang, Vector2.ONE)
+	ci.draw_circle(Vector2(0, 8), 14.0, Color(0, 0, 0, 0.25))
+	ci.draw_rect(Rect2(-12, -9, 22, 13), Color("#5b3f2a"))           # body
+	ci.draw_rect(Rect2(-12, -9, 22, 13), Color("#2a1c12"), false, 1.2)
+	ci.draw_rect(Rect2(-8, -6, 6, 5), Color("#ffcf7a"))               # lit window
+	ci.draw_rect(Rect2(-14, -12, 26, 3), Color("#3a2a1d"))           # roof
+	ci.draw_line(Vector2(10, 0), Vector2(17, 0), Color("#3a2a1d"), 1.5)   # shaft
+	ci.draw_circle(Vector2(14, -10), 2.2, Color(Style.ACCENT, 0.9))    # lantern
+	ci.draw_circle(Vector2(14, -10), 5.0, Color(Style.ACCENT2, 0.2))
+	var spin := _t * 9.0 if u < 1.0 else 0.0
+	for wx in [-7.0, 6.0]:
+		var c := Vector2(wx, 5)
+		ci.draw_circle(c, 4.5, Color("#2a1c12"))
+		ci.draw_arc(c, 4.5, 0, TAU, 16, Color("#8a6a48"), 1.2, true)
+		for sp in 3:
+			var a := spin + sp * PI / 3.0
+			ci.draw_line(c - Vector2(cos(a), sin(a)) * 4.0, c + Vector2(cos(a), sin(a)) * 4.0, Color("#8a6a48"), 0.8)
+	ci.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 
 static func _bezier(a: Vector2, b: Vector2, c: Vector2, d: Vector2, t: float) -> Vector2:
