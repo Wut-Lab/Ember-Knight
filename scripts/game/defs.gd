@@ -1107,22 +1107,25 @@ static func wave_step(night: int, wave: int) -> float:
 	return lerpf(prev, cur, t)
 
 
-## Build scaling, against snowballing: more spirits per dice slot beyond the
-## first 3 and per trail beyond BASE_TRAILS (fewer trails, fewer spirits), and
-## a little more spirit health per extra slot (spirit_hp_scale).
-const BASE_TRAILS := 3
+## Build scaling, against snowballing: more spirits and spirit health per
+## dice slot beyond the first 3 and per Oath sworn this run.
 const SLOT_COUNT_SCALE := 0.15   ## +15% spirits per extra dice slot
-const TRAIL_COUNT_SCALE := 0.10  ## +/-10% spirits per trail above/below BASE_TRAILS
 const SLOT_HP_SCALE := 0.08      ## +8% spirit health per extra dice slot
+const OATH_COUNT_SCALE := 0.03   ## +3% spirits per Oath sworn
+const OATH_HP_SCALE := 0.02      ## +2% spirit health per Oath sworn
 
-static func build_scale(night: int, trails: int) -> float:
-	return maxf(0.5, 1.0 + SLOT_COUNT_SCALE * (dice_slots(night) - LOADOUT_SIZE) + TRAIL_COUNT_SCALE * (trails - BASE_TRAILS))
+static func build_scale(night: int, oaths: int) -> float:
+	return 1.0 + SLOT_COUNT_SCALE * (dice_slots(night) - LOADOUT_SIZE) + OATH_COUNT_SCALE * oaths
+
+
+static func build_hp_scale(night: int, oaths: int) -> float:
+	return 1.0 + SLOT_HP_SCALE * (dice_slots(night) - LOADOUT_SIZE) + OATH_HP_SCALE * oaths
 
 
 ## Spawn list for one wave: Array of spirit kinds. night/wave are 0-based.
-static func wave_spirits(night: int, wave: int, stop: String, rng: RandomNumberGenerator, boss_id := "dark_wisp", trails := BASE_TRAILS) -> Array:
+static func wave_spirits(night: int, wave: int, stop: String, rng: RandomNumberGenerator, boss_id := "dark_wisp", oaths := 0) -> Array:
 	var count := floori(5 + wave_step(night, wave) * 2 + wave * 1 + 0.000001)
-	count = maxi(1, roundi(count * build_scale(night, trails)))
+	count = maxi(1, roundi(count * build_scale(night, oaths)))
 	# Mist Wisps slip into night 1 from wave 2, thicker at misty stops (the lake).
 	var mist_chance := 0.15 + 0.05 * night_step(night)
 	if night == 0:
@@ -1175,8 +1178,8 @@ static func has_forks(stop: String) -> bool:
 	return STOPS.get(stop, {}).get("forks", true)
 
 
-static func spirit_hp_scale(night: int, stop: String) -> float:
-	var s := (1.0 + 0.15 * night_step(night)) * (1.0 + SLOT_HP_SCALE * (dice_slots(night) - LOADOUT_SIZE))
+static func spirit_hp_scale(night: int, stop: String, oaths := 0) -> float:
+	var s := (1.0 + 0.15 * night_step(night)) * build_hp_scale(night, oaths)
 	if stop == "swamp":
 		s *= SWAMP_HP
 	elif stop == "chapel":

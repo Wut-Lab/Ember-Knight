@@ -749,7 +749,7 @@ func dim_at(at: Vector2) -> float:
 ## Each queue entry: [kind, lane (-1 = random at spawn), hearty]. With
 ## fix_lanes every lane is picked now, so Carl can tell where they'll come.
 func _plan_spawns(fix_lanes: bool) -> Array:
-	var kinds: Array = Defs.ambush_spirits(Run.night) if ambush else Defs.wave_spirits(Run.night, wave, Run.current_stop(), Run.rng, Run.boss_for(Run.night), board.lane_count)
+	var kinds: Array = Defs.ambush_spirits(Run.night) if ambush else Defs.wave_spirits(Run.night, wave, Run.current_stop(), Run.rng, Run.boss_for(Run.night), Run.oaths.size())
 	if Run.coach_haunt and not ambush:   # the stagecoach's lost passengers follow
 		for i in Defs.COACH_HAUNT_SPIRITS:
 			kinds.append("wisp")
@@ -848,7 +848,7 @@ func _spawn(kind: String, lane := -1, hearty := false):
 	_entities.add_child(sp)
 	if lane < 0:
 		lane = Run.rng.randi() % board.lane_count
-	var hp_scale := Defs.spirit_hp_scale(Run.night, Run.current_stop())
+	var hp_scale := Defs.spirit_hp_scale(Run.night, Run.current_stop(), Run.oaths.size())
 	if Run.shrine_curse:
 		hp_scale *= Defs.SHRINE_CURSE_HP
 	sp.setup(board, kind, lane, hp_scale * (Defs.HEARTY_HP if hearty else 1.0))
