@@ -1,5 +1,9 @@
 # Ember Knight
 
+<p align="center">
+    <img src="EKbanner.png">
+</p>
+
 A tower defense / roguelike. You play as Char, the spirit of a campfire who defends his family without question.
 
 ## **Play it in your browser:** 
