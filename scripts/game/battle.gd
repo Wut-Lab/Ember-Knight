@@ -749,7 +749,7 @@ func dim_at(at: Vector2) -> float:
 ## Each queue entry: [kind, lane (-1 = random at spawn), hearty]. With
 ## fix_lanes every lane is picked now, so Carl can tell where they'll come.
 func _plan_spawns(fix_lanes: bool) -> Array:
-	var kinds: Array = Defs.ambush_spirits(Run.night) if ambush else Defs.wave_spirits(Run.night, wave, Run.current_stop(), Run.rng, Run.boss_for(Run.night))
+	var kinds: Array = Defs.ambush_spirits(Run.night) if ambush else Defs.wave_spirits(Run.night, wave, Run.current_stop(), Run.rng, Run.boss_for(Run.night), board.lane_count)
 	if Run.coach_haunt and not ambush:   # the stagecoach's lost passengers follow
 		for i in Defs.COACH_HAUNT_SPIRITS:
 			kinds.append("wisp")
