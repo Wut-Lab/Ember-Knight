@@ -47,6 +47,7 @@ func _ready() -> void:
 	if not Run.riders_picked and not Profile.members.is_empty() and not Run.autoplay:
 		var r := RiderScreen.new()
 		r.done.connect(func(): _show(_make_map()))
+		r.back.connect(_abandon)
 		_show(r, false)
 	else:
 		Run.riders_picked = true

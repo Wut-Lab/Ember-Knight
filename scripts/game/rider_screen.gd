@@ -5,6 +5,7 @@ extends Control
 ## the picks go to Run.riders (and Profile.riders for next time).
 
 signal done
+signal back   # back to the title; the fresh run is dropped
 
 const Defs := preload("res://scripts/game/defs.gd")
 const Style := preload("res://scripts/ui/ui_style.gd")
@@ -59,6 +60,12 @@ func _ready() -> void:
 	_go.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	_go.pressed.connect(_set_out)
 	root.add_child(_go)
+	var b := Button.new()
+	b.text = "Back"
+	b.custom_minimum_size = Vector2(180, 44)
+	b.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	b.pressed.connect(func(): back.emit())
+	root.add_child(b)
 	_refresh()
 	_go.grab_focus.call_deferred()
 
@@ -143,3 +150,9 @@ func _set_out() -> void:
 	Profile.set_riders(_picked)
 	Run.apply_loadout()   # Simon, the Smith forges now
 	done.emit()
+
+
+func _unhandled_input(e: InputEvent) -> void:
+	if e.is_action_pressed("ui_cancel"):
+		get_viewport().set_input_as_handled()
+		back.emit()
