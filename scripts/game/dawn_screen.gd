@@ -30,6 +30,7 @@ func _ready() -> void:
 	h.add_theme_font_override("font", Style.display_font())
 	h.add_theme_font_size_override("font_size", 64)
 	h.add_theme_color_override("font_color", Color.BLACK)
+	_ink(h)
 	root.add_child(h)
 	if not Run.recap.is_empty() and not Run.night_flames.is_empty():
 		root.add_child(_recap_strip())
@@ -39,6 +40,7 @@ func _ready() -> void:
 	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	sub.add_theme_font_size_override("font_size", 22)
 	sub.add_theme_color_override("font_color", Color.BLACK)
+	_ink(sub)
 	root.add_child(sub)
 	Style.add_something_new(root)
 	if Run.has_rider("cook"):
@@ -49,6 +51,7 @@ func _ready() -> void:
 		cook.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		cook.add_theme_font_size_override("font_size", 22)
 		cook.add_theme_color_override("font_color", Color.BLACK)
+		_ink(cook)
 		root.add_child(cook)
 	if Defs.ends_leg(Run.night):
 		var leg := Label.new()
@@ -56,6 +59,7 @@ func _ready() -> void:
 		leg.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		leg.add_theme_font_size_override("font_size", 22)
 		leg.add_theme_color_override("font_color", Color.BLACK)
+		_ink(leg)
 		root.add_child(leg)
 	_root = root
 	if Run.current_stop() == "swamp":
@@ -64,6 +68,7 @@ func _ready() -> void:
 		sw.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		sw.add_theme_font_size_override("font_size", 20)
 		sw.add_theme_color_override("font_color", Color.BLACK)
+		_ink(sw)
 		root.add_child(sw)
 		_row("A NEW DIE  ·  TAKE ONE", "die", Defs.swamp_dawn_dice(Run.rng, Run.pool))
 	elif Run.current_stop() == "chapel":
@@ -72,6 +77,7 @@ func _ready() -> void:
 		ch.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		ch.add_theme_font_size_override("font_size", 20)
 		ch.add_theme_color_override("font_color", Color.BLACK)
+		_ink(ch)
 		root.add_child(ch)
 		_row("A NEW DIE  ·  TAKE ONE", "die", Defs.swamp_dawn_dice(Run.rng, Run.pool, Defs.CHAPEL_DICE))
 	else:
@@ -83,6 +89,7 @@ func _ready() -> void:
 		lost.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		lost.add_theme_font_size_override("font_size", 20)
 		lost.add_theme_color_override("font_color", Color.BLACK)
+		_ink(lost)
 		root.add_child(lost)
 	else:
 		_row("AN OATH  ·  SWEAR ONE", "oath", Defs.dawn_oaths(Run.rng, Run.oaths, Run.night))
@@ -91,6 +98,7 @@ func _ready() -> void:
 	_status = Label.new()
 	_status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_status.add_theme_color_override("font_color", Color.BLACK)
+	_ink(_status)
 	_status.add_theme_font_size_override("font_size", 20)
 	root.add_child(_status)
 	_update_status()
@@ -116,6 +124,7 @@ func _row(title: String, kind: String, ids: Array) -> void:
 	lab.text = title if not ids.is_empty() else ("NO DICE LEFT TO OFFER" if kind == "die" else "NO OATHS LEFT TO SWEAR")
 	lab.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	lab.add_theme_color_override("font_color", Color.BLACK)
+	_ink(lab)
 	lab.add_theme_font_size_override("font_size", 16)
 	_root.add_child(lab)
 	if ids.is_empty():
@@ -348,3 +357,19 @@ func _recap_icon(ci: CanvasItem, kind: String, c: Vector2, col: Color) -> void:
 			ci.draw_line(c + Vector2(0, -14), c + Vector2(0, 14), Color(1, 1, 1, col.a * 0.3), 1.5, true)
 		_:
 			Icons.draw(ci, kind, c, 38.0, col)
+
+
+var _inked: Array[Label] = []
+
+## Black text over the bright sky; text that lands below the treeline, on
+## the dark ground, turns back to dawn-light so it stays readable.
+func _ink(l: Label) -> void:
+	_inked.append(l)
+
+
+func _process(_dt: float) -> void:
+	var ground := get_viewport_rect().size.y * 0.57
+	for l in _inked:
+		if is_instance_valid(l):
+			var low := l.global_position.y + l.size.y * 0.5 > ground
+			l.add_theme_color_override("font_color", DAWN if low else Color.BLACK)
