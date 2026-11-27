@@ -154,7 +154,7 @@ func _row(title: String, kind: String, ids: Array) -> void:
 	lab.add_theme_color_override("font_outline_color", Color.BLACK)
 	lab.add_theme_constant_override("outline_size", 6)
 	lab.add_theme_font_override("font", _bold())
-	lab.add_theme_font_size_override("font_size", 18)
+	lab.add_theme_font_size_override("font_size", 23)
 	if ids.is_empty():
 		_root.add_child(lab)
 		return
