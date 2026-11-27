@@ -29,8 +29,7 @@ func _ready() -> void:
 	h.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	h.add_theme_font_override("font", Style.display_font())
 	h.add_theme_font_size_override("font_size", 64)
-	h.add_theme_color_override("font_color", Color.BLACK)
-	_ink(h)
+	h.add_theme_color_override("font_color", DAWN)
 	root.add_child(h)
 	if not Run.recap.is_empty() and not Run.night_flames.is_empty():
 		root.add_child(_recap_strip())
@@ -41,6 +40,7 @@ func _ready() -> void:
 	sub.add_theme_font_size_override("font_size", 22)
 	sub.add_theme_color_override("font_color", Color.BLACK)
 	_ink(sub)
+	sub.add_theme_font_override("font", _bold())
 	root.add_child(sub)
 	Style.add_something_new(root)
 	if Run.has_rider("cook"):
@@ -52,6 +52,7 @@ func _ready() -> void:
 		cook.add_theme_font_size_override("font_size", 22)
 		cook.add_theme_color_override("font_color", Color.BLACK)
 		_ink(cook)
+		cook.add_theme_font_override("font", _bold())
 		root.add_child(cook)
 	if Defs.ends_leg(Run.night):
 		var leg := Label.new()
@@ -60,6 +61,7 @@ func _ready() -> void:
 		leg.add_theme_font_size_override("font_size", 22)
 		leg.add_theme_color_override("font_color", Color.BLACK)
 		_ink(leg)
+		leg.add_theme_font_override("font", _bold())
 		root.add_child(leg)
 	_root = root
 	if Run.current_stop() == "swamp":
@@ -69,6 +71,7 @@ func _ready() -> void:
 		sw.add_theme_font_size_override("font_size", 20)
 		sw.add_theme_color_override("font_color", Color.BLACK)
 		_ink(sw)
+		sw.add_theme_font_override("font", _bold())
 		root.add_child(sw)
 		_row("A NEW DIE  ·  TAKE ONE", "die", Defs.swamp_dawn_dice(Run.rng, Run.pool))
 	elif Run.current_stop() == "chapel":
@@ -78,6 +81,7 @@ func _ready() -> void:
 		ch.add_theme_font_size_override("font_size", 20)
 		ch.add_theme_color_override("font_color", Color.BLACK)
 		_ink(ch)
+		ch.add_theme_font_override("font", _bold())
 		root.add_child(ch)
 		_row("A NEW DIE  ·  TAKE ONE", "die", Defs.swamp_dawn_dice(Run.rng, Run.pool, Defs.CHAPEL_DICE))
 	else:
@@ -90,6 +94,7 @@ func _ready() -> void:
 		lost.add_theme_font_size_override("font_size", 20)
 		lost.add_theme_color_override("font_color", Color.BLACK)
 		_ink(lost)
+		lost.add_theme_font_override("font", _bold())
 		root.add_child(lost)
 	else:
 		_row("AN OATH  ·  SWEAR ONE", "oath", Defs.dawn_oaths(Run.rng, Run.oaths, Run.night))
@@ -97,9 +102,14 @@ func _ready() -> void:
 		_add_reroll()
 	_status = Label.new()
 	_status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_status.add_theme_color_override("font_color", Color.BLACK)
-	_ink(_status)
-	_status.add_theme_font_size_override("font_size", 20)
+	_status.add_theme_color_override("font_color", Color("#ff9a3c"))
+	_status.add_theme_color_override("font_outline_color", Color("#3a0e02"))
+	_status.add_theme_constant_override("outline_size", 6)
+	_status.add_theme_font_override("font", _bold())
+	_status.add_theme_font_size_override("font_size", 28)
+	var gap := Control.new()
+	gap.custom_minimum_size.y = 18
+	root.add_child(gap)
 	root.add_child(_status)
 	_update_status()
 	if not _rows.is_empty():
@@ -121,19 +131,33 @@ var _rerolled := false
 ## One row of offerings (2 cards) plus a Skip card worth SKIP_FLAME flame.
 func _row(title: String, kind: String, ids: Array) -> void:
 	var lab := Label.new()
-	lab.text = title if not ids.is_empty() else ("NO DICE LEFT TO OFFER" if kind == "die" else "NO OATHS LEFT TO SWEAR")
+	lab.text = title.replace("  ·  ", "\n") if not ids.is_empty() else ("NO DICE LEFT TO OFFER" if kind == "die" else "NO OATHS LEFT TO SWEAR")
 	lab.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	lab.add_theme_color_override("font_color", Color.BLACK)
-	_ink(lab)
-	lab.add_theme_font_size_override("font_size", 16)
-	_root.add_child(lab)
+	lab.add_theme_color_override("font_color", DAWN)
+	lab.add_theme_color_override("font_outline_color", Color.BLACK)
+	lab.add_theme_constant_override("outline_size", 6)
+	lab.add_theme_font_override("font", _bold())
+	lab.add_theme_font_size_override("font_size", 18)
 	if ids.is_empty():
+		_root.add_child(lab)
 		return
+	# Title on the left, cards centred: a matching spacer balances the right.
+	var line := HBoxContainer.new()
+	line.alignment = BoxContainer.ALIGNMENT_CENTER
+	line.add_theme_constant_override("separation", 18)
+	line.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_root.add_child(line)
+	lab.custom_minimum_size.x = 150
+	line.add_child(lab)
 	var row := HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
 	row.add_theme_constant_override("separation", 18)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_root.add_child(row)
+	line.add_child(row)
+	var pad := Control.new()
+	pad.custom_minimum_size.x = 150
+	pad.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	line.add_child(pad)
 	var r := {"kind": kind, "cards": [], "ids": ids, "done": false, "box": row}
 	_fill(r)
 	_rows.append(r)
@@ -373,3 +397,10 @@ func _process(_dt: float) -> void:
 		if is_instance_valid(l):
 			var low := l.global_position.y + l.size.y * 0.5 > ground
 			l.add_theme_color_override("font_color", DAWN if low else Color.BLACK)
+
+
+static func _bold() -> Font:
+	var f := FontVariation.new()
+	f.base_font = Style.BODY_MEDIUM
+	f.variation_embolden = 0.7
+	return f
