@@ -26,6 +26,7 @@ const Board := preload("res://scripts/game/board.gd")
 const EmberDrop := preload("res://scripts/game/ember_drop.gd")
 const BossBar := preload("res://scripts/game/boss_bar.gd")
 var _boss_bar
+const HUD_SCALE := 1.2    ## the corner HUD clusters, drawn a size up
 const TOP := 78.0         ## the map's top edge, under the HUD
 const TOP_BOSS := 150.0   ## on a boss wave, the map eases down under the boss bar
 var _top := TOP
@@ -234,7 +235,7 @@ func _layout() -> void:
 	for d in defenses:
 		d.position = board.proj(d.world)
 	if _boss_bar:
-		_boss_bar.position = Vector2((s.x - _boss_bar.size.x) / 2.0, 62.0)
+		_boss_bar.position = Vector2((s.x - _boss_bar.size.x) / 2.0, 74.0)
 	if _tray:
 		_tray.reset_size()
 		_tray.position = Vector2((s.x - _tray.size.x) / 2, s.y - _tray.size.y - 12)
@@ -1647,17 +1648,21 @@ func _start_hint_refresh() -> void:
 
 # ------------------------------------------------------------ HUD
 func _build_hud() -> void:
+	var tl := Control.new()   # top-left cluster: flame bar and rider badges
+	tl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tl.position = Vector2(20, 14)
+	tl.scale = Vector2.ONE * HUD_SCALE
+	add_child(tl)
 	_flame_bar = FlameBar.new()
-	_flame_bar.position = Vector2(20, 18)
-	add_child(_flame_bar)
+	tl.add_child(_flame_bar)
 	for i in mini(Run.riders.size(), Defs.CARAVAN_SEATS):   # a badge per riding member
 		var id: String = Run.riders[i]
 		var bv := DrawProxy.new()
-		bv.position = Vector2(328 + i * 46, 18)
+		bv.position = Vector2(308 + i * 46, 0)
 		bv.size = Vector2(40, 40)
 		bv.draw_fn = _draw_badge.bind(id)
 		bv.tooltip_text = Defs.CARAVAN[id]["name"]
-		add_child(bv)
+		tl.add_child(bv)
 		_badges[id] = bv
 		_badge_pulse[id] = 0.0
 	_boss_bar = BossBar.new()
@@ -1669,13 +1674,13 @@ func _build_hud() -> void:
 	top.add_theme_constant_override("separation", -6)
 	_night_label = Label.new()
 	_night_label.add_theme_font_override("font", Style.display_font())
-	_night_label.add_theme_font_size_override("font_size", 34)
+	_night_label.add_theme_font_size_override("font_size", 40)
 	_night_label.add_theme_color_override("font_color", Style.ACCENT)
 	_night_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	top.add_child(_night_label)
 	_wave_label = Label.new()
 	_wave_label.add_theme_color_override("font_color", Style.MUTE)
-	_wave_label.add_theme_font_size_override("font_size", 19)
+	_wave_label.add_theme_font_size_override("font_size", 22)
 	_wave_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	top.add_child(_wave_label)
 	top.grow_horizontal = Control.GROW_DIRECTION_BOTH
@@ -1697,10 +1702,14 @@ func _build_hud() -> void:
 	right.add_child(_speed_btn)
 	right.add_child(_small_button("II", _toggle_pause))
 	add_child(right)
+	right.scale = Vector2.ONE * HUD_SCALE   # grow from the top-right corner
+	var pin := func(): right.pivot_offset = Vector2(right.size.x, 0)
+	right.resized.connect(pin)
+	pin.call_deferred()
 
 	_hint = Label.new()
 	_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_hint.add_theme_font_size_override("font_size", 20)
+	_hint.add_theme_font_size_override("font_size", 22)
 	_hint.add_theme_color_override("font_color", Color(1, 1, 1, 0.8))
 	_hint.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.8))
 	_hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1715,7 +1724,7 @@ func _build_hud() -> void:
 	gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_tray.add_child(gap)
 	_roll_btn = Button.new()
-	_roll_btn.custom_minimum_size = Vector2(150, 64)
+	_roll_btn.custom_minimum_size = Vector2(176, 74)
 	_roll_btn.pressed.connect(reroll)
 	_roll_btn.size_flags_vertical = Control.SIZE_SHRINK_END
 	_tray.add_child(_roll_btn)
@@ -1728,7 +1737,7 @@ func _build_hud() -> void:
 	_roll_btn.add_child(_parts_view)
 	_choose_btn = Button.new()   # Oath of the Sixth Face
 	_choose_btn.text = "Choose"
-	_choose_btn.custom_minimum_size = Vector2(130, 64)
+	_choose_btn.custom_minimum_size = Vector2(150, 74)
 	_choose_btn.pressed.connect(_open_choose)
 	_choose_btn.size_flags_vertical = Control.SIZE_SHRINK_END
 	_choose_btn.visible = false
@@ -1739,10 +1748,12 @@ func _build_hud() -> void:
 	_tray.add_child(fight_gap)
 	_fight_btn = Button.new()
 	_fight_btn.text = "Fight!"
-	_fight_btn.custom_minimum_size = Vector2(150, 64)
+	_fight_btn.custom_minimum_size = Vector2(176, 74)
 	_fight_btn.pressed.connect(begin_wave)
 	_fight_btn.size_flags_vertical = Control.SIZE_SHRINK_END
 	_tray.add_child(_fight_btn)
+	for b in [_roll_btn, _choose_btn, _fight_btn]:
+		b.add_theme_font_size_override("font_size", 27)
 	add_child(_tray)
 
 	_banner = Label.new()
