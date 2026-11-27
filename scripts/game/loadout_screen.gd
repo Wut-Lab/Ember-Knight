@@ -81,14 +81,19 @@ func _ready() -> void:
 	bagrow.add_theme_constant_override("separation", 16)
 	margin.add_child(bagrow)
 	var scroll := ScrollContainer.new()
-	scroll.custom_minimum_size = Vector2(0, 250)
+	scroll.custom_minimum_size = Vector2(0, 282)
 	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	bagrow.add_child(scroll)
 	bagrow.add_child(_filter.panel)
+	var pad := MarginContainer.new()   # room inside the scroll's clip for the button glow
+	pad.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	for m in ["margin_left", "margin_right", "margin_top", "margin_bottom"]:
+		pad.add_theme_constant_override(m, 16)
+	scroll.add_child(pad)
 	var center := CenterContainer.new()
 	center.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.add_child(center)
+	pad.add_child(center)
 	_grid = GridContainer.new()
 	_grid.columns = 5
 	_grid.add_theme_constant_override("h_separation", 12)
