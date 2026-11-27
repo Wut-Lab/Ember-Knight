@@ -197,11 +197,13 @@ func _fill(r: Dictionary) -> void:
 			_tint(card, rar["color"])
 		card.custom_minimum_size.y = 118
 		card.pressed.connect(_choose.bind(r, card, id))
+		_solid(card)
 		r["box"].add_child(card)
 		r["cards"].append(card)
 	var skip := ChoiceCard.make("Skip", "+%d flame" % roundi(Defs.SKIP_FLAME), 170.0)
 	skip.custom_minimum_size.y = 118
 	skip.pressed.connect(_choose.bind(r, skip, ""))
+	_solid(skip)
 	r["box"].add_child(skip)
 	r["cards"].append(skip)
 
@@ -421,3 +423,11 @@ static func _bold() -> Font:
 	f.base_font = Style.BODY_MEDIUM
 	f.variation_embolden = 0.7
 	return f
+
+
+## Dawn's cards sit over a bright sky: thicken their backgrounds a little.
+func _solid(card: Button) -> void:
+	for st in ["normal", "hover", "focus", "pressed", "hover_pressed", "disabled"]:
+		var sb: StyleBoxFlat = theme.get_stylebox(st, "Button").duplicate()
+		sb.bg_color.a = minf(sb.bg_color.a + 0.2, 0.97)
+		card.add_theme_stylebox_override(st, sb)
