@@ -206,6 +206,7 @@ func _fill(r: Dictionary) -> void:
 	_solid(skip)
 	r["box"].add_child(skip)
 	r["cards"].append(skip)
+	_even_heights.call_deferred()
 
 
 ## Oath of Dawn Offerings: once a dawn, pay flame and Essence to reroll
@@ -431,3 +432,17 @@ func _solid(card: Button) -> void:
 		var sb: StyleBoxFlat = theme.get_stylebox(st, "Button").duplicate()
 		sb.bg_color.a = minf(sb.bg_color.a + 0.2, 0.97)
 		card.add_theme_stylebox_override(st, sb)
+
+
+## Every card on the screen grows to the tallest one's text, so the rows
+## stay even when a description runs long.
+func _even_heights() -> void:
+	var h := 118.0
+	for r in _rows:
+		for c in r["cards"]:
+			if is_instance_valid(c) and not c.is_queued_for_deletion():
+				h = maxf(h, c.get_child(0).get_combined_minimum_size().y + 24.0)
+	for r in _rows:
+		for c in r["cards"]:
+			if is_instance_valid(c):
+				c.custom_minimum_size.y = h
