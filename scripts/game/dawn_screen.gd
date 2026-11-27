@@ -28,9 +28,26 @@ func _ready() -> void:
 	h.text = "Dawn"
 	h.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	h.add_theme_font_override("font", Style.display_font())
-	h.add_theme_font_size_override("font_size", 64)
+	h.add_theme_font_size_override("font_size", 76)
 	h.add_theme_color_override("font_color", DAWN)
+	h.add_theme_color_override("font_outline_color", Color.BLACK)
+	h.add_theme_constant_override("outline_size", 10)
+	var glow := DrawProxy.new()   # a faint gold glow behind the word
+	glow.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	glow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	glow.show_behind_parent = true
+	glow.draw_fn = func(ci: CanvasItem):
+		var c := glow.size * 0.5
+		for i in 14:
+			var k := 1.0 - i / 14.0
+			ci.draw_set_transform(c, 0.0, Vector2(1.0, 0.45))
+			ci.draw_circle(Vector2.ZERO, 70.0 + k * 110.0, Color(DAWN, 0.018))
+		ci.draw_set_transform(Vector2.ZERO)
+	h.add_child(glow)
 	root.add_child(h)
+	var lift := Control.new()   # lifts the title clear of the rest
+	lift.custom_minimum_size.y = 26
+	root.add_child(lift)
 	if not Run.recap.is_empty() and not Run.night_flames.is_empty():
 		root.add_child(_recap_strip())
 	var sub := Label.new()
