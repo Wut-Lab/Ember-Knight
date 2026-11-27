@@ -54,7 +54,7 @@ func _ready() -> void:
 	var healed := Run.dawn_heal() + (Defs.BOSS_DAWN_HEAL if Defs.ends_leg(Run.night) else 0.0)
 	sub.text = "The spirits fade with the sunrise. Char's flame recovers (+%d)." % roundi(healed)
 	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	sub.add_theme_font_size_override("font_size", 22)
+	sub.add_theme_font_size_override("font_size", 26)
 	sub.add_theme_color_override("font_color", Color.BLACK)
 	_ink(sub)
 	sub.add_theme_font_override("font", _bold())
@@ -66,7 +66,7 @@ func _ready() -> void:
 		cook.text = ("%s, ladles out a hot broth:  +%d flame." % [who, roundi(Run.cook_healed)]) if Run.cook_healed >= 0.5 \
 			else "%s, ladles out a hot broth, but Char's flame is already full." % who
 		cook.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		cook.add_theme_font_size_override("font_size", 22)
+		cook.add_theme_font_size_override("font_size", 26)
 		cook.add_theme_color_override("font_color", Color.BLACK)
 		_ink(cook)
 		cook.add_theme_font_override("font", _bold())
@@ -75,7 +75,7 @@ func _ready() -> void:
 		var leg := Label.new()
 		leg.text = "%s is banished!  Leg %d of the road complete:  +1 dice slot, and an %s joins your bag." % [Defs.SPIRITS[Run.boss_for(Run.night)]["name"], Defs.leg_of(Run.night) + 1, Defs.DICE[Defs.LEG_REWARD_DIE]["name"]]
 		leg.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		leg.add_theme_font_size_override("font_size", 22)
+		leg.add_theme_font_size_override("font_size", 26)
 		leg.add_theme_color_override("font_color", Color.BLACK)
 		_ink(leg)
 		leg.add_theme_font_override("font", _bold())
@@ -85,7 +85,7 @@ func _ready() -> void:
 		var sw := Label.new()
 		sw.text = "Something stirs in the bog:  one die from the swamp is on offer."
 		sw.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		sw.add_theme_font_size_override("font_size", 20)
+		sw.add_theme_font_size_override("font_size", 24)
 		sw.add_theme_color_override("font_color", Color.BLACK)
 		_ink(sw)
 		sw.add_theme_font_override("font", _bold())
@@ -95,7 +95,7 @@ func _ready() -> void:
 		var ch := Label.new()
 		ch.text = "Candlelight lingers in the chapel:  one of its dice is on offer."
 		ch.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		ch.add_theme_font_size_override("font_size", 20)
+		ch.add_theme_font_size_override("font_size", 24)
 		ch.add_theme_color_override("font_color", Color.BLACK)
 		_ink(ch)
 		ch.add_theme_font_override("font", _bold())
@@ -108,7 +108,7 @@ func _ready() -> void:
 		var lost := Label.new()
 		lost.text = "AN OATH  ·  Lost in the woods: no Oath this dawn."
 		lost.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		lost.add_theme_font_size_override("font_size", 20)
+		lost.add_theme_font_size_override("font_size", 24)
 		lost.add_theme_color_override("font_color", Color.BLACK)
 		_ink(lost)
 		lost.add_theme_font_override("font", _bold())
